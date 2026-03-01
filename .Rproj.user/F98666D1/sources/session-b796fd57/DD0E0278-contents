@@ -1,0 +1,156 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+# README document for manuscript " Integrated Bayesian non-parametric spatial modeling for cross-sample identification of spatially variable genes"
+
+
+
+
+
+
+##  Data
+
+###  Directory Structure Description
+The data used in this study is stored in the `data` folder of the repository, which is divided into two core subdirectories:
+- `RealData`: Contains the two publicly available spatial transcriptomic datasets described below, including preprocessed expression matrices, scRNA/snRNA matrix, cell type proportion, and downstream analysis results.
+- `Simulation data`: Includes simulation datasets spanning three canonical spatial patterns and Three additional heterogeneous spatial structures. For each canonical pattern, multiple data-integration scenarios are constructed, with and without covariates, to systematically evaluate model performance under varying structural complexities.
+
+
+
+###  Abstract
+The spatial transcriptomic datasets used in this study include two publicly available datasets:
+- Human dorsolateral prefrontal cortex (DLPFC), comprising laminar cortical structures and evaluated under within-donor and cross-donor section integration scenarios.
+- Human squamous cell carcinoma (SCC), a representative tumor tissue dataset characterized by spatial heterogeneity.
+
+These datasets differ in spot resolution (~1,000–4,000 spots), tissue architecture, and sparsity levels, providing complementary benchmarks for evaluating model performance under diverse spatial transcriptomic settings.
+
+###  Availability
+All datasets are publicly available for download via the following links:
+
+- **DLPFC**: Available at https://github.com/LieberInstitute/HumanPilot (Maynard et al., 2021). 
+- **SCC**: Available the Gene Expression Omnibus (GEO) under accession number GSE144240 and GSE144236(Ji et al., 2020). 
+
+###  Real Dataset Description
+
+
+
+#### Human dorsolateral prefrontal cortex (DLPFC)
+- **Contributors**: Maynard, K.R. and Collado-Torres, L. , et al.
+- **Citation**: Maynard, K., Collado-Torres, L. et al. (2021), ‘Transcriptome-scale spatial gene expression
+in the human dorsolateral prefrontal cortex’, Nature Neuroscience 24, 425–436.
+- **File format**: Gene expression matrix (HDF5), spatial coordinates (TXT), snRNA-seq count matrix (HDF5), and snRNA-seq cell-type and gene annotations (RDS).
+- **Preprocessing**: 
+  - Quality control: Cells with <500 expressed genes and genes with <100 expressing cells were filtered out.
+  - Selecting the top 8,000 highly variable genes (HVGs) per slice using the Seurat package and identifying the consensus   HVGs across all four slices.
+  - Focused on seven cell types (Astro, EndoMural, MicroOligo, Oligo, OPC, Excit, and Inhib), with spot-wise proportions estimated using Redeconve (Zhou et al. 2023).
+
+
+#### Human squamous cell carcinoma (SCC)
+- **Contributors**: Ji, A. L., Rubin, A. J., Thrane, K., Jiang, S., Reynolds, D. L., Meyers, R. M., Guo, M.,
+George, J., Mollbrink, A. et al.
+- **Citation**: Ji, A. L., Rubin, A. J., Thrane, K., Jiang, S., Reynolds, D. L., Meyers, R. M., Guo, M.,
+George, J., Mollbrink, A. et al. (2020), ‘Multimodal analysis of composition and spatial
+architecture in human squamous cell carcinoma’, Cell 182(2), 497–514.e22.
+- **File format**: Gene expression matrix (TSV), spatial coordinates (TSV), scRNA-seq reference counts (TXT), and scRNA-seq reference cell-type annotations (TXT).
+- **Preprocessing**:
+  - Quality control: Cells with <100 expressed genes and genes with <10 expressing cells were filtered out.
+  - Selecting the top 8,000 highly variable genes (HVGs) per slice using the Seurat package and identifying the consensus   HVGs across all four slices.
+  - Focused on three major cell types (Keratinocyte, TSK, and Melanocyte), with spot-wise proportions estimated using Redeconve.
+
+
+###  Simulation Data Description
+To further validate the performance of IBaySVG under controlled conditions, we employed simulation datasets spanning three canonical spatial patterns and nine additional heterogeneous spatial structures, which are stored in the Simulation data subdirectory. For each canonical pattern, multiple data-integration scenarios were constructed, with and without covariates, enabling systematic evaluation of the method under varying spatial architectures and integration complexities. These simulations provide a structured and challenging benchmark for assessing the accuracy and robustness of IBaySVG in identifying spatially variable genes.
+
+| Dataset | Core Characteristics | 
+|---------|---------------------|
+| **Three canonical spatial patterns** |Each pattern includes 12 integration scenarios with varying signal strengths (high to low) and zero-inflation rates (high, medium, low), plus additional scenarios without covariates. |
+| **Three additional heterogeneous spatial structures** | Comprised of three classes of complex spatial architectures: (i) zero-inflated nearest-neighbor Gaussian process (ZINNGP) capturing covariance-based spatial dependencies, (ii) ZINB-NonSpa hybrid models with linear-focal, linear-periodic, and focal-periodic fusion patterns, and (iii) enhanced ZINB-NonSpa patterns including sigmoidal activation and four polynomial functional forms. |
+
+All the simulated data are generated by ZINB distributions or Gaussian process framework with covariates from Dirichlet sampling to evaluate model performance under diverse and non-canonical spatial configurations.
+
+
+
+
+##  Reproduce the results
+
+###  Abstract  
+The `code_and_data` directory contains all core resources to reproduce results:  
+- `Simulation Generate/`: Standalone code to generate synthetic spatial expression data across multiple canonical (linear, focal, periodic) and heterogeneous spatial patterns, with tunable signal strengths, zero-inflation rates, and covariate configurations. 
+- `Simulations/`: Scripts and results for simulation studies(including parameter sensitivity analyses).  
+- `RealData/`: Scripts and results for real spatial transcriptomic datasets (including stability assessments, model checking and parameter sensitivity analysis).  
+
+
+
+
+
+###  Instructions for Use  
+All results in the manuscript (simulations and real data analyses) are fully reproducible. The `code_and_data` directory is structured hierarchically to facilitate step-by-step reproduction, with strict path management via the `here` package (**critical: set the working directory root to `code_and_data` before running any scripts**).  
+
+#### Simulation Generate  
+
+This directory contains standalone code to **generate custom simulation frameworks** (network topologies + synthetic single-cell expression data) from scratch, with full control over key simulation parameters:  
+
+| Exact File List | Content Description |
+|-----------------|---------------------|
+| generate_simu.R | Generates synthetic spatial transcriptomic datasets under a zero-inflated negative binomial (ZINB) model with configurable spatial effect structures: <br> - Outputs: <br> ✔ Spot × gene count matrix (N × G) <br> ✔ Spot × 2 spatial coordinate matrix (N × 2) <br> ✔ Optional spot × covariate matrix (N × J) <br> - Supports canonical and heterogeneous spatial patterns (e.g., linear, focal, periodic, and extended spatial structures) <br> - Tunable parameters: <br> ✔ Proportion of spatially variable (SV) genes <br> ✔ Spatial signal strength for SV/non-SV genes <br> ✔ Zero-inflation rate (dropout level) <br> ✔ Dispersion parameter of the ZINB distribution <br> ✔ Baseline mean expression level <br> ✔ Covariate inclusion and distribution scenarios |
+
+ To generate simulation data:  
+  1. Set working directory to `code_and_data/Simulation Generate/`;  
+  2. choose the spatial pattern and modify parameter values (zero-inflation, spatial signal strength, Covariate inclusion) according to the function documentation;  
+
+
+####  Simulations  
+Updated with exact file mappings for simulation studies:  
+
+| Subdirectory | Exact File List | Content Description |
+|--------------|-----------------|---------------------|
+| `code/` | `simulation_spotregion_draw_FigureS20.R` | Generates plots for partitioned spot regions considered in the basic simulations.(Supplementary Figures S20)
+|        | `simulation_draw_FigureS21-S29.R` | Generates plots for basic simulation results under three canonical spatial patterns(Supplementary Figures S21–S29)
+|        |   `additional_spatial_expression_pattern_draw_FigureS30.R` |Generates plots for examples of spatial expressions under additional spatial structures(Supplementary Figures s30)
+|       | `Simulation_additional_draw_FigureS31-S33.R` | Generates plots for simulation results under nine additional spatial structures (Supplementary Figures S31–S33) |
+|        | `simulation_nocov_draw_FigureS34-S36.R` | Generates plots for simulation results under three canonical spatial patterns without covariates (Supplementary Figures S34–S36)
+|        | `sensitive_simulation_draw_FigureS40-S42.R` | Generates plots for sensitivity analysis of hyperparameters in the simulated dataset under three canonical spatial patterns(Supplementary Figures S40–S42)
+|          | `comparison_between_ZINB_NB_Tables35-s36.R` | Illustrates the comparison between ZINB and NB Models under simulation scenarios for Table s35-s36|
+|          | `comparison_between_two_statistics_Tables1-s3.R` | Illustrates the comparison of the performance between two statistics under simulation scenarios for Table s1-s3|
+
+| `result_data/` | `sensitivity analysis of hyperparameters/` (directory) | Contains results from sensitivity analyses of key hyperparameters evaluated on simulated datasets under three canonical spatial patterns (linear, focal, and periodic) |
+|               | `simulation result/` (directory) | Contains results from baseline simulation scenarios (linear, focal, and periodic patterns), evaluated both with and without covariate effects, as well as additional simulation settings under nine alternative spatial structures. |
+|        | `additional spatial pattern/` (directory) | Contains plots of spatial expression of additional spatial structures selected |
+|        | `noinflation/`(directory) | Contains the code and results of IBaySVG without zero inflation structure |
+|        | `compare statistics/` (directory) | Contains results of using different statistics in IBaySVG |
+
+
+####  RealData
+This directory contains full-scale analysis results and plotting scripts for real spatial transcriptomic datasets, with the exact file breakdown as follows:  
+
+| Subdirectory | Exact File List | Content Description |
+|--------------|-----------------|---------------------|
+| `code/` | `spatial_expression_draw_Figures1.R` | Generates plots of Examples of linear, focal, periodic, and one more complex spatial patterns for Supplementary Figures1 |
+|         | `venn_plot_draw_Figures2-s4.R` | Generates venn plots of SV genes identified in real datasets for Supplementary Figures2-s4 |
+|         | `celltype_plot_draw_Figures5-s7.R` | Generates plots of distribution of cellular composition in real datasets for Supplementary Figures5-s7 |
+|         | `Model_diagnostics_draw_Figures8_Tables5-s7.R` | Generates plots of likelihood ratio test comparison of ZINB and NB models and  results of voung test comparing linear/focal/period model  in real datasets for Supplementary Figures8 |
+|         | `upset_draw_Figures9-s11.R` | Generates upset plots of SV gene identification through multiple integration
+strategie in real datasets for Supplementary Figures9-s11 |
+|          | `gene_cluster_draw_Figures14-s19_Tables17-s19.R` | Generates expression and heatmap plots of dominant gene clusters of SV genes identified by IBaySVG  in real datasets for Supplementary Figure s14-s19 and the enrichment result for supplementary Tables17-s19 |
+|          | `sensitive_realdata_draw_FigureS37-S39.R` | Generates plots for sensitivity analysis of hyperparameters in real datasets (Supplementary Figures S37–S39) |
+|          | `spatial_domain_draw_Figure3.R` | Generates spatial domains derived from SV genes identified by IBaySVG for main Figure3 |
+
+
+|          | `Computer_time_s4.R` |Illustrates the average execution time per gene under different spots numbers for Table s4|
+|          | `Stability_analysis_Tables8-s13.R` | Illustrates the results of subsampling validation of SV gene detection in real dataset for Tables8-s13|
+|          | `marker_gene_identify_Tables15-s16.R` |Illustrates the performance comparison of different methods in identifying layer-specific marker for Table s15 and s16|
+|          | `comparison_spotcluster_index_Tables20-s34.R` | Illustrates the results of comparative evaluation of spot clustering performance in real dataset for Tables20-s34|
+
+| `result_data/` |   `realdata svgene/`(directory),`plot of figures1/`(directory),`genecluster/`(directory),
+`spotcluster/`(directory),`stability/`(directory),`realdata dataset/`(directory),`Model check/` (directory), `sensitive analysis/` (directory),`upset plot/` (directory),,`benchmark/` (directory), compute time.csv| Precomputed results to support plotting scripts in the `code/` directory, including inferred SV gene set, inferred spot cluster, inferred gene cluster, model checking results, stability analysis results and sensitive results of all hyperparameters|
+
+**Key Note**: All R scripts in `code/` use the `here` package to reference files in `result_data/`. Ensure the working directory is set to the `code_and_data` root before execution.  
+
+
+
+
+
+
+

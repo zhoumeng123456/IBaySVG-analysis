@@ -1,0 +1,2032 @@
+
+
+#画venn图
+{
+library(ggvenn)
+
+venn_list=list()
+namelist=c("nnSVG","SPARKX","SPARK","spVC","HEARTSVG","proposed","DESpace","StarTrail","GASTON")
+for(i in c(1:5,8,9)){
+  data <- list(
+    "Section 1"=data_scc_svgene_list_0130[[i]][[1]],
+    "Section 2"=data_scc_svgene_list_0130[[i]][[2]],
+    "Section 3"=data_scc_svgene_list_0130[[i]][[3]]
+  )
+  
+  colors <- c(A = "#E41A1C", B = "#377EB8", C = "#4DAF4A") # 红、蓝、绿、黄
+  venn_plot <- ggvenn(
+    data,
+    fill_color = colors,
+    stroke_size = 0,
+    set_name_size = 0,
+    show_percentage = FALSE,
+    text_size = 5
+  ) + 
+    coord_fixed(ratio = 1) +   # 拉伸纵向（上下拉伸）
+    ggtitle(namelist[i]) +  # 添加标题
+    theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5,vjust = -0.5),
+          text = element_text(size = 4) ) 
+  
+  venn_list[[i]]=venn_plot
+}
+
+
+combined_plot <- (wrap_elements(venn_list[[1]] | venn_list[[2]] | venn_list[[3]]|venn_list[[4]])
+                  /wrap_elements(venn_list[[5]] | venn_list[[9]] | venn_list[[8]])) 
+print(combined_plot)
+
+ggsave(paste0("/Users/zhoum/Desktop/scc/combined_venn_scc_0130.png"), plot = combined_plot, width = 14, height =8, dpi = 300)
+
+
+
+}
+
+#画upset图
+{
+library(magick)
+library(showtext)
+library(grid)
+library(ragg)  
+
+  
+load("C:/Users/zhoum/OneDrive/数据结果/data_scc_svgene_list_0130.RData")
+##并集
+uni_set=list("nnSVG-Union"=data_scc_svgene_list_0130[[1]][[4]],"SPARK-Union"=data_scc_svgene_list_0130[[3]][[4]],
+             "SPARKX-Union"=data_scc_svgene_list_0130[[2]][[4]],"spVC-Union"=data_scc_svgene_list_0130[[4]][[4]],
+             "HEARTSVG-Union"=data_scc_svgene_list_0130[[5]][[4]],"StarTrail-Union"=data_scc_svgene_list_0130[[8]][[4]],
+             "GASTON-Union"=data_scc_svgene_list_0130[[9]][[4]],Proposed=data_scc_svgene_list_0130[[6]]
+)
+upset_uni_set=fromList(uni_set)
+##交集
+inter_set=list("nnSVG-Inter"=data_scc_svgene_list_0130[[1]][[5]],"SPARK-Inter"=data_scc_svgene_list_0130[[3]][[5]],
+               "SPARKX-Inter"=data_scc_svgene_list_0130[[2]][[5]],"spVC-Inter"=data_scc_svgene_list_0130[[4]][[5]],
+               "HEARTSVG-Inter"=data_scc_svgene_list_0130[[5]][[5]],"StarTrail-Inter"=data_scc_svgene_list_0130[[8]][[5]],
+               "GASTON-Inter"=data_scc_svgene_list_0130[[9]][[5]],Proposed=data_scc_svgene_list_0130[[6]]
+)
+upset_inter_set=fromList(inter_set)
+#整合
+integ_set=list("nnSVG-PASTE"=data_scc_svgene_list_0130[[1]][[6]],"SPARK-PASTE"=data_scc_svgene_list_0130[[3]][[6]],
+               "SPARKX-PASTE"=data_scc_svgene_list_0130[[2]][[6]],"spVC-PASTE"=data_scc_svgene_list_0130[[4]][[6]],
+               "HEARTSVG-PASTE"=data_scc_svgene_list_0130[[5]][[6]],"StarTrail-PASTE"=data_scc_svgene_list_0130[[8]][[6]],
+               "GASTON-PASTE"=data_scc_svgene_list_0130[[9]][[6]],Proposed=data_scc_svgene_list_0130[[6]],
+               "DESpace"=data_scc_svgene_list_0130[[7]]
+)
+upset_integ_set=fromList(integ_set)
+
+cauthy_set=list("nnSVG-Cauchy"=data_scc_svgene_list_0130[[1]][[7]],"SPARK-Cauchy"=data_scc_svgene_list_0130[[3]][[7]],
+                "SPARKX-Cauchy"=data_scc_svgene_list_0130[[2]][[7]],"spVC-Cauchy"=data_scc_svgene_list_0130[[4]][[7]],
+                "HEARTSVG-Cauchy"=data_scc_svgene_list_0130[[5]][[7]],Proposed=data_scc_svgene_list_0130[[6]]
+)
+upset_cauthy_set=fromList(cauthy_set)
+#整合
+HMP_set=list("nnSVG-HMP"=data_scc_svgene_list_0130[[1]][[8]],"SPARK-HMP"=data_scc_svgene_list_0130[[3]][[8]],
+             "SPARKX-HMP"=data_scc_svgene_list_0130[[2]][[8]],"spVC-HMP"=data_scc_svgene_list_0130[[4]][[8]],
+             "HEARTSVG-HMP"=data_scc_svgene_list_0130[[5]][[8]],Proposed=data_scc_svgene_list_0130[[6]]
+)
+upset_HMP_set=fromList(HMP_set)
+
+
+png("/Users/zhoum/Desktop/scc/upset_cauchy.png", width = 10, height = 3, units = "in", res = 300)
+upset(upset_cauthy_set,
+      nsets = 20, # 可视化数据集数量
+      mainbar.y.max=1500,##y轴的上限
+      nintersects= 25, # 显示前多少个交集
+      main.bar.color = "#91CAE8", # 柱状图颜色
+      matrix.color="black", # 集合点的颜色
+      sets.bar.color= "#F48892", # 条形图条形的颜色，横着的这个
+      set_size.show = T, # 是否在条形图上显示集合大小
+      mb.ratio = c(0.6, 0.4), # 矩阵图与主柱图之比
+      order.by="freq",
+      set_size.scale_max = 3000
+)
+dev.off()
+
+png("/Users/zhoum/Desktop/scc/upset_HMP.png", width = 10, height = 3, units = "in", res = 300)
+upset(upset_HMP_set,
+      nsets = 20, # 可视化数据集数量
+      mainbar.y.max=2000,##y轴的上限
+      nintersects= 25, # 显示前多少个交集
+      main.bar.color = "#91CAE8", # 柱状图颜色
+      matrix.color="black", # 集合点的颜色
+      sets.bar.color= "#F48892", # 条形图条形的颜色，横着的这个
+      set_size.show = T, # 是否在条形图上显示集合大小
+      mb.ratio = c(0.6, 0.4), # 矩阵图与主柱图之比
+      order.by="freq",
+      set_size.scale_max = 3500
+)
+dev.off()
+
+
+png("/Users/zhoum/Desktop/scc/upset_union.png", width = 10, height = 3.2, units = "in", res = 300)
+upset(upset_uni_set,
+      nsets = 20, # 可视化数据集数量
+      mainbar.y.max=2000,##y轴的上限
+      nintersects= 25, # 显示前多少个交集
+      main.bar.color = "#91CAE8", # 柱状图颜色
+      matrix.color="black", # 集合点的颜色
+      sets.bar.color= "#F48892", # 条形图条形的颜色，横着的这个
+      set_size.show = T, # 是否在条形图上显示集合大小
+      mb.ratio = c(0.6, 0.4), # 矩阵图与主柱图之比
+      order.by="freq",
+      set_size.scale_max =  4500
+)
+dev.off()
+
+png("/Users/zhoum/Desktop/scc/upset_inter.png", width = 10, height = 3.2, units = "in", res = 300)
+upset(upset_inter_set,
+      nsets = 20, # 可视化数据集数量
+      mainbar.y.max=1000,##y轴的上限
+      nintersects= 25, # 显示前多少个交集
+      main.bar.color = "#91CAE8", # 柱状图颜色
+      matrix.color="black", # 集合点的颜色
+      sets.bar.color= "#F48892", # 条形图条形的颜色，横着的这个
+      set_size.show = T, # 是否在条形图上显示集合大小
+      mb.ratio = c(0.6, 0.4), # 矩阵图与主柱图之比
+      order.by="freq",
+      set_size.scale_max = 2000
+)
+dev.off()
+
+png("/Users/zhoum/Desktop/scc/upset_paste.png", width = 10, height =3.2, units = "in", res = 300)
+upset(upset_integ_set,
+      nsets = 20, # 可视化数据集数量
+      mainbar.y.max=1500,##y轴的上限
+      nintersects= 25, # 显示前多少个交集
+      main.bar.color = "#91CAE8", # 柱状图颜色
+      matrix.color="black", # 集合点的颜色
+      sets.bar.color= "#F48892", # 条形图条形的颜色，横着的这个
+      set_size.show = T, # 是否在条形图上显示集合大小
+      mb.ratio = c(0.6, 0.4), # 矩阵图与主柱图之比
+      order.by="freq",
+      set_size.scale_max = 5000
+)
+dev.off()
+
+
+img_paths <- c(
+  "/Users/zhoum/Desktop/scc/upset_union.png",
+  "/Users/zhoum/Desktop/scc/upset_inter.png",
+  "/Users/zhoum/Desktop/scc/upset_cauchy.png",
+  "/Users/zhoum/Desktop/scc/upset_HMP.png",
+  "/Users/zhoum/Desktop/scc/upset_paste.png"
+)
+
+
+#读取图片并添加标签(当前的方法)
+
+  showtext_auto()
+  
+  # 加载字体（Arial 或你喜欢的）
+  font_add("myArial", "/System/Library/Fonts/Supplemental/Arial.ttf")
+  
+  # 创建带标签图像函数（用 agg_png）
+  add_label_to_image <- function(img_path, label) {
+    img <- image_read(img_path)
+    img_info <- image_info(img)
+    
+    pngfile <- tempfile(fileext = ".png")
+    
+    # 关键是这里：使用 ragg::agg_png 替代 png()
+    ragg::agg_png(pngfile, width = img_info$width, height = img_info$height, units = "px", res = 72)
+    
+    grid.raster(img)
+    grid.text(label, x = unit(0.03, "npc"), y = unit(0.95, "npc"),
+              gp = gpar(fontsize = 50, col = "black", fontfamily = "myArial"),
+              just = c("left", "top"))
+    
+    dev.off()
+    image_read(pngfile)
+  }
+  
+  # 示例：添加 A-E 标签
+  images <- lapply(1:5, function(i) {
+    add_label_to_image(img_paths[i], LETTERS[i])
+  })
+  combined <- image_append(do.call(c, images), stack = TRUE)
+  
+  image_write(combined, "/Users/zhoum/Desktop/scc/scc_upset_combined_0130.png")
+}
+
+#绘制聚类结果
+{
+  library(parallelDist)
+  library(cluster)
+  library(clusterCrit)
+  library(fpc)
+calculate_dbi <- function(distance_matrix, cluster_labels) {
+clusters <- unique(cluster_labels)
+n_clusters <- length(clusters)
+
+# 计算每个聚类的散布度
+scatter <- sapply(clusters, function(cluster) {
+  points_in_cluster <- which(cluster_labels == cluster)
+  cluster_points <- distance_matrix[points_in_cluster, points_in_cluster, drop = FALSE]
+  mean(apply(cluster_points, 1, function(row) mean(row, na.rm = TRUE)), na.rm = TRUE)
+})
+
+dbi <- 0
+for (i in 1:n_clusters) {
+  max_ratio <- -Inf
+  for (j in 1:n_clusters) {
+    if (i != j) {
+      distance_ij <- mean(distance_matrix[which(cluster_labels == clusters[i]), 
+                                          which(cluster_labels == clusters[j])])
+      ratio <- (scatter[i] + scatter[j]) / distance_ij
+      max_ratio <- max(max_ratio, ratio, na.rm = TRUE)
+    }
+  }
+  dbi <- dbi + max_ratio
+}
+
+dbi / n_clusters  # 返回 DBI 的平均值
+}
+symbolgenerate<-function(distance_matrix,cluster_result,sectnum=2,count1){
+    result_lunkuo_matrix=matrix(NA,nrow = 7,ncol = 6)
+    rownames(result_lunkuo_matrix)=c("nnSVG","SPARKX","SPARK","spVC","HEARTSVG","DEspace","Proposed")
+    for(i in c(1:7)){
+      if(i<=5){
+        for(j in c(1:6)){
+          tryCatch({
+            silhouette_score <- silhouette(as.numeric(cluster_result[[i]][[j]]), distance_matrix)
+            avg_silhouette_score <- mean(silhouette_score[, 3])
+            result_lunkuo_matrix[i, j] <- round(avg_silhouette_score, 3)
+          }, error = function(e) {
+            message(sprintf("Warning: i=%d, j=%d silhouette calculation failed: %s", i, j, e$message))
+            # 出错时这里什么也不做，跳过
+          })
+        }
+      }else{
+        silhouette_score <- silhouette(as.numeric(cluster_result[[i]][[1]]), distance_matrix)  
+        avg_silhouette_score <- mean(silhouette_score[, 3])  # 平均轮廓系数
+        result_lunkuo_matrix[i,1]=round(avg_silhouette_score,3)
+      }
+    }
+    print(result_lunkuo_matrix)
+    #load("/Users/zhoum/Desktop/细胞整合结果/luokuoxishu_matrix.RData")
+    
+    ##计算DBI##计算##计算DBIDBI##计算DBI##计算DBI##计算DBI##计算DBI##计算DBI##计算DBI
+    ##计算DBI##计算DBI##计算DBI##计算DBI##计算DBI##计算DBI##计算DBI##计算DBI##计算DBI
+    
+    
+    result_dbi_matrix=matrix(NA,nrow = 7,ncol = 6)
+    rownames(result_dbi_matrix)=c("nnSVG","SPARKX","SPARK","spVC","HEARTSVG","DEspace","Proposed")
+    for(i in c(1:7)){
+      if(i <=5){
+        for(j in c(1:6)){
+          tryCatch({
+            dbi_value <- calculate_dbi(as.matrix(distance_matrix), as.numeric(cluster_result[[i]][[j]]))
+            result_dbi_matrix[i, j] <- round(dbi_value, 3)
+          }, error = function(e) {
+            message(sprintf("Warning: i=%d, j=%d DBI calculation failed: %s", i, j, e$message))
+            # 出错时跳过，保持 NA
+          })
+        }
+      }else{
+        dbi_value <- calculate_dbi(as.matrix(distance_matrix), as.numeric(cluster_result[[i]][[1]]))
+        result_dbi_matrix[i,1]=round(dbi_value ,3)
+      }
+    }
+    print(result_dbi_matrix)
+    
+    
+    ##计算ch
+    result_ch_matrix=matrix(NA,nrow = 7,ncol = 6)
+    rownames(result_ch_matrix)=c("nnSVG","SPARKX","SPARK","spVC","HEARTSVG","DEspace","Proposed")
+    for(i in c(1:7)){
+      if(i <=5){
+        for(j in c(1:6)){
+          tryCatch({
+            ch_index <- cluster.stats(as.matrix(distance_matrix), as.numeric(cluster_result[[i]][[j]]))$ch
+            result_ch_matrix[i, j] <- round(ch_index, 3)
+          }, error = function(e) {
+            message(sprintf("Warning: i=%d, j=%d CH index calculation failed: %s", i, j, e$message))
+            # 出错时跳过，保持 NA
+          })
+        }
+      }else{
+        ch_index <- cluster.stats(as.matrix(distance_matrix), as.numeric(cluster_result[[i]][[1]]))$ch
+        result_ch_matrix[i,1]=round(ch_index,3)
+      }
+    }
+    print(result_ch_matrix)
+    
+    ####获取单因素方差检验的结果，获得F值####获取单因素方差检验的结果，获得F值####获取单因素方差检验的结果，获得F值####获取单因素方差检验的结果，获得F值
+    ####获取单因素方差检验的结果，获得F值####获取单因素方差检验的结果，获得F值####获取单因素方差检验的结果，获得F值####获取单因素方差检验的结果，获得F值
+    
+    mean_count1=apply(count1,1,mean)
+    result_avo_matrix=matrix(NA,nrow = 7,ncol = 6)
+    rownames(result_avo_matrix)=c("nnSVG","SPARKX","SPARK","spVC","HEARTSVG","DEspace","Proposed")
+    for(i in c(1:7)){
+      if(i <=5){
+        for(j in c(1:6)){
+          tryCatch({
+            unique_clusters <- unique(as.numeric(cluster_result[[i]][[j]]))
+            regions <- list()
+            for (cluster in unique_clusters) {
+              region_data <- mean_count1[as.numeric(cluster_result[[i]][[j]]) == cluster]
+              regions[[paste0("Region", cluster)]] <- region_data
+            }
+            
+            combined_data <- data.frame(
+              expression = unlist(regions),  # 所有区域的数据合并为一个向量
+              region = factor(rep(names(regions), times = sapply(regions, length)))  # 每个点位标记对应的区域
+            )
+            
+            anova_result <- aov(expression ~ region, data = combined_data)
+            result_avo_matrix[i, j] <- round(summary(anova_result)[[1]]$`F value`[1], 3)
+          }, error = function(e) {
+            message(sprintf("Warning: i=%d, j=%d ANOVA calculation failed: %s", i, j, e$message))
+            # 出错时跳过，保持 NA
+          })
+        }
+      }else{
+        unique_clusters <- unique(as.numeric(cluster_result[[i]][[1]]))
+        regions <- list()
+        for (cluster in unique_clusters) {
+          region_data <- mean_count1[as.numeric(cluster_result[[i]][[1]]) == cluster]
+          regions[[paste0("Region", cluster)]] <- region_data
+        }
+        
+        combined_data <- data.frame(
+          expression = unlist(regions),  # 所有区域的数据合并为一个向量
+          region = factor(rep(names(regions), times = sapply(regions, length)))  # 每个点位标记对应的区域
+        )
+        
+        anova_result <- aov(expression ~ region, data = combined_data)
+        result_avo_matrix[i,1]=round(summary(anova_result)[[1]]$`F value`[1],3)
+      }
+    }
+    print(result_avo_matrix)
+    
+    result_total=rbind(result_lunkuo_matrix,result_dbi_matrix,result_ch_matrix,result_avo_matrix,result_avo_matrix)
+    write.csv(result_total,file=paste0("/Users/zhoum/Desktop/scc/index_result_sec",sectnum,".csv"))
+    # tukey_result <- TukeyHSD(anova_result)
+    # print(tukey_result)
+    
+  }
+svg.clust <- function(expression, coor, svg, deepsplit=1,hcl_med="ward.D",dis_method="manhattan",method = 'h', num_cluster = NULL, plot = FALSE) {
+    # Check input validity
+    if (length(svg) == 0) {
+      stop("svg must contain at least one gene")
+    }
+    
+    # Extract coordinates and scale the data
+    ct <- as.data.frame(apply(expression, 2, function(x) x / (max(x,na.rm = T)) ))
+    
+    counts <- subset(ct, select = svg)
+    
+    if (method == 'h') {
+      # Calculate distance matrix
+      co <- dist(counts,method = dis_method)
+      
+      # Perform hierarchical clustering
+      hh <- hclust(co, method = hcl_med)
+      
+      # Determine clusters using Dynamic Tree Cut if num_cluster is not provided
+      if (is.null(num_cluster)) {
+        c6 <- cutreeDynamic(dendro = hh, distM = as.matrix(co), method  = "hybrid", deepSplit = deepsplit)
+      } else {  # Use specified number of clusters
+        c6 <- cutree(hh, k = num_cluster)
+      }
+      
+      # Optionally plot the dendrogram
+      if (plot) {
+        plot(hh, main = "Dendrogram of Hierarchical Clustering", xlab = "Genes", ylab = "Height")
+        rect.hclust(hh, k = length(unique(c6)), border = "red")
+      }
+      
+      svg.cl <- data.frame(gene = hh$labels, cl = c6)
+    }
+    
+    if (method == 'k') {
+      if (is.null(num_cluster)) {  # Number of clusters must be provided
+        stop('Missing the parameter num_cluster!')
+      } else {
+        km <- kmeans(counts, centers = num_cluster)  # kmeans defaults to clustering rows, so transpose
+        svg.cl <- data.frame(gene = names(km$cluster), cl = km$cluster)
+      }
+    }
+    
+    colnames(svg.cl) <- c('gene', 'cluster')
+    return(svg.cl)
+  }
+  
+
+load("/Users/zhoum/Desktop/scc/data_scc_svgene_list_0130.RData")
+for(datanum in c(1:3)){
+    count1=as.matrix(read.csv(paste0("/Users/zhoum/Desktop/scc/scc_count",datanum,".csv"),row.names = 1))##基因✖️点
+    count1=t(count1)
+    position1=as.matrix(read.csv(paste0("/Users/zhoum/Desktop/scc/scc_position",datanum,".csv"),row.names = 1))
+    ##获得聚类结果
+    method=c("nnSVG","SPARKX","SPARK","spVC","HEARTSVG","DEspace","Proposed")
+    #cluster_result=replicate(9, replicate(9, list(), simplify = FALSE), simplify = FALSE)
+    load(paste0("/Users/zhoum/Desktop/scc/sccnew_louvain_result_0102_our_",datanum,".RData"))
+    cluster_num=c(8,8,8,8,8,1,1,1,1)
+    data_choose=c(datanum,4,5,6,7,8)
+    for(i in c(7)){
+      if(i<=5){
+        for(j in seq(data_choose)){
+          print(i)
+          print(j)
+          svgenename=data_scc_svgene_list_0130[[i]][[data_choose[j]]]
+          count_result=count1[,svgenename]
+          coordinates=position1
+          colnames(coordinates)=c("x", "y")
+          coordinates <- as.data.frame(coordinates)
+          seurat_object <- CreateSeuratObject(counts = t(count_result), project = "cellClustering")
+          # 数据标准化
+          seurat_object <- NormalizeData(seurat_object, normalization.method = "LogNormalize", scale.factor = 10000)
+          # 基因表达数据缩放
+          seurat_object <- ScaleData(seurat_object)
+          seurat_object <- FindVariableFeatures(seurat_object)
+          seurat_object <- RunPCA(seurat_object)
+          # 寻找最近邻并进行聚类（resolution 控制聚类的分辨率）
+          #此函数使用 Louvain 方法对细胞进行聚类。根据相似性（邻接关系）将细胞分成不同的组。
+          seurat_object <- FindNeighbors(seurat_object, dims = 1:3)
+          seurat_object <- FindClusters(seurat_object, resolution = 0.5)
+          seurat_object <- RunUMAP(seurat_object, dims = 1:3)
+          cluster_data <- seurat_object@meta.data
+          coordinates$cluster <- cluster_data$seurat_clusters
+          cluster_result[[i]][[j]]=coordinates$cluster
+          
+        }}else{
+          print(i)
+          svgenename=data_scc_svgene_list_0130[[i]]
+          j=1
+          count_result=count1[,svgenename]
+          coordinates=position1
+          colnames(coordinates)=c("x", "y")
+          coordinates <- as.data.frame(coordinates)
+          
+          seurat_object <- CreateSeuratObject(counts = t(count_result), project = "cellClustering")
+          # 数据标准化
+          seurat_object <- NormalizeData(seurat_object, normalization.method = "LogNormalize", scale.factor = 10000)
+          # 基因表达数据缩放
+          seurat_object <- ScaleData(seurat_object)
+          seurat_object <- FindVariableFeatures(seurat_object)
+          seurat_object <- RunPCA(seurat_object)
+          # 寻找最近邻并进行聚类（resolution 控制聚类的分辨率）
+          #此函数使用 Louvain 方法对细胞进行聚类。根据相似性（邻接关系）将细胞分成不同的组。
+          seurat_object <- FindNeighbors(seurat_object, dims = 1:3)
+          seurat_object <- FindClusters(seurat_object, resolution = 0.4)
+          seurat_object <- RunUMAP(seurat_object, dims = 1:3)
+          cluster_data <- seurat_object@meta.data
+          coordinates$cluster <- cluster_data$seurat_clusters
+          cluster_result[[i]][[j]]=coordinates$cluster
+        }# tukey_result <- TukeyHSD(anova_result)
+      
+    }
+    
+    save(cluster_result,file=paste0("/Users/zhoum/Desktop/scc/sccnew_louvain_result_0102_our_",datanum,".RData"))
+    
+    # distance_matrix <- parallelDist::parDist(as.matrix(count1), method = "euclidean", threads = 8)
+    # save(distance_matrix,file=paste0("/Users/zhoum/Desktop/scc/sccnew_distance_matrix_0714_",datanum,".RData"))
+    # load(paste0("/Users/zhoum/Desktop/scc/sccnew_distance_matrix_0714_",datanum,".RData"))
+    # index_result=symbolgenerate(distance_matrix=distance_matrix,cluster_result=cluster_result,sectnum=datanum,count1=count1)
+    # print(index_result)
+    #save(index_result,file=paste0("/Users/zhoum/Desktop/scc/sccnew_index_result_0714_",datanum,".RData"))
+  }
+  
+
+
+
+for(datanum in c(1:3)){
+    count1=as.matrix(read.csv(paste0("/Users/zhoum/Desktop/scc/scc_count",datanum,".csv"),row.names = 1))##基因✖️点
+    count1=t(count1)
+    distance_matrix <- parallelDist::parDist(as.matrix(count1), method = "euclidean", threads = 8)
+    save(distance_matrix,file=paste0("/Users/zhoum/Desktop/scc/sccnew_distance_matrix_0102_",datanum,".RData"))
+    load(paste0("/Users/zhoum/Desktop/scc/sccnew_louvain_result_0102_our_",datanum,".RData"))
+    symbolgenerate(distance_matrix=distance_matrix,cluster_result=cluster_result,sectnum=datanum,count1=count1)
+}
+}
+
+
+#绘制细胞类别
+{
+plot_scatterpie <- function(position, calpha, pie_scale = 0.4) {
+    # col_manual <- c(
+    #   "Inhib" = "#FFDDDD",
+    #   "Oligo" = "#B0E0E6",
+    #   "OPC" ="#FFFACD" ,
+    #   "Excit" ="#32CD32" ,
+    #   "MicroOligo" = "#FFEB99",
+    #   "Astro" = "#8A2BE2",
+    #   "EndoMural" = "#FF1493"
+    # )
+    col_manual<-c(
+      "Keratinocyte" = "#FFDDDD",
+      "TSK" = "#32CD32",
+      "Melanocyte"="#FF1493"
+    )
+    calpha <- calpha / rowSums(calpha)
+    
+    meta <- cbind(position, calpha)
+    colnames(meta)[1:2] <- c('x', 'y')
+    meta <- as.data.frame(meta)
+    
+    # 归一化坐标
+    meta$x <- (meta$x - min(meta$x)) / (max(meta$x) - min(meta$x))
+    meta$y <- (meta$y - min(meta$y)) / (max(meta$y) - min(meta$y))
+    
+    ggplot() +
+      geom_scatterpie(
+        data = meta, 
+        aes(x = x, y = y),
+        cols = colnames(meta)[3:5], 
+        color = NA, 
+        pie_scale = pie_scale
+      ) +
+      coord_fixed(ratio = 1) +
+      scale_fill_manual(values = col_manual) +
+      theme_bw() +
+      theme(
+        panel.grid = element_blank(),
+        # 移除坐标轴相关元素
+        axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        panel.border = element_blank(),  # 移除绘图区灰色边框
+        legend.text = element_text(size = 14),  # 增加图例文字大小
+        plot.tag = element_text(size = 18,face="bold")
+      ) +
+      labs(x = NULL, y = NULL)  # 移除坐标轴标签
+  }
+  
+enhance_contrast <- function(calpha, power=3) {
+    # 使用幂变换增强对比度
+    calpha_trans <- calpha^power
+    # 重新归一化保持比例总和为1
+    calpha_trans / rowSums(calpha_trans)
+  }
+  
+  load("/Users/zhoum/Desktop/scc/scc_P9_new.RData")
+  position1=sample_total[[1]][[2]]
+  position2=sample_total[[2]][[2]]
+  position3=sample_total[[3]][[2]]
+  calpha1=sample_total[[1]][[3]]
+  calpha2=sample_total[[2]][[3]]
+  calpha3=sample_total[[3]][[3]]
+  
+  # 使用示例
+  calpha1 <- enhance_contrast(calpha1, power=4)  # 调节power参数控制增强力度
+  calpha2 <- enhance_contrast(calpha2, power=4)  # 调节power参数控制增强力度
+  calpha3 <- enhance_contrast(calpha3, power=4)  # 调节power参数控制增强力度
+  
+  # 使用不同的 position 和 calpha 绘制四个图
+  p1 <- plot_scatterpie(position1, calpha1, pie_scale = 0.6)
+  p2 <- plot_scatterpie(position2, calpha2, pie_scale = 0.6)
+  p3 <- plot_scatterpie(position3, calpha3, pie_scale = 0.6)
+
+  combined_plot <- (p1 | p2 | p3) +
+    plot_layout(guides = "collect") +  # 收集所有子图的图例
+    plot_annotation(
+      title = NULL,
+      subtitle = NULL,
+      caption = NULL,
+      tag_levels = 'A',
+      tag_prefix = "",
+      tag_sep = "",
+      theme = theme(
+        plot.tag = element_text(size = 18),  # 放大标签字体
+        legend.position = "bottom",  
+        legend.box = "horizontal",
+        legend.direction = "horizontal",  # 图例水平排列
+        legend.text = element_text(size = 14),  # 增大图例文字大小
+        legend.key.size = unit(1.5, "cm")  # 增大图例柱子的大小
+      )
+    ) &
+    guides(fill = guide_legend(nrow = 1, title = NULL, keywidth = unit(1.5, "cm")))
+  
+  print(combined_plot)
+  
+  ggsave("/Users/zhoum/Desktop/scc/scc_cell_type0729.png", plot = combined_plot, width = 11, height =4, dpi = 300)
+  
+}
+
+#寻找问题
+{
+meta_process =function(position1,count1){
+  meta=cbind(position1,t(count1))
+  colnames(meta)[c(1:2)] = c('x','y')
+  meta=as.data.frame(meta)
+  meta$x <- (meta$x - min(meta$x))/(max(meta$x) - min(meta$x))
+  meta$y <- (meta$y - min(meta$y))/(max(meta$y) - min(meta$y))
+  return(meta)
+}
+
+pattern_plot2 <- function(pltdat, igene, xy = T, main = F, titlesize = 2, 
+                          pointsize = 3, xpand = 0, ypand = 1, title = NULL) {
+  if (!xy) {
+    xy <- matrix(as.numeric(do.call(rbind, strsplit(as.character(pltdat[, 
+                                                                        1]), split = "x"))), ncol = 2)
+    rownames(xy) <- as.character(pltdat[, 1])
+    colnames(xy) <- c("x", "y")
+    pd <- cbind.data.frame(xy, pltdat[, 2:ncol(pltdat)])
+  } else {
+    pd <- pltdat
+  }
+  
+  # pal <- colorRampPalette(c('seagreen1','orangered')) pal <-
+  # colorRampPalette(c('#00274c','#ffcb05')) pal <-
+  # colorRampPalette(c('deepskyblue','goldenrod1')) pal <-
+  # colorRampPalette(c('deepskyblue','deeppink'))
+  pal <- colorRampPalette(c("mediumseagreen", "lightyellow2", "deeppink"))
+  gpt <- ggplot(pd, aes(x = x, y = y, color = pd[, igene + 2])) + geom_point(size = pointsize) + 
+    # scale_color_gradientn(colours=pal(5))+
+    scale_color_gradientn(colours = pal(5)) + scale_x_discrete(expand = c(xpand, 
+                                                                          ypand)) + scale_y_discrete(expand = c(xpand, ypand)) + coord_equal() + 
+    # labs(title = colnames(pd)[igene+2], x = NULL, y = NULL)+
+    #theme_bw()
+    theme_bw() + 
+    theme(axis.title = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank())
+  
+  if (main) {
+    if (is.null(title)) {
+      title = colnames(pd)[igene + 2]
+    }
+    out = gpt + labs(title = title, x = NULL, y = NULL) + theme(legend.position = "none", 
+                                                                plot.title = element_text(hjust = 0.5, size = rel(titlesize)))
+  } else {
+    out = gpt + labs(title = NULL, x = NULL, y = NULL) + theme(legend.position = "none")
+  }
+  return(out)
+}
+
+load("/Users/zhoum/Desktop/scc/data_scc_svgene_list_0130.RData")
+load("/Users/zhoum/Desktop/scc/scc_P9_new.RData")
+count1=sample_total[[1]][[1]]#基因✖️点位1143
+count2=sample_total[[2]][[1]]#1070
+count3=sample_total[[3]][[1]]#1108
+
+position1=sample_total[[1]][[2]]
+position2=sample_total[[2]][[2]]
+position3=sample_total[[3]][[2]]
+
+##所有方法都识别到的
+intersv_uni_set=Reduce(intersect,list(nnsvg_uni=data_scc_svgene_list_0130[[1]][[5]],sparkX_uni=data_scc_svgene_list_0130[[2]][[5]],
+                                      spark_uni=data_scc_svgene_list_0130[[3]][[5]],spv_inter=data_scc_svgene_list_0130[[4]][[5]],
+                                      heartsvg_inter=data_scc_svgene_list_0130[[5]][[5]]))
+
+intersv_uni_set=Reduce(intersect,list(nnsvg_uni=data_scc_svgene_list_0130[[1]][[5]],sparkX_uni=data_scc_svgene_list_0130[[2]][[5]],
+                                      spark_uni=data_scc_svgene_list_0130[[3]][[5]],spv_inter=data_scc_svgene_list_0130[[4]][[5]]),
+                                      )
+
+#被所有方法识别,LGALS7，SPRR1B，S100A2
+extraour_intersv_uni_set=intersect(intersv_uni_set, data_scc_svgene_list_0130[[6]])
+length(intersect(extraour_intersv_uni_set,data_scc_svgene_list_0130[[8]][[5]]))
+length(intersect(extraour_intersv_uni_set,data_scc_svgene_list_0130[[9]][[5]]))
+
+#交集问题
+uni_inter_sv_set=Reduce(union,list(nnsvg_inter=data_scc_svgene_list_0130[[1]][[5]],sparkX_inter=data_scc_svgene_list_0130[[2]][[5]],
+                                   spark_inter=data_scc_svgene_list_0130[[3]][[5]],spv_inter=data_scc_svgene_list_0130[[4]][[5]],
+                                   heartsvg_inter=data_scc_svgene_list_0130[[5]][[5]],data_scc_svgene_list_0130[[8]][[5]]
+                                   ,data_scc_svgene_list_0130[[9]][[5]]))#共1704个基因
+
+uni_inter_in_our_sv=Reduce(intersect,list(data_scc_svgene_list_0130[[6]],uni_inter_sv_set))
+interproblem=setdiff(data_scc_svgene_list_0130[[6]],uni_inter_sv_set)
+length(intersect(interproblem,data_scc_svgene_list_0130[[8]][[5]]))
+length(intersect(interproblem,data_scc_svgene_list_0130[[9]][[5]]))
+
+
+interproblem1=c("AC005480.1","ADRB2","AGL","AP2A2","ARHGEF16","BCL2L1","CALB2","GNPAT","OPAI","SMIM7","TOR1AIP1",
+"CHST3","CISD3","CWH43","DNM2","GFM2","IFIT1","ME1","PPP1R7","RXRB","SMPD4","TRPA3","NOMO3","NUDCD2")
+#"AP2A2","CWC15","DNM2"
+
+#"CHST3","COPE"(一张),"NOMO3",CWC15
+
+intersect(interproblem,c("AP2A2","CWC15","DNM2"))
+for(i in c(1:5)){
+  inter_problem2=setdiff(interproblem,data_scc_svgene_list_0130[[i]][[6]])#在cauchy下，sparkx没有解决CISD3
+  print(intersect(c("AP2A2","CWC15","DNM2"),inter_problem2))
+}
+for(i in c(1:5)){
+  inter_problem3=setdiff(interproblem,data_scc_svgene_list_0130[[i]][[8]])#在hmp下,只有sparkx解决了这个问题
+  print(intersect(c("AP2A2","CWC15","DNM2"),inter_problem3))
+}
+
+
+for(i in c(1:5)){
+  print(length(intersect(data_scc_svgene_list_0130[[i]][[7]],interproblem)))
+}
+for(i in c(1:5)){
+  print(length(intersect(data_scc_svgene_list_0130[[i]][[8]],interproblem)))
+}
+
+print(intersect(c("AP2A2","CWC15","DNM2"),interproblem))
+
+print(length(intersect(Reduce(union,list(data_scc_svgene_list_0130[[1]][[7]],data_scc_svgene_list_0130[[2]][[7]]
+                                         ,data_scc_svgene_list_0130[[3]][[7]],data_scc_svgene_list_0130[[4]][[7]]
+                                         ,data_scc_svgene_list_0130[[5]][[7]])),interproblem)))
+print(length(intersect(Reduce(union,list(data_scc_svgene_list_0130[[1]][[8]],data_scc_svgene_list_0130[[2]][[8]]
+                                         ,data_scc_svgene_list_0130[[3]][[8]],data_scc_svgene_list_0130[[4]][[8]]
+                                         ,data_scc_svgene_list_0130[[5]][[8]])),interproblem)))
+
+
+
+#并集问题
+uni_sv_set=list(nnsvg_union=data_scc_svgene_list_0130[[1]][[4]],sparkX_union=data_scc_svgene_list_0130[[2]][[4]],
+                             spark_union=data_scc_svgene_list_0130[[3]][[4]],spv_union=data_scc_svgene_list_0130[[4]][[4]],
+                             heartsvg_union=data_scc_svgene_list_0130[[5]][[4]],data_scc_svgene_list_0130[[9]][[4]]
+                ,data_scc_svgene_list_0130[[8]][[4]])
+
+gene_counts <- table(unlist(uni_sv_set))
+genes_in_two_or_more <- names(gene_counts[gene_counts >= 3])#297个
+print(length(genes_in_two_or_more))
+unionproblem <-setdiff(genes_in_two_or_more,data_scc_svgene_list_0130[[6]])#154
+
+length(intersect(data_scc_svgene_list_0130[[8]][[4]],unionproblem))
+length(intersect(data_scc_svgene_list_0130[[9]][[4]],unionproblem))
+
+
+for(i in c(1:5)){
+  union_problem2=setdiff(unionproblem,data_scc_svgene_list_0130[[i]][[7]])#在cauchy下，只有spvc解决了，其他方法之多解决一个
+  print(intersect(c("PSCA","CSGALNACT1","LCN2" ),union_problem2))
+}
+for(i in c(1:5)){
+  union_problem3=setdiff(unionproblem,data_scc_svgene_list_0130[[i]][[8]])#在hmp下,不同程度的都解决了，但除了spvc都不能完全解决
+  print(intersect(c("PSCA","CSGALNACT1","LCN2"),union_problem3))
+}
+
+
+for(i in c(1:5)){
+  print(length(intersect(data_scc_svgene_list_0130[[i]][[7]],unionproblem)))
+}
+for(i in c(1:5)){
+  print(length(intersect(data_scc_svgene_list_0130[[i]][[8]],unionproblem)))
+}
+
+cauchy_list=table(unlist(list(data_scc_svgene_list_0130[[1]][[7]],data_scc_svgene_list_0130[[2]][[7]]
+                              ,data_scc_svgene_list_0130[[3]][[7]],data_scc_svgene_list_0130[[4]][[7]]
+                              ,data_scc_svgene_list_0130[[5]][[7]])))
+hmp_list=table(unlist(list(data_scc_svgene_list_0130[[1]][[8]],data_scc_svgene_list_0130[[2]][[8]]
+                              ,data_scc_svgene_list_0130[[3]][[8]],data_scc_svgene_list_0130[[4]][[8]]
+                              ,data_scc_svgene_list_0130[[5]][[8]])))
+
+cauchy_gene_in3=names(cauchy_list[cauchy_list >= 3])
+hmp_gene_in3=names(hmp_list[hmp_list >= 3])
+
+print(length(intersect(cauchy_gene_in3,unionproblem)))#56
+print(length(intersect(hmp_gene_in3,unionproblem)))#107
+
+#weak问题
+uni_sv_set1=list(nnsvg_union=data_scc_svgene_list_0130[[1]][[4]],data_scc_svgene_list_0130[[9]][[4]],data_scc_svgene_list_0130[[8]][[4]]
+                ,spark_union=data_scc_svgene_list_0130[[3]][[4]],spv_union=data_scc_svgene_list_0130[[4]][[4]],
+                heartsvg_union=data_scc_svgene_list_0130[[5]][[4]])
+uni_uni_sv_set=Reduce(union,uni_sv_set1)
+weakproblem=setdiff(data_scc_svgene_list_0130[[6]],uni_uni_sv_set)#210
+print(length(weakproblem))
+length(intersect(weakproblem,data_scc_svgene_list_0130[[8]][[4]]))
+length(intersect(weakproblem,data_scc_svgene_list_0130[[9]][[4]]))
+intersect(c("ARF6", "CTTN", "NOTCH1"),weakproblem)
+
+
+gene_select=weakproblem
+#绘制
+count1=count1[gene_select,]
+count2=count2[gene_select,]
+count3=count3[gene_select,]
+meta1=meta_process(position1,count1)
+meta2=meta_process(position2,count2)
+meta3=meta_process(position3,count3)
+
+#绘图保存
+for(genenum in seq_along(rownames(count1))){
+  p1=pattern_plot2(meta1,genenum,xpand=-2,ypand = 2,main = FALSE)##用于绘制
+  p2=pattern_plot2(meta2,genenum,xpand=-2,ypand = 2,main = FALSE)
+  p3=pattern_plot2(meta3,genenum,xpand=-2,ypand = 2,main = FALSE)
+  combined_plot <- arrangeGrob(p1, p2, p3, ncol = 3, nrow = 1)
+  ggsave(paste0("/Users/zhoum/Desktop/scc/weakproblem/",rownames(count1)[genenum],".png"), plot = combined_plot, width = 12, height = 4, dpi = 300)
+}
+
+
+
+
+}
+
+#画问题的图
+{#PKN2，EIF2B4，CARS2
+#NSRP1，ITPR2
+
+#绘图
+#"LGALS7"，"SPRR1B"，"S100A2"
+#"ARHGEF16","CISD3","NUDCD2"
+#"PSCA","CSGALNACT1","LCN2"
+  #c("EGFR", "HIF1a","KLF5")
+
+total_gene_choose=c("LGALS7","SPRR1B","S100A2","AP2A2","CWC15","DNM2","PSCA","CSGALNACT1","LCN2","EGFR", "HIF1A","KLF5")
+
+count1=count1[total_gene_choose,]
+count2=count2[total_gene_choose,]
+count3=count3[total_gene_choose,]
+
+#绘制
+meta1=meta_process(position1,count1)
+meta2=meta_process(position2,count2)
+meta3=meta_process(position3,count3)
+
+pattern_plot2 <- function(pltdat, igene, xy = TRUE, main = FALSE, titlesize = 2, 
+                          pointsize = 3, xpand = 0, ypand = 1, title = NULL, legend = TRUE) {
+  if (!xy) {
+    xy <- matrix(as.numeric(do.call(rbind, strsplit(as.character(pltdat[, 1]), split = "x")), ncol = 2))
+    rownames(xy) <- as.character(pltdat[, 1])
+    colnames(xy) <- c("x", "y")
+    pd <- cbind.data.frame(xy, pltdat[, 2:ncol(pltdat)])
+  } else {
+    pd <- pltdat
+  }
+  
+  # 提取目标列数据并计算相对百分比（0%~100%）
+  target_col <- pd[, igene + 2]
+  min_val <- min(target_col, na.rm = TRUE)
+  max_val <- max(target_col, na.rm = TRUE)
+  pd$rel_value <- (target_col - min_val) / (max_val - min_val) * 100  # 转换为百分比
+  
+  # 定义颜色渐变（固定范围为0~100）
+  pal <- colorRampPalette(c("mediumseagreen", "lightyellow2", "deeppink"))
+  gpt <- ggplot(pd, aes(x = x, y = y, color = rel_value)) + 
+    geom_point(size = pointsize) + 
+    scale_color_gradientn(
+      colours = pal(5),
+      limits = c(0, 100),  # 固定颜色范围为0%~100%
+      labels = scales::percent_format(scale = 1)  # 标签显示为百分比（如50%）
+    ) +
+    scale_x_discrete(expand = c(xpand, ypand)) + 
+    scale_y_discrete(expand = c(xpand, ypand)) + 
+    coord_equal() + 
+    theme_bw() + 
+    labs(color = "Relative Expression Level ")  # 修改图例标题
+  
+  # 调整图例位置和样式
+  if (legend) {
+    gpt <- gpt + 
+      theme(legend.position = "bottom",
+            legend.justification = "center",
+            legend.text = element_text(
+              size = 8,
+              margin = margin(t = 0, b = 0, unit = "cm"),  # 文字左移3mm
+              hjust = 0,                                             # 文字左对齐
+              vjust = 0.5                                            # 保持垂直居中
+            )) +  # 确保图例居中
+      guides(color = guide_colorbar(
+        direction = "horizontal",
+        barwidth = unit(5, "cm"),
+        barheight = unit(0.3, "cm"),
+        title.position = "left",
+        label.position = "bottom"
+      ))
+  } else {
+    gpt <- gpt + theme(legend.position = "none")
+  }
+  
+  if (main) {
+    out <- gpt + labs(title = title %||% colnames(pd)[igene + 2], x = NULL, y = NULL) + 
+      theme(plot.title = element_text(hjust = 0.5, size = rel(titlesize)))
+  } else {
+    out <- gpt + labs(title = NULL, x = NULL, y = NULL)
+  }
+  
+  return(out)
+}
+
+
+combined_list=list()
+for(genenum in c(1:12)){
+  p1 <- pattern_plot2(meta1, genenum, xpand = 0.01, ypand = 0.01, main = FALSE, pointsize = 2,legend = FALSE)
+  p2 <- pattern_plot2(meta2, genenum, xpand = 0.01, ypand = 0.01, main = FALSE, pointsize = 2,legend = FALSE)
+  p3 <- pattern_plot2(meta3, genenum, xpand = 0.01, ypand = 0.01, main = FALSE, pointsize = 2,legend = FALSE)
+  
+  combined_list[[genenum]] <- wrap_elements(p1 | p2 | p3) + 
+    labs(title = total_gene_choose[genenum]) + 
+    theme(
+      plot.title = element_text(size = 150, face = "bold", hjust = 0.5, vjust = 0),
+    )
+}
+
+combined_plot <- 
+  ((wrap_elements(combined_list[[1]]/combined_list[[2]]/combined_list[[3]]) + 
+     labs(tag = "A") + 
+     theme(plot.tag = element_text(size = 200, face = "bold", margin = margin(0)),
+           plot.tag.position = c(0.01, 0.99))) |
+  (wrap_elements(combined_list[[4]]/combined_list[[5]]/combined_list[[6]]) + 
+     labs(tag = "B") + 
+     theme(plot.tag = element_text(size = 200, face = "bold", margin = margin(0)),
+           plot.tag.position = c(0.01, 0.99)))) /
+  ((wrap_elements(combined_list[[7]]/combined_list[[8]]/combined_list[[9]]) + 
+     labs(tag = "C") + 
+     theme(plot.tag = element_text(size = 200, face = "bold", margin = margin(0)),
+           plot.tag.position = c(0.01, 1))) |
+  (wrap_elements(combined_list[[10]]/combined_list[[11]]/combined_list[[12]]) + 
+     labs(tag = "D") + 
+     theme(plot.tag = element_text(size = 200, face = "bold", margin = margin(0)),
+           plot.tag.position = c(0.01, 1)))) +
+  plot_layout(heights = c(1.2, 1.2,0.1)) 
+
+# combined_plot <- combined_plot +
+#   plot_annotation(theme = theme(
+#     plot.background = element_rect(fill = "white", color = NA),
+#     panel.background = element_rect(fill = "white")
+#   ))
+
+ggsave(paste0("/Users/zhoum/Desktop/scc/combined1_scc_problem0130.png"), plot = combined_plot, width = 14, height = 18, dpi = 900)
+
+}
+
+#对比整合的方法
+{
+  load("/Users/zhoum/Desktop/scc/data_scc_svgene_list_0130.RData")
+
+for(i in c(1:5)){
+  print(length(data_scc_svgene_list_0130[[i]][[6]]))
+  print(length(intersect(data_scc_svgene_list_0130[[7]],data_scc_svgene_list_0130[[i]][[6]])))
+}
+print(length(intersect(data_scc_svgene_list_0130[[7]],data_scc_svgene_list_0130[[6]])))
+
+#进一步分析heartsvg和spvc
+length(intersect(data_scc_svgene_list_0130[[4]][[6]],uni_inter_sv_set))#104/86
+length(intersect(data_scc_svgene_list_0130[[5]][[6]],uni_inter_sv_set))#256/256
+
+length(intersect(data_scc_svgene_list_0130[[8]][[6]],uni_inter_sv_set))#104/86
+length(intersect(data_scc_svgene_list_0130[[9]][[6]],data_scc_svgene_list_0130[[9]][[5]]))
+
+}
+
+
+
+
+
+
+#做基因聚类
+{
+library(mclust)
+library(dynamicTreeCut)
+svg.clust <- function(expression, coor, svg, deepsplit=1,hcl_med="ward.D",dis_method="manhattan",method = 'h', num_cluster = NULL, plot = FALSE,minClusterSize=1) {
+  # Check input validity
+  if (length(svg) == 0) {
+    stop("svg must contain at least one gene")
+  }
+  # Extract coordinates and scale the data
+  ct <- as.data.frame(scale(expression, center = TRUE, scale = TRUE))
+  counts <- subset(ct, select = svg)
+  
+  if (method == 'h') {
+    # Calculate distance matrix
+    co <- dist(t(counts),method = dis_method)
+    
+    # Perform hierarchical clustering
+    hh <- hclust(co, method = hcl_med)
+    
+    # Determine clusters using Dynamic Tree Cut if num_cluster is not provided
+    if (is.null(num_cluster)) {
+      c6 <- cutreeDynamic(dendro = hh, distM = as.matrix(co), method = "hybrid", deepSplit = deepsplit,minClusterSize = minClusterSize)
+    } else {  # Use specified number of clusters
+      c6 <- cutree(hh, k = num_cluster)
+    }
+    
+    # Optionally plot the dendrogram
+    if (plot) {
+      plot(hh, main = "Dendrogram of Hierarchical Clustering", xlab = "Genes", ylab = "Height")
+      rect.hclust(hh, k = length(unique(c6)), border = "red")
+    }
+    
+    svg.cl <- data.frame(gene = hh$labels, cl = c6)
+  }
+  
+  if (method == 'k') {
+    if (is.null(num_cluster)) {  # Number of clusters must be provided
+      stop('Missing the parameter num_cluster!')
+    } else {
+      km <- kmeans(t(counts), centers = num_cluster)  # kmeans defaults to clustering rows, so transpose
+      svg.cl <- data.frame(gene = names(km$cluster), cl = km$cluster)
+    }
+  }
+  
+  colnames(svg.cl) <- c('gene', 'cluster')
+  return(svg.cl)
+}
+
+meta_process =function(position1,count1){
+  meta=cbind(position1,t(count1))
+  colnames(meta)[c(1:2)] = c('x','y')
+  meta=as.data.frame(meta)
+  meta$x <- (meta$x - min(meta$x))/(max(meta$x) - min(meta$x))
+  meta$y <- (meta$y - min(meta$y))/(max(meta$y) - min(meta$y))
+  return(meta)
+}
+
+pattern_plot2 <- function(pltdat, igene, xy = T, main = F, titlesize = 2, 
+                          pointsize = 3, xpand = 0, ypand = 1, title = NULL,hjust=0.5,legend.position = "none") {
+  if (!xy) {
+    xy <- matrix(as.numeric(do.call(rbind, strsplit(as.character(pltdat[, 
+                                                                        1]), split = "x"))), ncol = 2)
+    rownames(xy) <- as.character(pltdat[, 1])
+    colnames(xy) <- c("x", "y")
+    pd <- cbind.data.frame(xy, pltdat[, 2:ncol(pltdat)])
+  } else {
+    pd <- pltdat
+  }
+  
+  # pal <- colorRampPalette(c('seagreen1','orangered')) pal <-
+  # colorRampPalette(c('#00274c','#ffcb05')) pal <-
+  # colorRampPalette(c('deepskyblue','goldenrod1')) pal <-
+  # colorRampPalette(c('deepskyblue','deeppink'))
+  pal <- colorRampPalette(c("mediumseagreen", "lightyellow2", "deeppink"))
+  gpt <- ggplot(pd, aes(x = x, y = y, color = pd[, igene + 2])) + geom_point(size = pointsize) + 
+    # scale_color_gradientn(colours=pal(5))+
+    scale_color_gradientn(colours = pal(5)) + scale_x_discrete(expand = c(xpand, 
+                                                                          ypand)) + scale_y_discrete(expand = c(xpand, ypand)) + coord_equal() + 
+    # labs(title = colnames(pd)[igene+2], x = NULL, y = NULL)+
+    theme_bw()
+  if (main) {
+    if (is.null(title)) {
+      title = colnames(pd)[igene + 2]
+    }
+    out = gpt + labs(title = title, x = NULL, y = NULL) + theme(legend.position = legend.position, 
+                                                                plot.title = element_text(hjust = hjust,face="bold",size = rel(titlesize)))
+  } else {
+    out = gpt + labs(title = NULL, x = NULL, y = NULL) + theme(legend.position = legend.position)
+  }
+  return(out)
+}
+
+
+svgenename=data_scc_svgene_list_0130[[6]]
+#"average" 或 "single","ward.D","centroid"
+#"ward.D", "ward.D2", "single", "complete" "average"
+#对于13的配置(count1,position1,svgenename,dis_method="manhattan",deepsplit = 2,hcl_med="average",minClusterSize=100)
+#对于2的配置(count1,position1,svgenename,dis_method="manhattan",deepsplit = 1,hcl_med="average",minClusterSize=100)
+result_gene_cluster_list=c()
+for(sectnum in c(3)){
+  count1=as.matrix(read.csv(paste0("/Users/zhoum/Desktop/scc/scc_count",sectnum,".csv"),row.names = 1))##基因✖️点
+
+  count1=t(count1)
+  position1=as.matrix(read.csv(paste0("/Users/zhoum/Desktop/scc/scc_position",sectnum,".csv"),row.names = 1))
+  result_svg_clust=svg.clust(count1,position1,svgenename,dis_method="manhattan",deepsplit = 1,hcl_med="average",minClusterSize = 100)
+
+  expression_df <- as.data.frame(count1)
+  gene_clusters <- result_svg_clust
+  clusters <- sort(unique(gene_clusters$cluster))
+  # 初始化存储每个簇平均表达值的数据框
+  cluster_means <- data.frame(rowname = rownames(expression_df))
+  # 逐个计算每个簇的平均表达
+  for (cl in clusters) {
+    # 找到属于该簇的基因
+    genes_in_cluster <- gene_clusters$gene[gene_clusters$cluster == cl]
+    # 计算这些基因在每个点位上的平均表达
+    mean_expression <- rowMeans(expression_df[, genes_in_cluster, drop = FALSE], na.rm = TRUE)
+    cluster_means[[paste0("Cluster", cl)]] <- mean_expression
+  }
+  meta=meta_process(position1,t(cluster_means[,-c(1)]))
+  for(i in seq(clusters)){
+    p=pattern_plot2(meta,i,xpand=0,ypand = 0)
+    ggsave(paste0("/Users/zhoum/Desktop/scc/genecluster/sec",sectnum,"_cluster",i,".png"), plot = p, width = 3, height = 3, dpi = 100)
+  }
+  result_gene_cluster_list[[sectnum]]=gene_clusters
+}
+
+
+save(result_gene_cluster_list,file="/Users/zhoum/Desktop/scc/genecluster/gene_clusters0130.RData")
+
+
+load("/Users/zhoum/Desktop/scc/genecluster/gene_clusters1230.RData")
+
+count1=count1[data_scc_svgene_list_0130[[6]],]
+count2=count2[data_scc_svgene_list_0130[[6]],]
+count3=count3[data_scc_svgene_list_0130[[6]],]
+count_list=list(count1,count2,count3)
+position_list=list(position1,position2,position3)
+
+table(result_gene_cluster_list[[1]][[2]])
+table(result_gene_cluster_list[[2]][[2]])
+table(result_gene_cluster_list[[3]][[2]])
+
+result_gene_cluster_list[[1]][[2]][which(result_gene_cluster_list[[1]][[2]]==0)]=1
+result_gene_cluster_list[[2]][[2]][which(result_gene_cluster_list[[2]][[2]]==0)]=1
+
+result_gene_cluster_list[[1]][[2]][which(result_gene_cluster_list[[1]][[2]]==2)]=4
+result_gene_cluster_list[[1]][[2]][which(result_gene_cluster_list[[1]][[2]]==3)]=2
+result_gene_cluster_list[[1]][[2]][which(result_gene_cluster_list[[1]][[2]]==4)]=3
+
+result_gene_cluster_list[[3]][[2]][which(result_gene_cluster_list[[3]][[2]]==2)]=4
+result_gene_cluster_list[[3]][[2]][which(result_gene_cluster_list[[3]][[2]]==3)]=2
+result_gene_cluster_list[[3]][[2]][which(result_gene_cluster_list[[3]][[2]]==4)]=3
+
+
+length(intersect(result_gene_cluster_list[[1]][[1]][result_gene_cluster_list[[1]][[2]]==1],result_gene_cluster_list[[3]][[1]][result_gene_cluster_list[[3]][[2]]==2]))
+
+f_genecluster=function(result_gene_cluster_list,count_list,position_list,secnum=1,cluster_num=1,main=F,title = NULL,titlesize = 2,hjust=0.5,legend.position = "none"){
+  expre_mat=t(count_list[[secnum]])
+  position_mat=position_list[[secnum]]
+  gene_clusters=result_gene_cluster_list[[secnum]]
+  genes_in_cluster <- gene_clusters$gene[gene_clusters$cluster == cluster_num]
+  
+  mean_expression <- rowMeans(expre_mat[, genes_in_cluster, drop = FALSE], na.rm = TRUE)
+  meta=meta_process(position_mat,t(mean_expression))
+  plot=pattern_plot2(meta,1,xpand=0.01,ypand = 0.01,pointsize = 2,main=main,title = title,titlesize = titlesize,hjust=hjust,legend.position = legend.position)
+  return(plot)
+}
+
+
+p1=f_genecluster(secnum=1,cluster=1,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 1",titlesize = 1,hjust=0.5)
+p2=f_genecluster(secnum=1,cluster=2,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 2",titlesize = 1,hjust=0.5)
+p3=f_genecluster(secnum=1,cluster=3,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 3",titlesize = 1,hjust=0.5)
+p4=f_genecluster(secnum=2,cluster=1,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 1",titlesize = 1,hjust=0.5)
+p5=f_genecluster(secnum=2,cluster=2,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 2",titlesize = 1,hjust=0.5)
+p6=f_genecluster(secnum=2,cluster=3,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 3",titlesize = 1,hjust=0.5)
+p7=f_genecluster(secnum=3,cluster=1,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 1",titlesize = 1,hjust=0.5)
+p8=f_genecluster(secnum=3,cluster=2,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 2",titlesize = 1,hjust=0.5)
+p9=f_genecluster(secnum=3,cluster=3,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 3",titlesize = 1,hjust=0.5)
+
+combined_plot <- 
+  (wrap_elements(p1 | p2|p3 ) + 
+      labs(tag = "A") + 
+      theme(plot.tag = element_text(size = 15, face = "bold", margin = margin(0)),
+            plot.tag.position = c(0.01, 1))) /
+     (wrap_elements(p4|p5 |p6) + 
+        labs(tag = "B") + 
+        theme(plot.tag = element_text(size = 15, face = "bold", margin = margin(0)),
+              plot.tag.position = c(0.01, 1))) /
+  (wrap_elements(p7 | p8 | p9) + 
+      labs(tag = "C") + 
+      theme(plot.tag = element_text(size = 15, face = "bold", margin = margin(0)),
+            plot.tag.position = c(0.01, 1))) +
+  plot_layout(heights = c(1, 1, 1,0.2)) 
+
+
+print(combined_plot)
+
+ggsave(paste0("/Users/zhoum/Desktop/scc/genecluster/genecluster_0130.png"), plot = combined_plot, width = 9, height = 10, dpi = 300)
+
+
+
+library(mclust)
+library(pheatmap)
+load("/Users/zhoum/Desktop/scc/genecluster/gene_clusters1230.RData")
+ari <- adjustedRandIndex(result_gene_cluster_list[[2]][[2]],result_gene_cluster_list[[1]][[2]])
+print(ari)
+ari <- adjustedRandIndex(result_gene_cluster_list[[3]][[2]],result_gene_cluster_list[[1]][[2]])
+print(ari)
+ari <- adjustedRandIndex(result_gene_cluster_list[[3]][[2]],result_gene_cluster_list[[2]][[2]])
+print(ari)
+length(intersect(result_gene_cluster_list[[1]][[1]][result_gene_cluster_list[[1]][[2]]==2],result_gene_cluster_list[[2]][[1]][result_gene_cluster_list[[2]][[2]]==1]))
+
+
+library(ggplot2)
+library(reshape2)
+library(viridis) 
+library(patchwork)
+
+load("/Users/zhoum/Desktop/scc/genecluster/gene_clusters0130.RData")
+heatmapplot <- function(result_gene_cluster_list, i, j, show_legend = TRUE) {
+  # 计算重叠比例矩阵
+  table_mat <- table(result_gene_cluster_list[[i]][[2]], result_gene_cluster_list[[j]][[2]])
+  overlap_mat <- sweep(table_mat, 1, rowSums(table_mat), FUN = "/")
+  
+  # 设置切片标签
+  x_slice <- ifelse(j == 1, "A", ifelse(j == 2, "B",ifelse(j==3,"C","D")))
+  y_slice <- ifelse(i == 1, "A", ifelse(i == 2, "B",ifelse(i==3,"C","D")))
+  
+  # 转换数据为长格式
+  df_long <- reshape2::melt(overlap_mat)
+  colnames(df_long) <- c("Cluster1", "Cluster2", "Overlap")
+  
+  # 设置因子水平（保证顺序一致）
+  df_long <- df_long[
+    as.numeric(as.character(df_long$Cluster1)) %in% 1:4 &
+      as.numeric(as.character(df_long$Cluster2)) %in% 1:4,
+  ]
+  df_long$Cluster2 <- factor(
+    df_long$Cluster2,
+    levels = colnames(overlap_mat),
+    labels = paste0("cluster", colnames(overlap_mat))
+  )
+  df_long$Cluster1 <- factor(
+    df_long$Cluster1,
+    levels = rownames(overlap_mat),
+    labels = paste0("cluster", rownames(overlap_mat))
+  )
+  
+  # 绘图
+  p1 <- ggplot(df_long, aes(x = Cluster2, y = Cluster1, fill = Overlap)) +
+    geom_tile(color = "white") +
+    scale_fill_gradient(low = "#deebf7", high = "#3182bd", 
+                        limits = c(0, 1),  # 固定颜色范围
+                        name = "Overlap Ratio") +
+    geom_text(aes(label = round(Overlap, 2)), color = "black", size = 4, fontface = "bold") +
+    labs(
+      x = paste0("slice ", x_slice),
+      y = paste0("slice ", y_slice)
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      plot.title = element_text(hjust = 0.5, face = "bold"),
+      legend.title = element_text(size = 10)
+    )
+  
+  # 根据参数控制图例显示
+  if (!show_legend) {
+    p1 <- p1 + theme(legend.position = "none")
+  } else {
+    p1 <- p1 + guides(fill = guide_colorbar(barwidth = 1, barheight = 10))
+  }
+  
+  return(p1)
+}
+#画热点图
+p1=heatmapplot(result_gene_cluster_list,2,1,show_legend = FALSE)
+p2=heatmapplot(result_gene_cluster_list,3,1,show_legend = FALSE)
+p3=heatmapplot(result_gene_cluster_list,2,3,show_legend = FALSE)
+combined_heatmap=(p1 + p2 + p3) + plot_layout(guides = "collect") & theme(legend.position = "right")
+plot(combined_heatmap)
+ggsave(paste0("/Users/zhoum/Desktop/scc/genecluster/scc_cluster_heatmap.png"), plot = combined_heatmap, width = 10, height = 3, dpi = 300)
+
+
+#画go术语图
+library(clusterProfiler)
+library(org.Hs.eg.db)
+result_enrich_list=replicate(3, replicate(3, list(), simplify = FALSE), simplify = FALSE)
+for(sectnum in c(1:3)){
+  clusters <- sort(unique(result_gene_cluster_list[[sectnum]]$cluster))
+  for (cl in seq(clusters)){
+    genes_in_cluster <- result_gene_cluster_list[[sectnum]]$gene[result_gene_cluster_list[[sectnum]]$cluster == clusters[cl]]
+    gene_list <- bitr(genes_in_cluster, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+    go_enrich_bp <- enrichGO(gene = gene_list$ENTREZID,
+                             OrgDb = org.Hs.eg.db,
+                             keyType = "ENTREZID",
+                             ont = "BP",  
+                             pAdjustMethod = "BH", 
+                             pvalueCutoff = 0.05,
+                             readable = TRUE)
+
+    result_enrich_list[[sectnum]][[cl]]=go_enrich_bp
+  }
+}
+save(result_enrich_list,file="/Users/zhoum/Desktop/scc/genecluster/scc_goenrichment.RData")
+
+
+cluster1_results <- list()
+for(clusternum in c(1:3)){
+  for(sect in c(1:3)) {
+    enrich_obj <- result_enrich_list[[sect]][[clusternum]]  
+    if(!is.null(enrich_obj) && nrow(enrich_obj) > 0) {
+      go_df <- as.data.frame(enrich_obj)[, c("ID", "Description", "p.adjust")]
+      go_df$Section <- sect
+      cluster1_results[[sect]] <- go_df
+    }
+  }
+  
+  combined_cluster1 <- do.call(rbind, cluster1_results)
+  
+  max_padjust_by_go <- aggregate(p.adjust ~ ID + Description, 
+                                 data = combined_cluster1, 
+                                 FUN = max, 
+                                 na.rm = TRUE)
+  max_padjust_by_go$Rank <- rank(max_padjust_by_go$p.adjust, ties.method = "min")
+  final_result <- max_padjust_by_go[order(max_padjust_by_go$Rank), ]
+  print(clusternum)
+  print(final_result[c(1:5),c(1:3)])
+}
+
+
+
+
+
+
+
+genes <- result_gene_cluster_list[[1]][[1]][result_gene_cluster_list[[1]][[2]]==2]
+heatmapplot <- function(result_gene_cluster_list, i, j, show_legend = TRUE) {
+  # 计算重叠比例矩阵
+  table_mat <- table(result_gene_cluster_list[[i]][[2]], result_gene_cluster_list[[j]][[2]])
+  overlap_mat <- sweep(table_mat, 1, rowSums(table_mat), FUN = "/")
+  
+  # 设置切片标签
+  x_slice <- ifelse(j == 1, "A", ifelse(j == 2, "B", "C"))
+  y_slice <- ifelse(i == 1, "A", ifelse(i == 2, "B", "C"))
+  
+  # 转换数据为长格式
+  df_long <- reshape2::melt(overlap_mat)
+  colnames(df_long) <- c("Cluster1", "Cluster2", "Overlap")
+  
+  # 设置因子水平（保证顺序一致）
+  df_long$Cluster2 <- factor(df_long$Cluster2, 
+                             levels = c("1", "2", "3"), 
+                             labels = c("cluster1", "cluster2", "cluster3"))
+  df_long$Cluster1 <- factor(df_long$Cluster1,
+                             levels = c("1", "2", "3"),
+                             labels = c("cluster1", "cluster2", "cluster3"))
+  
+  # 绘图
+  p1 <- ggplot(df_long, aes(x = Cluster2, y = Cluster1, fill = Overlap)) +
+    geom_tile(color = "white") +
+    scale_fill_gradient(low = "#deebf7", high = "#3182bd", 
+                        limits = c(0, 1),  # 固定颜色范围
+                        name = "Overlap Ratio") +
+    geom_text(aes(label = round(Overlap, 2)), color = "black", size = 5, fontface = "bold") +
+    labs(
+      x = paste0("slice ", x_slice),
+      y = paste0("slice ", y_slice)
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      plot.title = element_text(hjust = 0.5, face = "bold"),
+      legend.title = element_text(size = 10)
+    )
+  
+  # 根据参数控制图例显示
+  if (!show_legend) {
+    p1 <- p1 + theme(legend.position = "none")
+  } else {
+    p1 <- p1 + guides(fill = guide_colorbar(barwidth = 1, barheight = 10))
+  }
+  
+  return(p1)
+}
+gene.df <- bitr(genes,
+                fromType = "SYMBOL",
+                toType = "ENTREZID",
+                OrgDb = org.Hs.eg.db)
+
+entrez_ids <- gene.df$ENTREZID
+
+kegg_enrich <- enrichKEGG(gene = entrez_ids,
+                          organism = 'hsa',
+                          pvalueCutoff = 0.05)
+
+
+
+}
+
+#做点位聚类
+{
+  load("C:/Users/zhoum/Desktop/scc/cluster_scc.RData")
+  datanum=3
+  position1=as.matrix(read.csv(paste0("C:/Users/zhoum/Desktop/scc/scc_position",datanum,".csv"),row.names = 1))
+  coordinates=as.data.frame(position1)
+  coordinates$cluster <- cluster_scc[[datanum]][[6]][[1]]
+  #custom_colors <- c("#99b9e9","#bdb5e1" ,"#54beaa" ,"#f9d580","#eca680","#fccccb","#e3716e","#b0d992","#7ac7e2","#f3deb7")#第一张
+  #custom_colors <- c("#99b9e9","#bdb5e1" ,"#54beaa" ,"#f9d580","#eca680","#e3716e","#b0d992","#fccccb","#7ac7e2","#f3deb7")#第二张
+  custom_colors <- c("#99b9e9","#f9d580","#fccccb","#54beaa" ,"#bdb5e1","#eca680","#e3716e","#b0d992","#7ac7e2","#f3deb7")#第三张
+  plot <- ggplot(coordinates, aes(x = row, y = col, color = as.factor(cluster))) +
+    geom_point(size = 2) +
+    scale_color_manual(values = custom_colors, name = "Cluster") +
+    guides(color = guide_legend(override.aes = list(size = 5),nrow = 1)) +  # 增大图例点的大小
+    theme(
+      axis.title = element_blank(),
+      legend.position="bottom",
+      axis.text = element_blank(),
+      axis.ticks = element_blank(),
+      panel.grid = element_blank(),
+      panel.background = element_blank(),
+      legend.background = element_blank(),
+      legend.key.size = unit(1.5, "cm"),  
+      legend.key.height = unit(1, "cm"),  # 调整图例项的高度
+      legend.key.width = unit(0.8, "cm"),   # 调整图例项的宽度
+      legend.text = element_text(size = 18),  
+      legend.title = element_text(size = 20),
+      plot.tag = element_text(size = 22, face = "bold")
+    )
+  print(plot)
+  
+  plot1 <- plot 
+plot2 <- plot+ theme(legend.position = "none")
+plot3 <- plot + theme(legend.position = "none")
+
+
+combined_plot <- (plot1 | plot2 | plot3) +
+  plot_layout(guides = "collect") +  # 收集所有子图的图例
+  plot_annotation(
+    title = NULL,
+    subtitle = NULL,
+    caption = NULL,
+    tag_levels = 'A',
+    tag_prefix = "",
+    tag_sep = "",
+    theme = theme(
+      plot.tag = element_text(size = 12),  # 放大标签字体
+      legend.position = "bottom",  
+      legend.box = "horizontal"
+    )
+  ) &
+  guides(fill = guide_legend(nrow = 1))
+print(combined_plot)
+  
+ggsave("/Users/zhoum/Desktop/scc/scc_spot_cluster0131.png", plot = combined_plot, width = 11, height =4, dpi = 300)
+  
+
+}
+
+
+#运行p2scc
+{
+  load("/gemini/code/dataanalysis/scc_P2.RData")
+  matrix1=sample_total[[1]][[1]]#基因✖️点位
+  matrix2=sample_total[[2]][[1]]
+  matrix3=sample_total[[3]][[1]]
+  
+  position1=sample_total[[1]][[2]]
+  position2=sample_total[[2]][[2]]
+  position3=sample_total[[3]][[2]]
+  
+  calpha1=sample_total[[1]][[3]]
+  calpha2=sample_total[[2]][[3]]
+  calpha3=sample_total[[3]][[3]]
+  
+  bound1=read.csv("/gemini/code/dataanalysis/bound_p2scc1.csv",row.names = 1)
+  bound2=read.csv("/gemini/code/dataanalysis/bound_p2scc2.csv",row.names = 1)
+  bound3=read.csv("/gemini/code/dataanalysis/bound_p2scc3.csv",row.names = 1)
+  
+  load("/gemini/code/dataanalysis/layer_barcode_sccp2.RData")
+  
+  #针对scc
+  dataanalysis_other=function(matrixlist,positionlist,calphalist,boundlist,layer_barcode,dataname="nofilter_1208",ifde=TRUE,num_cores=24,datanum=4){
+    result_total=replicate(6, replicate(datanum, list(), simplify = FALSE), simplify = FALSE)
+    for(dataindex in c(1:datanum)){
+      exp_mat=matrixlist[[dataindex]]
+      print(dim(exp_mat))
+      position=positionlist[[dataindex]]
+      print(dim(position))
+      calpha=calphalist[[dataindex]]
+      print(dim(calpha))
+      bound=boundlist[[dataindex]]
+      
+      exp_mat <- t(exp_mat)
+      genename=colnames(exp_mat)
+      barcode=rownames(exp_mat)
+      loc=position
+      rownames(loc)=paste0("spot",1:length(rownames(loc)))
+      rownames(exp_mat) <- paste0("spot",1:length(rownames(exp_mat)))
+      colnames(exp_mat) <- paste0("gene",1:length(colnames(exp_mat)))
+      calpha_mat <- calpha
+      rownames(calpha_mat) <- paste0("spot",1:length(rownames(exp_mat)))
+      begin=Sys.time()
+      tr_mat=bound
+      Tr.cell <- TriMesh(tr_mat, n = 2) 
+      V <- as.matrix(Tr.cell$V)
+      Tr <- as.matrix(Tr.cell$Tr)
+      simu.results <- test.spVC(Y = t(exp_mat), X = calpha_mat, S = loc, V = V, Tr = Tr,
+                                para.cores = num_cores, filter.min.nonzero = 10)
+      
+      result1 <- rep(1,length(simu.results$results.constant))
+      result <- rep(NA,length(genename))
+      for (i in seq_along(simu.results$results.constant)) {
+        result1[i] <- tryCatch(
+          {
+            unname(simu.results$results.constant[[i]][[1]][[7]])
+          },
+          error = function(e) 1  
+        )
+      }
+      target_order <- paste0("gene",1:length(genename))
+      p_value=result1##获得p值
+      result1[result1<=0.05] <- 0
+      result1[result1>0.05] <- 1
+      result1=1-result1
+      result_value=result1##获得选择后的1/0
+      spv_genename=names(simu.results$results.constant)[result1==1]
+      index <- match(spv_genename,target_order)
+      spvsvgene=genename[index]
+      #包装结果
+      end=Sys.time()
+      time_value=as.numeric((end-begin), units = "mins")
+      result=list(result_value,spvsvgene,time_value,p_value,simu.results$results.constant)
+      result_total[[1]][[dataindex]]=result
+      print(length(result_total[[1]][[dataindex]]))
+      
+      ##heartsvg
+      ##heartsvg
+      begin=Sys.time()
+      mat <- cbind(loc,exp_mat)
+      colnames(mat)[1:2] = c("row","col")
+      result <- heartsvg(mat)
+      hea_result=result
+      aaa <- result$gene
+      bbb <- result$p_adj
+      
+      p_value=bbb
+      bbb[bbb<=0.05]=0
+      bbb[bbb>0.05]=1
+      bbb <- 1-bbb
+      result_value=bbb
+      heartsvg_genename=aaa[bbb==1]
+      target_order <- paste0("gene",1:length(genename))
+      index <- match(heartsvg_genename,target_order)
+      heartsvgene=genename[index]
+      end=Sys.time()
+      time_value=as.numeric((end-begin), units = "mins")
+      result=list(result_value,heartsvgene,time_value,p_value,hea_result$gene)
+      result_total[[2]][[dataindex]]=result
+      
+      ###sparkx
+      ###sparkx
+      begin=Sys.time()
+      sparkX <- sparkx(t(exp_mat),loc,calpha_mat[,c(1:4)],numCores=num_cores,option="mixture",verbose = FALSE)
+      sparkX$res_mtest <- as.matrix(sparkX$res_mtest)
+      result <- sparkX$res_mtest[,2]##p值
+      p_value=result##获得p值
+      result[result<=0.05]=0
+      result[result>0.05]=1
+      result <- 1-result
+      result_value=result##获得选择后的1/0
+      target_order <- paste0("gene",1:length(genename))
+      sparkx_genename=rownames(sparkX$res_mtest)[result==1]
+      index <- match(sparkx_genename,target_order)
+      sparkxsvgene=genename[index]
+      
+      end=Sys.time()
+      time_value=as.numeric((end-begin), units = "mins")
+      result=list(result_value,sparkxsvgene,time_value,p_value,sparkX$res_mtest)
+      result_total[[3]][[dataindex]]=result
+      
+      
+      ##spark
+      ##spark
+      begin=Sys.time()
+      spark <- CreateSPARKObject(counts=t(exp_mat),
+                                 location=as.data.frame(loc),
+                                 percentage = 0.1,
+                                 min_total_counts = 10)##构建spark对象
+      spark@lib_size <- apply(spark@counts, 2, sum)
+      spark <- spark.vc(spark,
+                        covariates = NULL,
+                        lib_size = spark@lib_size,
+                        num_core = num_cores,
+                        verbose = F)
+      spark <- spark.test(spark,
+                          check_positive = T,
+                          verbose = F)##计算p值
+      result <- spark@res_mtest[,"adjusted_pvalue"]
+      spark_genename=rownames(spark@res_mtest)
+      p_value=result
+      result[result<=0.05] <- 0
+      result[result>0.05] <- 1
+      result=1-result
+      result_value=result
+      spark_genename=spark_genename[result==1]##符合结果的gene列表
+      target_order <- paste0("gene",1:length(genename))
+      index <- match(spark_genename,target_order)
+      sparksvgene=genename[index]
+      end=Sys.time()
+      time_value=as.numeric((end-begin), units = "mins")
+      result=list(result_value,sparksvgene,time_value,p_value,spark@res_mtest)
+      result_total[[4]][[dataindex]]=result
+      
+      
+      ##nnsvg
+      ##nnsvg###删去了90%
+      begin=Sys.time()
+      spe<- SpatialExperiment(
+        assay = list(counts = t(exp_mat)),
+        colData = loc, 
+        spatialCoordsNames = c("x", "y")
+      )
+      rowData(spe)$gene_name <- paste0("gene",1:length(colnames(exp_mat)))
+      spe <- filter_genes(spe)
+      spe <- computeLibraryFactors(spe)
+      spe <- logNormCounts(spe)
+      spe <- nnSVG(spe,n_threads = num_cores,X=calpha_mat)
+      spv_genename=rowData(spe)$gene_name
+      result=rowData(spe)$padj
+      p_value=result
+      result[result<=0.05] <- 0
+      result[result>0.05] <- 1
+      result=1-result
+      result_value=result
+      spv_genename=spv_genename[result==1]
+      target_order <- paste0("gene",1:length(genename))
+      index <- match(spv_genename,target_order)
+      nnsvgsvgene <- genename[index]
+      end=Sys.time()
+      time_value=as.numeric((end-begin), units = "mins")
+      result=list(result_value,nnsvgsvgene,time_value,p_value,rowData(spe))
+      result_total[[5]][[dataindex]]=result
+    }
+    
+    if(ifde){
+      ##DEspace
+      begin=Sys.time()
+      #matrix矩阵：基因✖️点位
+      
+      #生成完整的spe，
+      cold=cbind(positionlist[[1]],layer_barcode[[1]],rep(1,length(rownames(positionlist[[1]]))))
+      colnames(cold)[1:2]=c("array_row","array_col")
+      colnames(cold)[4]="sample_id"
+      colnames(cold)[3]="z_type"
+      spe1<- SpatialExperiment(
+        assay = list(counts = matrixlist[[1]]),
+        colData = cold,
+        rowData = paste("gene",1:length(rownames(matrixlist[[1]])))
+      )
+      rownames(spe1)=rowData(spe1)$X
+      
+      cold=cbind(positionlist[[2]],layer_barcode[[2]],rep(2,length(rownames(positionlist[[2]]))))
+      colnames(cold)[1:2]=c("array_row","array_col")
+      colnames(cold)[4]="sample_id"
+      colnames(cold)[3]="z_type"
+      spe2<- SpatialExperiment(
+        assay = list(counts = matrixlist[[2]]),
+        colData = cold,
+        rowData = paste("gene",1:length(rownames(matrixlist[[2]])))
+      )
+      rownames(spe2)=rowData(spe2)$X
+      
+      cold=cbind(positionlist[[3]],layer_barcode[[3]],rep(3,length(rownames(positionlist[[3]]))))
+      colnames(cold)[1:2]=c("array_row","array_col")
+      colnames(cold)[4]="sample_id"
+      colnames(cold)[3]="z_type"
+      spe3<- SpatialExperiment(
+        assay = list(counts = matrixlist[[3]]),
+        colData = cold,
+        rowData = paste("gene",1:length(rownames(matrixlist[[3]])))
+      )
+      rownames(spe3)=rowData(spe3)$X
+      
+      
+      #####筛选：
+      for(i in seq_len(3)){
+        spe_i <- eval(parse(text = paste0("spe", i)))
+        spe_i <- scuttle::addPerCellQC(spe_i,)
+        spe_i <- spe_i[, !(colData(spe_i)$sum < 10 |            
+                             colData(spe_i)$detected < 10)]  # library size/number of expressed genes
+        # Select QC threshold for lowly expressed genes: at least 20 non-zero spots:
+        qc_low_gene <- rowSums(assays(spe_i)$counts > 0) >= 20
+        # Remove lowly abundant genes
+        spe_i <- spe_i[qc_low_gene,]
+        assign(paste0("spe", i), spe_i)
+        message("Dimension of spe", i, ": ", dim(spe_i)[1], ", ", dim(spe_i)[2])
+      }
+      
+      # find vector of common genes across all samples:
+      a <- rownames(counts(spe1)); 
+      b <- rownames(counts(spe2)); 
+      c <- rownames(counts(spe3))
+      CommonGene <- Reduce(intersect, list(a,b,c))
+      spe1 <- spe1[CommonGene,]
+      spe2 <- spe2[CommonGene,]
+      spe3 <- spe3[CommonGene,]
+      
+      spe.combined =cbind(spe1,spe2,spe3,deparse.level = 1)
+      multi_results <- DESpace_test(spe=spe.combined,spatial_cluster="z_type",sample_col = "sample_id",replicates = TRUE)
+      result= multi_results$gene_results
+      id <- result$gene_id
+      padj <- result$PValue
+      target_order <- paste("gene",1:length(rownames(matrixlist[[3]])))
+      
+      p_value=padj
+      padj[padj<=0.05] <- 0
+      padj[padj>0.05] <- 1
+      padj=1-padj
+      result_value=padj
+      despacegenename=id[padj==1]
+      index=match(despacegenename,target_order)
+      despacesvgene=genename[index]
+      end=Sys.time()
+      time_value=as.numeric((end-begin), units = "mins")
+      result=list(result_value,despacesvgene,time_value,p_value,multi_results$gene_results)
+      result_total[[6]][[1]]=result
+    }
+    save(result_total,file=paste("result_other_",dataname,".RData"))
+  }
+   
+  dataanalysis_other(matrixlist=list(matrix1,matrix2,matrix3),positionlist=list(position1,position2,position3),
+                     calphalist=list(calpha1,calpha2,calpha3),boundlist=list(bound1,bound2,bound3),layer_barcode=layer_barcode_scc,
+                     dataname="p2scc_0720",ifde=TRUE,datanum=3)
+  
+  spelist <- list(list(t(matrix1),position1),list(t(matrix2),position2),list(t(matrix3),position3))
+  c_alpha_list <- list(calpha1,calpha2,calpha3)
+  
+  #三个一起
+  c_alpha=c_alpha_list
+  result <- ourmethod(
+    spelist = spelist,
+    c_alpha = c_alpha,
+    gamma2=0.005,
+    num_cores = 22
+  )
+  save(result, file = paste0("/gemini/code/dataanalysis/0005_p2sccnew_nbimsvg_all_0802",".RData"))
+  
+  for(num in list(c(1,2),c(1,3),c(2,3))) {
+    tryCatch({
+      c_alpha=list(c_alpha_list[[num[1]]], c_alpha_list[[num[2]]])
+      result <- ourmethod(
+        spelist = list(spelist[[num[1]]], spelist[[num[2]]]),
+        c_alpha = c_alpha,
+        gamma2=0.001,
+        num_cores = 22
+      )
+      save(result, file = paste0("/gemini/code/20001_inter_p2scc_nbimsvg_0801", num[1], num[2], ".RData"))
+    }, error = function(e) {
+      message(sprintf("Failed on (%d, %d): %s", num[1], num[2], e$message))
+    })
+  }
+  
+  
+  for(seed1 in c(1:3)){
+    set.seed(seed1)
+    
+    sampled_spot1 <- setdiff(c(1:length(colnames(matrix1))),sort(sample(c(1:length(colnames(matrix1))), size = 0, replace = FALSE)))
+    sampled_spot2 <- setdiff(c(1:length(colnames(matrix2))),sort(sample(c(1:length(colnames(matrix2))), size = 0, replace = FALSE)))
+    sampled_spot3 <- setdiff(c(1:length(colnames(matrix3))),sort(sample(c(1:length(colnames(matrix3))), size = 10, replace = FALSE)))
+    
+    matrix1_modified=matrix1[,sampled_spot1]
+    matrix2_modified=matrix2[,sampled_spot2]
+    matrix3_modified=matrix3[,sampled_spot3]
+    
+    position1_modified=position1[sampled_spot1,]
+    position2_modified=position2[sampled_spot2,]
+    position3_modified=position3[sampled_spot3,]
+    
+    calpha1_modified=calpha1[sampled_spot1,]
+    calpha2_modified=calpha2[sampled_spot2,]
+    calpha3_modified=calpha3[sampled_spot3,]
+    
+  # dataanalysis_other(matrixlist=list(matrix1,matrix2,matrix3),positionlist=list(position1,position2,position3),
+  #                    calphalist=list(calpha1,calpha2,calpha3),boundlist=list(bound1,bound2,bound3),layer_barcode=layer_barcode_scc,
+  #                    dataname="5per_p2scc_0802",ifde=TRUE,datanum=3)
+
+  spelist <- list(list(t(matrix1_modified),position1_modified),list(t(matrix2_modified),position2_modified),
+                  list(t(matrix3_modified),position3_modified))
+  c_alpha_list <- list(calpha1_modified,calpha2_modified,calpha3_modified)
+  
+  #三个一起
+    c_alpha=c_alpha_list
+    result <- ourmethod(
+      spelist = spelist,
+      c_alpha = c_alpha,
+      gamma2=0.005,
+      num_cores = 22
+    )
+    save(result, file = paste0("/gemini/code/dataanalysis/single3sample_1perfinal_p2sccnew_nbimsvg_robust_0801",seed1,".RData"))
+  }   
+}
+
+#读取
+{
+  load("/Users/zhoum/Desktop/scc/p2/scc_P2.RData")
+  matrix1=sample_total[[1]][[1]]#基因✖️点位
+  genename=rownames(matrix1)
+  load("/Volumes/Elements/speedcompute/0005_p2sccnew_nbimsvg_all_0802.RData")
+  total_result <- result[[2]]
+  thrs <- BayFDR(total_result, alpha/length(total_result))
+  total_result[total_result > thrs] <- 1
+  total_result[total_result <= thrs] <- 0
+  gene1=genename[which(total_result==1)]
+  
+  #load("/Volumes/Elements/speedcompute/sample_3perfinal_p2sccnew_nbimsvg_robust_08014.RData")
+  #load("/Volumes/Elements/speedcompute/single1sample_5perfinal_p2sccnew_nbimsvg_robust_08013.RData")
+  #load("/Volumes/Elements/speedcompute/sample_5perfinal_p2sccnew_nbimsvg_robust_08015.RData")
+  #load("/Volumes/Elements/speedcompute/single2sample_1perfinal_p2sccnew_nbimsvg_robust_08011.RData")
+  load("/Volumes/Elements/speedcompute/20001_inter_scc_nbimsvg_rerun12.RData")
+  total_result <- result[[2]]
+  thrs <- BayFDR(total_result, alpha/length(total_result))
+  total_result[total_result > thrs] <- 1
+  total_result[total_result <= thrs] <- 0
+  gene2=genename[which(total_result==1)]
+  
+  length(intersect(gene1,gene2))/length(union(gene1,gene2))
+  length(intersect(gene1,gene3))/length(union(gene1,gene3))
+  length(intersect(gene1,gene4))/length(union(gene1,gene4))
+  round(length(intersect(intersect(gene2,gene3),gene1))/length(intersect(gene2,gene3)),3)
+  round(length(intersect(intersect(gene2,gene4),gene1))/length(intersect(gene2,gene4)),3)
+  round(length(intersect(intersect(gene3,gene4),gene1))/length(intersect(gene3,gene4)),3)
+  
+  round(length(intersect(union(gene2,gene3),gene1))/length(gene1),3)
+  round(length(intersect(union(gene2,gene4),gene1))/length(gene1),3)
+  round(length(intersect(union(gene3,gene4),gene1))/length(gene1),3)
+  
+  round(length(intersect(Reduce(union,list(gene2,gene4,gene3)),gene1)),3)/length(gene1)
+}
+library(parallelDist)
+library(cluster)
+library(clusterCrit)
+library(fpc)
+library(patchwork)
+
+calculate_dbi <- function(distance_matrix, cluster_labels) {
+  clusters <- unique(cluster_labels)
+  n_clusters <- length(clusters)
+  
+  # 计算每个聚类的散布度
+  scatter <- sapply(clusters, function(cluster) {
+    points_in_cluster <- which(cluster_labels == cluster)
+    cluster_points <- distance_matrix[points_in_cluster, points_in_cluster, drop = FALSE]
+    mean(apply(cluster_points, 1, function(row) mean(row, na.rm = TRUE)), na.rm = TRUE)
+  })
+  
+  dbi <- 0
+  for (i in 1:n_clusters) {
+    max_ratio <- -Inf
+    for (j in 1:n_clusters) {
+      if (i != j) {
+        distance_ij <- mean(distance_matrix[which(cluster_labels == clusters[i]), 
+                                            which(cluster_labels == clusters[j])])
+        ratio <- (scatter[i] + scatter[j]) / distance_ij
+        max_ratio <- max(max_ratio, ratio, na.rm = TRUE)
+      }
+    }
+    dbi <- dbi + max_ratio
+  }
+  
+  dbi / n_clusters  # 返回 DBI 的平均值
+}
+symbolgenerate<-function(distance_matrix,cluster_result,sectnum=2,count1,idomain=c(1:8)){
+  
+  result_lunkuo_matrix=matrix(NA,nrow = 9,ncol = 9)
+  rownames(result_lunkuo_matrix)=c("nnSVG","SPARKX","SPARK","spVC","HEARTSVG","Proposed","DESpace","StarTrail","GASTON")
+  for(i in idomain){
+    if(i<=5){
+      for(j in c(1:8)){
+        silhouette_score <- silhouette(as.numeric(cluster_result[[i]][[j]]), distance_matrix)  
+        avg_silhouette_score <- mean(silhouette_score[, 3])  # 平均轮廓系数
+        result_lunkuo_matrix[i,j]=round(avg_silhouette_score,3)
+      }
+    }else if(i==6|i==7){
+      silhouette_score <- silhouette(as.numeric(cluster_result[[i]][[1]]), distance_matrix)  
+      avg_silhouette_score <- mean(silhouette_score[, 3])  # 平均轮廓系数
+      result_lunkuo_matrix[i,1]=round(avg_silhouette_score,3)
+    }else{
+      for(j in c(1:6)){
+        silhouette_score <- silhouette(as.numeric(cluster_result[[i]][[j]]), distance_matrix)  
+        avg_silhouette_score <- mean(silhouette_score[, 3])  # 平均轮廓系数
+        result_lunkuo_matrix[i,j]=round(avg_silhouette_score,3)
+      }
+    }
+  }
+  print(result_lunkuo_matrix)
+  #load("/Users/zhoumeng/Desktop/细胞整合结果/luokuoxishu_matrix.RData")
+  
+  ##计算DBI##计算##计算DBIDBI##计算DBI##计算DBI##计算DBI##计算DBI##计算DBI##计算DBI
+  ##计算DBI##计算DBI##计算DBI##计算DBI##计算DBI##计算DBI##计算DBI##计算DBI##计算DBI
+  
+  
+  result_dbi_matrix=matrix(NA,nrow = 9,ncol = 9)
+  rownames(result_dbi_matrix)=c("nnSVG","SPARKX","SPARK","spVC","HEARTSVG","Proposed","DESpace","StarTrail","GASTON")
+  for(i in idomain){
+    if(i <=5){
+      for(j in c(1:8)){
+        dbi_value <- calculate_dbi(as.matrix(distance_matrix), as.numeric(cluster_result[[i]][[j]]))
+        result_dbi_matrix[i,j]=round(dbi_value,3) 
+      }
+    }else if(i==6|i==7){
+      dbi_value <- calculate_dbi(as.matrix(distance_matrix), as.numeric(cluster_result[[i]][[1]]))
+      result_dbi_matrix[i,1]=round(dbi_value,3) 
+    }else{
+      for(j in c(1:6)){
+        dbi_value <- calculate_dbi(as.matrix(distance_matrix), as.numeric(cluster_result[[i]][[j]]))
+        result_dbi_matrix[i,j]=round(dbi_value,3) 
+      }
+    }
+  }
+  print(result_dbi_matrix)
+  
+  
+  ##计算ch
+  result_ch_matrix=matrix(NA,nrow = 9,ncol = 9)
+  rownames(result_ch_matrix)=c("nnSVG","SPARKX","SPARK","spVC","HEARTSVG","Proposed","DESpace","StarTrail","GASTON")
+  for(i in idomain){
+    if(i <=5){
+      for(j in c(1:8)){
+        ch_index <- cluster.stats(as.matrix(distance_matrix), as.numeric(cluster_result[[i]][[j]]))$ch
+        result_ch_matrix[i,j]=round(ch_index,3)
+      }
+    }else if(i==6|i==7){
+      ch_index <- cluster.stats(as.matrix(distance_matrix), as.numeric(cluster_result[[i]][[1]]))$ch
+      result_ch_matrix[i,1]=round(ch_index,3)
+    }else{
+      for(j in c(1:6)){
+        ch_index <- cluster.stats(as.matrix(distance_matrix), as.numeric(cluster_result[[i]][[j]]))$ch
+        result_ch_matrix[i,j]=round(ch_index,3)
+      }
+    }
+  }
+  print(result_ch_matrix)
+  
+  ####获取单因素方差检验的结果，获得F值####获取单因素方差检验的结果，获得F值####获取单因素方差检验的结果，获得F值####获取单因素方差检验的结果，获得F值
+  ####获取单因素方差检验的结果，获得F值####获取单因素方差检验的结果，获得F值####获取单因素方差检验的结果，获得F值####获取单因素方差检验的结果，获得F值
+  
+  mean_count1=apply(count1,1,mean)
+  result_avo_matrix=matrix(NA,nrow = 9,ncol = 9)
+  rownames(result_avo_matrix)=c("nnSVG","SPARKX","SPARK","spVC","HEARTSVG","Proposed","DESpace","StarTrail","GASTON")
+  for(i in idomain){
+    if(i <=5){
+      for(j in c(1:8)){
+        unique_clusters <- unique(as.numeric(cluster_result[[i]][[j]]))
+        regions <- list()
+        for (cluster in unique_clusters) {
+          region_data <- mean_count1[as.numeric(cluster_result[[i]][[j]]) == cluster]
+          regions[[paste0("Region", cluster)]] <- region_data
+        }
+        
+        combined_data <- data.frame(
+          expression = unlist(regions),  # 所有区域的数据合并为一个向量
+          region = factor(rep(names(regions), times = sapply(regions, length)))  # 每个点位标记对应的区域
+        )
+        
+        anova_result <- aov(expression ~ region, data = combined_data)
+        result_avo_matrix[i,j]=round(summary(anova_result)[[1]]$`F value`[1],3)
+      }
+    }else if(i==6|i==7){
+      unique_clusters <- unique(as.numeric(cluster_result[[i]][[1]]))
+      regions <- list()
+      for (cluster in unique_clusters) {
+        region_data <- mean_count1[as.numeric(cluster_result[[i]][[1]]) == cluster]
+        regions[[paste0("Region", cluster)]] <- region_data
+      }
+      
+      combined_data <- data.frame(
+        expression = unlist(regions),  # 所有区域的数据合并为一个向量
+        region = factor(rep(names(regions), times = sapply(regions, length)))  # 每个点位标记对应的区域
+      )
+      
+      anova_result <- aov(expression ~ region, data = combined_data)
+      result_avo_matrix[i,1]=round(summary(anova_result)[[1]]$`F value`[1],3)
+    }else{
+      for(j in c(1:6)){
+        unique_clusters <- unique(as.numeric(cluster_result[[i]][[j]]))
+        regions <- list()
+        for (cluster in unique_clusters) {
+          region_data <- mean_count1[as.numeric(cluster_result[[i]][[j]]) == cluster]
+          regions[[paste0("Region", cluster)]] <- region_data
+        }
+        
+        combined_data <- data.frame(
+          expression = unlist(regions),  # 所有区域的数据合并为一个向量
+          region = factor(rep(names(regions), times = sapply(regions, length)))  # 每个点位标记对应的区域
+        )
+        
+        anova_result <- aov(expression ~ region, data = combined_data)
+        result_avo_matrix[i,j]=round(summary(anova_result)[[1]]$`F value`[1],3)
+      }
+    }
+  }
+  print(result_avo_matrix)
+  
+  result_total=rbind(result_lunkuo_matrix,result_dbi_matrix,result_ch_matrix,result_avo_matrix,result_avo_matrix)
+  write.csv(result_total,file=paste0("/Users/zhoum/Desktop/dlp/index_result_sec",sectnum,".csv"))
+  # tukey_result <- TukeyHSD(anova_result)
+  # print(tukey_result)
+}
+
+cluster_scc=replicate(3,replicate(9,replicate(8,list(),simplify = FALSE),simplify = FALSE),simplify = FALSE)
+datalength=c(1143,1070,1108)
+for(i in c(1:3)){
+  for(j in c(1:9)){
+    if(j<=5){
+      for(k in c(1:8)){
+        temp=result_cluster[[j]][[k]][[i]]
+        if(length(temp)==datalength[i]){
+          
+        cluster_scc[[i]][[j]][[k]]=temp
+        }else{
+          temp=c(temp,rep(1,(datalength[i]-length(temp))))
+            cluster_scc[[i]][[j]][[k]]=temp
+        }
+      }
+    }else if(j==6|j==7){
+      cluster_scc[[i]][[j]][[1]]=result_cluster[[j]][[1]][[i]]
+    }else{
+      for(k in c(1:6)){
+        temp=result_cluster[[j]][[k]][[i]]
+        if(length(temp)==datalength[i]){
+          
+          cluster_scc[[i]][[j]][[k]]=temp
+        }else{
+          temp=c(temp,rep(1,(datalength[i]-length(temp))))
+          cluster_scc[[i]][[j]][[k]]=temp
+        }
+      }
+    }
+  }
+}
+
+load("C:/Users/zhoum/Desktop/bass测试/proposed_gam05_SCC_bass_cluster_C6_R8.RData")
+for(i in c(1:3)){
+  cluster_scc[[i]][[6]][[1]]=result_total[[i]]
+}
+save(cluster_scc,file="C:/Users/zhoum/Desktop/scc/cluster_scc.RData")
+
+for(datanum in c(1:3)){
+  count1=as.matrix(read.csv(paste0("C:/Users/zhoum/Desktop/scc/scc_count",datanum,".csv"),row.names = 1))##基因✖️点
+  count1=t(count1)
+  #distance_matrix <- parallelDist::parDist(as.matrix(count1), method = "euclidean", threads = 8)
+  load(paste0("C:/Users/zhoum/Desktop/scc/scc_distance",datanum,".RData"))
+  cluster_result=cluster_scc[[datanum]]
+  index_result=symbolgenerate(distance_matrix=distance_matrix,cluster_result=cluster_result,sectnum=datanum,count1=count1,idomain=c(1:9))
+}
+
+
+
+
+for(gamma2 in c(0.008,0.00667,0.00333)){
+result <- NBIMSVG(spelist = spelist,c_alpha = c_alpha,num_cores =num_cores,max_iter=200,gamma2=gamma2)
+result=list(result[[1]],result[[2]],result[[3]],result[[4]])
+save(result,file=paste0("/gemini/code/scc_gamma",gamma2,"_result.RData"))
+}
+
+
+

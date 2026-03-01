@@ -1,0 +1,1325 @@
+library(nonnest2)
+library(future)
+library(future.apply)
+library(parallel)
+library(splines)
+library(pscl)
+library(MASS)
+setwd("/gemini/code/")
+source("mainfunction1120.R")
+
+load("/gemini/code/3_4_7_11_dlpfc_data.RData")
+#load("C:/Users/zhoum/OneDrive/数据结果/3_4_7_11_dlpfc_data.RData")
+matrix1=as.matrix(t(all_result[[1]][[1]]))
+matrix2=as.matrix(t(all_result[[2]][[1]]))
+matrix3=as.matrix(t(all_result[[3]][[1]]))
+matrix4=as.matrix(t(all_result[[4]][[1]]))
+
+dim(rownames(matrix1))=NULL
+dim(rownames(matrix2))=NULL
+dim(rownames(matrix3))=NULL
+dim(rownames(matrix4))=NULL
+
+position1=as.matrix(all_result[[1]][[2]])
+position2=as.matrix(all_result[[2]][[2]])
+position3=as.matrix(all_result[[3]][[2]])
+position4=as.matrix(all_result[[4]][[2]])
+
+dim(rownames(position1))=NULL
+dim(rownames(position2))=NULL
+dim(rownames(position3))=NULL
+dim(rownames(position4))=NULL
+
+calpha1=as.matrix(all_result[[1]][[3]])
+calpha2=as.matrix(all_result[[2]][[3]])
+calpha3=as.matrix(all_result[[3]][[3]])
+calpha4=as.matrix(all_result[[4]][[3]])
+
+dim(rownames(calpha1))=NULL
+dim(rownames(calpha2))=NULL
+dim(rownames(calpha3))=NULL
+dim(rownames(calpha4))=NULL
+
+matrix1=matrix1[,c(1:1800)]
+matrix2=matrix2[,c(1:1800)]
+matrix3=matrix3[,c(1:1800)]
+matrix4=matrix4[,c(1:1800)]
+
+spelist=list(list(matrix1,position1),
+             list(matrix2,position2),
+             list(matrix3,position3),
+             list(matrix4,position4))
+
+c_alpha=list(calpha1,calpha2,calpha3,calpha4)
+##############################################dlpfc############################################################################################
+##############################################dlpfc##################################################################################
+
+matrix1=as.matrix(read.csv("/gemini/code/dataanalysis/matrix1_count_126.csv",row.names = 1,check.names = FALSE))[c(2501:4908),]
+matrix2=as.matrix(read.csv("/gemini/code/dataanalysis/matrix2_count_126.csv",row.names = 1,check.names = FALSE))[c(2501:4908),]
+matrix3=as.matrix(read.csv("/gemini/code/dataanalysis/matrix3_count_126.csv",row.names = 1,check.names = FALSE))[c(2501:4908),]
+matrix4=as.matrix(read.csv("/gemini/code/dataanalysis/matrix4_count_126.csv",row.names = 1,check.names = FALSE))[c(2501:4908),]
+
+calpha1=as.matrix(read.csv("/gemini/code/dataanalysis/matrix1_celltype_126.csv",row.names = 1,check.names = FALSE))
+calpha2=as.matrix(read.csv("/gemini/code/dataanalysis/matrix2_celltype_126.csv",row.names = 1,check.names = FALSE))
+calpha3=as.matrix(read.csv("/gemini/code/dataanalysis/matrix3_celltype_126.csv",row.names = 1,check.names = FALSE))
+calpha4=as.matrix(read.csv("/gemini/code/dataanalysis/matrix4_celltype_126.csv",row.names = 1,check.names = FALSE))
+
+position1=as.matrix(read.csv("/gemini/code/dataanalysis/matrix1_postion_126.csv",row.names = 1,check.names = FALSE))
+position2=as.matrix(read.csv("/gemini/code/dataanalysis/matrix2_postion_126.csv",row.names = 1,check.names = FALSE))
+position3=as.matrix(read.csv("/gemini/code/dataanalysis/matrix3_postion_126.csv",row.names = 1,check.names = FALSE))
+position4=as.matrix(read.csv("/gemini/code/dataanalysis/matrix4_postion_126.csv",row.names = 1,check.names = FALSE))
+
+matrix1=matrix1[c(3601:4406),]
+matrix2=matrix2[c(3601:4406),]
+matrix3=matrix3[c(3601:4406),]
+matrix4=matrix4[c(3601:4406),]
+
+spelist<-list(list(t(matrix1),position1),list(t(matrix2),position2),
+              list(t(matrix3),position3),list(t(matrix4),position4))
+c_alpha<-list(calpha1,calpha2,calpha3,calpha4)
+
+
+#计算函数
+CTIG_modified<-function(spelist,pattern="linear"){
+  #obtain the number of datasets
+  m=length(spelist)
+  Y.list<-list()
+  coord.list<-list()
+  samplenumber<-c()
+  
+  for(i in 1:m){
+    Y.list[[i]]<-spelist[[i]][[1]]#spot*gene
+    samplenumber[i]<-nrow(Y.list[[i]])## get sample number of each datasets
+    coord<-spelist[[i]][[2]]
+    coord <-coord-colMeans(coord)#Centercoordinates of spots
+    coord <- coord / apply(coord,2,sd)# normalize coordinates of spots
+    coord.list[[i]]<-coord
+  }
+  
+  ## gene numbers
+  G <- ncol(Y.list[[1]])
+  
+  ##spline transform to coord.list for 1:4
+  co_spline_list_list <- list()
+  for(j in c(1:4)){
+    co_spline_list <- list()
+    for(i in 1:m){
+      coord_spline1 <- bs(x=coord.list[[i]][,1],df = j,degree=j)
+      coord_spline2 <- bs(x = coord.list[[i]][,2],df = j,degree=j)
+      co_spline_list[[i]] <- cbind(coord_spline1, coord_spline2)
+    }
+    co_spline_list_list[[j]] <- co_spline_list
+  }
+  
+  co_spline_list <- list()
+    
+  for(i in 1:m){
+    if(pattern=="linear"){
+      co_spline_list[[i]]<-coord.list[[i]]
+    }else if(pattern=="focal"){
+      co_spline_list[[i]]<-exp(-coord.list[[i]]^2/2)
+    }else if(pattern=="period"){
+      co_spline_list[[i]]<-cos(2*pi*coord.list[[i]])
+    }
+  }
+    
+  co_spline_list_list[[5]] <- co_spline_list
+  
+  
+  result <- list(Y.list,co_spline_list_list,samplenumber,G)
+  return(result)
+}
+capture_vuong <- function(m1, m2) {
+  out <- capture.output(pscl::vuong(m1, m2))
+  
+  # 只保留包含统计值的行
+  target_lines <- out[ grep("Raw|AIC-corrected|BIC-corrected", out) ]
+  
+  parse_line <- function(line) {
+    # 提取行名称（Raw / AIC-corrected / BIC-corrected）
+    name <- sub("\\s+([A-Z].*)", "", line)
+    name <- trimws(strsplit(name, " ")[[1]][1])
+    
+    # 提取 z, HA, p
+    # |Vuong z-statistic| H_A | p-value|
+    z <- as.numeric(regmatches(line, regexpr("-?\\d+\\.\\d+", line)))
+    
+    # H_A: model1 > model2 OR model2 > model1
+    ha <- regmatches(line, regexpr("model[12] > model[12]", line))
+    
+    # p-value
+    p_pat <- gregexpr("[0-9]\\.?[0-9eE\\-]*$", line)
+    p <- as.numeric(regmatches(line, p_pat)[[1]])
+    
+    list(z = z, HA = ha, p = p)
+  }
+  
+  parsed <- lapply(target_lines, parse_line)
+  names(parsed) <- c("raw", "aic", "bic")
+  
+  return(parsed)
+}
+MODEL_CHECKING <- function(spelist, calpha.list=NULL, g = 1, result, model_type = "zinb") {
+  ## test length
+  n1 <- length(spelist)
+  n2 <- length(calpha.list)
+  if (n1 != n2) {
+    print("warning! the length of expression matrix do not match the calpha's")
+  }
+  
+  # 验证模型类型参数
+  if (!model_type %in% c("zinb", "nb")) {
+    stop("model_type must be either 'zinb' or 'nb'")
+  }
+  
+  tunning_choose <- rep(1, n1)
+  log_likelihood_list <- rep(NA, n1)  # 存储每个基因的最佳似然值
+  aic_list <- rep(NA, n1)             # 存储每个基因的最佳AIC值
+  
+  for (iii in c(1:n1)) {
+    
+    y <- unname(spelist[[iii]][[1]][, g])
+    zero_ratio <- sum(y == 0) / length(y)
+    
+    aic_value <- rep(Inf, n1)
+    log_lik_values <- rep(NA, n1)     # 存储每个阶数的似然值
+    aic_values <- rep(NA, n1)         # 存储每个阶数的AIC值
+    
+    if (zero_ratio > 0.9) {
+      min_position <- 1
+      
+    } else {
+    
+    
+    for (kkk in 1:4) {
+      splinelevel <- kkk
+      x <- result[[2]][[kkk]][[iii]]
+      
+      celltypenum <- ncol(calpha.list[[iii]])
+      calpha_names <- paste0("calpha", c(1:celltypenum))
+      rows_with_sum_1 <- rowSums(calpha.list[[iii]]) == 1
+      calpha.list[[iii]][rows_with_sum_1, 1] <- calpha.list[[iii]][rows_with_sum_1, 1] - 0.01
+      calpha.list[[iii]][calpha.list[[iii]] < 0] <- 0
+      data <- data.frame(x = x, calpha = calpha.list[[iii]], y = y)
+      x_names = paste0("x", c(1:(2 * splinelevel)))
+      data_name = c(x_names, calpha_names, "y")
+      names(data) = data_name
+      formula_str <- paste(data_name[1:(2*splinelevel+celltypenum)], collapse = " + ")
+      
+      if (model_type == "zinb") {
+        # ZINB模型
+        formula_count <- paste("y ~", formula_str)
+        formula_zero <- paste("|", formula_str)
+        formula_full <- as.formula(paste(formula_count, formula_zero))
+        model_fit <- zeroinfl(formula_full, data = data, dist = "negbin")
+        
+      } else {
+        # NB模型
+        formula_full <- as.formula(paste("y ~", formula_str))
+        model_fit <- glm.nb(formula_full, data = data)
+      }
+      
+      aic_value[kkk] <- AIC(model_fit)
+      log_lik_values[kkk] <- as.numeric(logLik(model_fit))  # 存储似然值
+      aic_values[kkk] <- aic_value[kkk]                    # 存储AIC值
+    }
+    
+    min_position <- which.min(aic_value)
+    # 存储最佳模型的似然值和AIC值
+
+    log_likelihood_list[iii] <- log_lik_values[min_position]
+    aic_list[iii] <- aic_values[min_position]
+    }
+    
+    tunning_choose[iii] <- min_position
+    cat(sprintf("Dataset %d/%d: selected k = %d, log-likelihood = %.3f, AIC = %.3f, model: %s\n", 
+                iii, n1, min_position, log_likelihood_list[iii], aic_list[iii], toupper(model_type)))
+  }
+  
+  tunning_final <- max(tunning_choose)
+  print(paste0("Choosing b-spline degree: ", tunning_final, ", using ", toupper(model_type), " model"))
+  
+  # 返回结果：包含最佳阶数、似然值列表和AIC列表
+  return(list(
+    best_degree = tunning_final,
+    individual_degrees = tunning_choose,
+    log_likelihoods = log_likelihood_list,
+    aic_values = aic_list
+  ))
+}
+compare_models <- function(result_nb,result_zinb,spelist, calpha.list, g, result, gene_index = 1) {
+  # 对指定基因分别用两种模型拟合最佳阶数
+  y <- unname(spelist[[gene_index]][[1]][, g])
+  best_k_nb <- result_nb$individual_degrees[gene_index]
+  best_k_zinb <- result_zinb$individual_degrees[gene_index]
+  
+  #拟合nb模型
+  splinelevel <- best_k_nb  # 使用NB的最佳阶数
+  x <- result[[2]][[splinelevel]][[gene_index]]
+  
+  celltypenum <- ncol(calpha.list[[gene_index]])
+  calpha_names <- paste0("calpha", c(1:celltypenum))
+  rows_with_sum_1 <- rowSums(calpha.list[[gene_index]]) == 1
+  calpha.list[[gene_index]][rows_with_sum_1, 1] <- calpha.list[[gene_index]][rows_with_sum_1, 1] - 0.01
+  calpha.list[[gene_index]][calpha.list[[gene_index]] < 0] <- 0
+  data <- data.frame(x = x, calpha = calpha.list[[gene_index]], y = y)
+  x_names = paste0("x", c(1:(2 * splinelevel)))
+  data_name = c(x_names, calpha_names, "y")
+  names(data) = data_name
+  formula_str <- paste(data_name[1:(2*splinelevel+celltypenum)], collapse = " + ")
+  formula_full <- as.formula(paste("y ~", formula_str))
+  model_nb <- glm.nb(formula_full, data = data)
+  
+  #拟合zinb模型
+  splinelevel <- best_k_zinb  # 使用ziNB的最佳阶数
+  x <- result[[2]][[splinelevel]][[gene_index]]
+  celltypenum <- ncol(calpha.list[[gene_index]])
+  calpha_names <- paste0("calpha", c(1:celltypenum))
+  rows_with_sum_1 <- rowSums(calpha.list[[gene_index]]) == 1
+  calpha.list[[gene_index]][rows_with_sum_1, 1] <- calpha.list[[gene_index]][rows_with_sum_1, 1] - 0.01
+  calpha.list[[gene_index]][calpha.list[[gene_index]] < 0] <- 0
+  data <- data.frame(x = x, calpha = calpha.list[[gene_index]], y = y)
+  x_names = paste0("x", c(1:(2 * splinelevel)))
+  data_name = c(x_names, calpha_names, "y")
+  names(data) = data_name
+  formula_str <- paste(data_name[1:(2*splinelevel+celltypenum)], collapse = " + ")
+  formula_zinb <- as.formula(paste("y ~", formula_str, "|", formula_str))
+  model_zinb <- zeroinfl(formula_zinb, data = data, dist = "negbin")
+  
+  #拟合线性_模型
+  x <- result[[2]][[5]][[gene_index]]
+  celltypenum <- ncol(calpha.list[[gene_index]])
+  calpha_names <- paste0("calpha", c(1:celltypenum))
+  rows_with_sum_1 <- rowSums(calpha.list[[gene_index]]) == 1
+  calpha.list[[gene_index]][rows_with_sum_1, 1] <- calpha.list[[gene_index]][rows_with_sum_1, 1] - 0.01
+  calpha.list[[gene_index]][calpha.list[[gene_index]] < 0] <- 0
+  data <- data.frame(x = x, calpha = calpha.list[[gene_index]], y = y)
+  x_names = paste0("x", c(1:2))
+  data_name = c(x_names, calpha_names, "y")
+  names(data) = data_name
+  formula_str <- paste(data_name[1:(2+celltypenum)], collapse = " + ")
+  formula_zinb <- as.formula(paste("y ~", formula_str, "|", formula_str))
+  model_linear <- zeroinfl(formula_zinb, data = data, dist = "negbin")
+  
+  
+  # 基础比较
+  cat("=== 模型比较结果 ===\n")
+  cat(sprintf("基因索引: %d\n", gene_index))
+  cat(sprintf("样本量: %d\n", length(y)))
+  cat(sprintf("零值比例: %.3f\n", sum(y == 0) / length(y)))
+  cat(sprintf("NB最佳阶数: %d, ZINB最佳阶数: %d\n", best_k_nb, best_k_zinb))
+  cat("\n--- 拟合指标 ---\n")
+  cat(sprintf("NB对数似然: %.3f, AIC: %.3f\n", logLik(model_nb), AIC(model_nb)))
+  cat(sprintf("ZINB对数似然: %.3f, AIC: %.3f\n", logLik(model_zinb), AIC(model_zinb)))
+  cat(sprintf("ΔAIC (ZINB - NB): %.3f\n", AIC(model_zinb) - AIC(model_nb)))
+  
+  ##对比零膨胀和非零膨胀结果##对比零膨胀和非零膨胀结果##对比零膨胀和非零膨胀结果##对比零膨胀和非零膨胀结果##对比零膨胀和非零膨胀结果
+  # Vuong检验
+  cat("\n--- Vuong检验 ---\n")
+  options(nonnest2.vuong.eps = 1e-6)
+  vuong_test <- capture_vuong(model_zinb, model_nb)
+  print(vuong_test)
+
+  # 手动计算似然比检验
+  cat("\n--- 似然比检验 (手动计算) ---\n")
+  ll_nb <- as.numeric(logLik(model_nb))
+  ll_zinb <- as.numeric(logLik(model_zinb))
+  lr_stat <- 2 * (ll_zinb - ll_nb)
+  df_diff <- length(coef(model_zinb)) - length(coef(model_nb))
+  p_value <- 1 - pchisq(lr_stat, df_diff)
+  
+  cat(sprintf("似然比统计量: %.3f\n", lr_stat))
+  cat(sprintf("自由度差异: %d\n", df_diff))
+  cat(sprintf("p值: %.4f\n", p_value))
+  
+  if (p_value < 0.05) {
+    cat("结论: ZINB模型显著优于NB模型 (p < 0.05)\n")
+  } else {
+    cat("结论: ZINB模型与NB模型无显著差异\n")
+  }
+  
+  # 模型选择建议
+  cat("\n--- 模型选择建议 ---\n")
+  delta_aic <- AIC(model_zinb) - AIC(model_nb)
+  comparison_nb = list(
+    delta_aic = delta_aic,
+    lr_statistic = lr_stat,
+    lr_pvalue = p_value,
+    vuong = vuong_test
+  )
+  
+  
+  ##对比linear和zinb##对比linear和zinb##对比linear和zinb##对比linear和zinb##对比linear和zinb##对比linear和zinb##对比linear和zinb
+  # Vuong检验
+  cat("\n--- Vuong检验 ---\n")
+  options(nonnest2.vuong.eps = 1e-6)
+  vuong_test_linear <- capture_vuong(model_zinb, model_linear)
+  print(vuong_test_linear)
+  
+  # 手动计算似然比检验
+  cat("\n--- 似然比检验 (手动计算) ---\n")
+  ll_linear <- as.numeric(logLik(model_linear))
+  ll_zinb <- as.numeric(logLik(model_zinb))
+  lr_stat <- 2 * (ll_zinb - ll_linear)
+  df_diff <- length(coef(model_zinb)) - length(coef(model_linear))
+  p_value <- 1 - pchisq(lr_stat, df_diff)
+  
+  cat(sprintf("似然比统计量: %.3f\n", lr_stat))
+  cat(sprintf("自由度差异: %d\n", df_diff))
+  cat(sprintf("p值: %.4f\n", p_value))
+  
+  if (p_value < 0.05) {
+    cat("结论: ZINB模型显著优于NB模型 (p < 0.05)\n")
+  } else {
+    cat("结论: ZINB模型与NB模型无显著差异\n")
+  }
+  
+  # 模型选择建议
+  cat("\n--- 模型选择建议 ---\n")
+  delta_aic <- AIC(model_zinb) - AIC(model_linear)
+  
+  comparison_linear = list(
+    delta_aic = delta_aic,
+    lr_statistic = lr_stat,
+    lr_pvalue = p_value,
+    vuong = vuong_test_linear
+  )
+  
+  return(
+    list(
+      best_k_zinb=result_zinb$individual_degrees[gene_index],
+      best_k_nb=result_nb$individual_degrees[gene_index],
+      "comparison_nb"=comparison_nb,
+      "comparison_linear"=comparison_linear
+    )
+  )
+}
+
+
+
+
+
+result_ctig <- CTIG_modified(spelist = spelist,pattern = "focal")
+
+spelist_global <- spelist
+c_alpha_global <- c_alpha
+result_ctig_global <- result_ctig
+plan(multisession, workers = 18)  
+for(i in c(1:24)){
+  if(i<=23){
+    begin=100*i-99
+    end=100*i
+    chunk_data=c(begin:end)
+  }else{
+    begin=100*i-99
+    end=100*i+8
+    chunk_data=c(begin:end)
+  }
+  all_results <- future_lapply(chunk_data, function(g) {
+    
+    result_nb <- MODEL_CHECKING(
+      spelist = spelist_global,
+      calpha.list = c_alpha_global,
+      g = g,
+      result = result_ctig_global,
+      model_type = "nb"
+    )
+    
+    result_zinb <- MODEL_CHECKING(
+      spelist = spelist_global,
+      calpha.list = c_alpha_global,
+      g = g,
+      result = result_ctig_global,
+      model_type = "zinb"
+    )
+    
+    one_gene_result <- lapply(1:4, function(gene_index) {
+      compare_models(
+        result_nb = result_nb,
+        result_zinb = result_zinb,
+        spelist = spelist_global,
+        calpha.list = c_alpha_global,
+        g = g,
+        result = result_ctig_global,
+        gene_index = gene_index
+      )
+    })
+    
+    one_gene_result
+  })
+  save(all_results,file=paste0("/gemini/code/modelcheck/",(chunk_data[1]+2500),"_",(chunk_data[100]+2500),"_model_checking_focal.RData"))
+}
+
+##############################################结果读取############################################################################################
+##############################################结果读取##################################################################################
+
+all_result_lr_voung=replicate(5000, replicate(4, list(), simplify = FALSE), simplify = FALSE)
+for(i in c(1:49)){
+  if(i<=48){
+    begin=i*100-99
+    end=i*100
+  }else{
+    begin=i*100-99
+    end=i*100+8
+  }
+load(paste0("C:/Users/zhoum/OneDrive/modelchecking/",begin,"_",end,"_model_checking.RData"))
+  for(j in c(1:100)){
+    index=j+100*i-100
+    for(k in c(1:4)){
+      all_result_lr_voung[[index]][[k]]=c(all_results[[j]][[k]][["comparison_nb"]][["lr_pvalue"]],
+                                    all_results[[j]][[k]][["comparison_nb"]][["vuong"]][["raw"]][["p"]],
+                                    all_results[[j]][[k]][["comparison_linear"]][["lr_pvalue"]],
+                                    all_results[[j]][[k]][["comparison_linear"]][["vuong"]][["raw"]][["p"]])
+    }
+  }
+}
+
+count_significant <- function(all_result_lr_voung, alpha = 0.05) {
+  # 获取列表长度
+  n_elements <- length(all_result_lr_voung)
+  
+  # 初始化结果矩阵 (4x4)
+  count_matrix <- matrix(0, nrow = 4, ncol = 4)
+  rownames(count_matrix)=paste("section",1:4)
+  colnames(count_matrix)=c("nb_lr","nb_vuong","linear_lr","linear_vuong")
+  
+  # 遍历所有元素
+  for (i in seq_len(n_elements)) {
+    current_element <- all_result_lr_voung[[i]]
+    
+    # 检查当前元素是否有4个列表
+    if (length(current_element) == 4) {
+      # 遍历4个列表
+      for (j in 1:4) {
+        current_vector <- current_element[[j]]
+        
+        # 检查当前向量是否是4维
+        if (length(current_vector) == 4) {
+          # 统计小于alpha的个数并累加
+          count_matrix[j, ] <- count_matrix[j, ] + (current_vector < alpha)
+        }
+      }
+    }
+  }
+  
+  return(count_matrix)
+}
+
+result_counts <- count_significant(all_result_lr_voung, alpha = 0.05/4908)
+result_ratio=result_counts/4908
+
+print(result_counts)
+print(result_ratio)
+
+##############################################绘制散点图############################################################################################
+##############################################绘制散点图##################################################################################
+#先算基于nb与zinb的voung
+safe_extract <- function(x, s, idx) {
+  # x 是 all_result_nb_voung[[g]]
+  # s 是切片编号 1-4
+  # idx 是 1=描述, 2=p值
+  
+  # 如果这个基因根本没有第 s 张切片
+  if (length(x) < s || length(x[[s]]) < idx) {
+    return(NA)
+  }
+  
+  val <- x[[s]][[idx]]
+  
+  # 展开 list
+  if (is.list(val)) val <- unlist(val)
+  
+  # 描述是字符，p 是数值
+  return(val)
+}
+is_valid_result <- function(x) {
+  if (is.null(x)) return(FALSE)
+  if (length(x) == 1 && is.na(x)) return(FALSE)
+  TRUE
+}    
+all_result_nb_voung=replicate(4908, replicate(4, list(), simplify = FALSE), simplify = FALSE)
+#dlpfc_same_donor
+for(i in c(1:49)){
+  if(i<=48){
+    begin=i*100-99
+    end=i*100
+  }else{
+    begin=i*100-99
+    end=i*100+8
+  }
+  load(paste0("C:/Users/zhoum/OneDrive/modelchecking/",begin,"_",end,"_model_checking.RData"))
+  for(j in c(1:100)){
+    index=j+100*i-100
+    for(k in c(1:4)){
+      all_result_nb_voung[[index]][[k]]=c(all_results[[j]][[k]][["comparison_nb"]][["vuong"]][["raw"]][["HA"]]
+                                          ,all_results[[j]][[k]][["comparison_nb"]][["lr_pvalue"]]
+                                          )
+    }
+  }
+}
+
+#dlpfc_diff_donor
+all_result_nb_voung=replicate(4406, replicate(4, list(), simplify = FALSE), simplify = FALSE)
+for(i in c(1:44)){
+  print(i)
+  if(i<=43){
+    begin=i*100-99
+    end=i*100
+  }else{
+    begin=i*100-99
+    end=i*100+6
+  }
+  load(paste0("C:/Users/zhoum/OneDrive/modelchecking/",begin,"_",end,"_model_checking_dlpfc34711_complete_linear.RData"))
+  for(j in c(1:(end-begin+1))){
+    index=j+100*i-100
+    for(k in c(1:4)){
+      if (is_valid_result(all_results[[j]][[k]])) {
+      all_result_nb_voung[[index]][[k]]=c(all_results[[j]][[k]][["comparison_nb"]][["vuong"]][["raw"]][["HA"]]
+                                          ,all_results[[j]][[k]][["comparison_nb"]][["lr_pvalue"]]
+      )
+      }else{
+        all_result_nb_voung[[index]][[k]]=c("model1 > model2","0.001")
+      }
+    }
+  }
+}
+
+
+#scc
+all_result_nb_voung=replicate(4437, replicate(4, list(), simplify = FALSE), simplify = FALSE)
+for(i in c(1:44)){
+  if(i<=43){
+    begin=i*100-99
+    end=i*100
+  }else{
+    begin=i*100-99
+    end=i*100+37
+  }
+  load(paste0("C:/Users/zhoum/OneDrive/modelchecking/",begin,"_",end,"_model_checking_scc_linear.RData"))
+  for(j in c(1:(end-begin+1))){
+    index=j+100*i-100
+    for(k in c(1:3)){
+      all_result_nb_voung[[index]][[k]]=c(all_results[[j]][[k]][["comparison_nb"]][["vuong"]][["raw"]][["HA"]]
+                                          ,all_results[[j]][[k]][["comparison_nb"]][["lr_pvalue"]]
+      )
+    }
+  }
+}
+
+
+total_list_model_check=list()
+#slice_list <- 1:3
+slice_list <- 1:4
+df_list <- list()
+N <- length(all_result_nb_voung)
+
+for (s in slice_list) {
+  desc <- sapply(all_result_nb_voung, function(x) safe_extract(x, s, 1))
+  pval <- sapply(all_result_nb_voung, function(x) safe_extract(x, s, 2))
+  pval_num <- as.numeric(pval)
+  # BH 校正（自动忽略 NA）
+  pval_bh <- as.numeric(p.adjust(pval_num, method = "BH"))
+  df_list[[s]] <- data.frame(
+    gene    = 1:N,
+    desc    = as.character(desc),
+    pval    = pval_num,
+    pval_bh = pval_bh
+  )
+  print(sum(pval_bh<0.05,na.rm=TRUE))
+}
+
+total_list_model_check[["scc"]]=df_list
+save(total_list_model_check,file=paste0("C:/Users/zhoum/OneDrive/modelchecking/total_list_model_check.RData"))
+
+for(i in c(1:4)){
+  print(sum(total_list_model_check[[1]][[i]]$pval_bh<0.05,na.rm=TRUE))
+}
+
+
+load("C:/Users/zhoum/OneDrive/modelchecking/total_list_model_check.RData")
+
+
+for(i in c(1:4)){
+  print(sum(total_list_model_check[[1]][[i]]$pval_bh<0.05,na.rm=TRUE))
+}
+
+
+library(ggplot2)
+
+datasetname=c("DLPFC-same donor","DLPFC-across donors","SCC")
+df_long <- do.call(
+  rbind,
+  lapply(1:3, function(ds) {
+    do.call(
+      rbind,
+      lapply(1:length(total_list_model_check[[ds]]), function(sl) {
+        data.frame(
+          dataset = datasetname[ds],
+          slice   = sl,
+          pval    = -log(total_list_model_check[[ds]][[sl]]$pval_bh,base=10),
+          row.names = NULL
+        )
+      })
+    )
+  })
+)
+
+df_long$slice <- factor(df_long$slice)
+
+df_long$pval[is.infinite(df_long$pval)] <- 10
+df_long$pval[is.na(df_long$pval)] <- 10
+df_long$dataset <- factor(
+  df_long$dataset,
+  levels = c(
+    "DLPFC-same donor",
+    "DLPFC-across donors",
+    "SCC"
+  )
+)
+
+p1=ggplot(df_long, aes(x = slice, y = pval, fill = slice)) +
+  geom_boxplot(
+    outlier.size = 0.6,
+    alpha = 0.8,
+    color = "grey30"
+  ) +
+  geom_hline(yintercept = 1.3,
+             linetype = "dashed",
+             color = "red",
+             linewidth = 0.6) +
+  facet_wrap(~ dataset, scales = "free_x") +
+  theme_bw() +
+  scale_fill_manual(
+    values = c("#4E79A7", "#59A14F", "#F28E2B", "#E15759")
+  ) +
+  labs(
+    x = "Slice",
+    y =  expression(-log[10](adj.~p))
+  ) +
+  theme(legend.position = "none")
+
+
+ggsave("C:/Users/zhoum/OneDrive/modelchecking/model_checking_noinf.png",plot=p1,width = 8, height = 4)
+
+
+
+
+
+
+
+
+
+
+
+#dlpfc
+{
+png("C:/Users/zhoum/Desktop/nb_lr_dlpfc34711.png", width = 2000, height = 1600, res = 300)
+par(mfrow = c(2,2), mar = c(4,4,2,1))
+titlenum=c("A","B","C","D")
+for (s in slice_list) {
+  df <- total_list_model_check[[1]][[s]]
+  cols <- "black"
+  
+  plot(df$gene, df$pval_bh,
+       col = cols, pch = 16, cex = 0.6,
+       xlab = "Gene index",
+       ylab = "p-value",
+       main = paste("Slice", titlenum[s]))
+  xlim <- par("usr")[1:2]  # usr: c(xmin, xmax, ymin, ymax)
+  
+  segments(x0 = xlim[1], y0 = 0.05, 
+           x1 = xlim[2], y1 = 0.05,
+           col = "red", lty = 1, lwd = 2)
+}
+# par(new = TRUE)  # 保留现有图形
+# par(fig = c(0, 1, 0, 1),  # 整个图形区域
+#     oma = c(0, 0, 0, 0),  # 无外边距
+#     mar = c(0, 0, 0, 0),  # 无边距
+#     xpd = TRUE)           # 允许在任何位置绘图
+# plot(0, 0, type = "n", bty = "n", 
+#      xaxt = "n", yaxt = "n", 
+#      xlab = "", ylab = "")
+
+dev.off()
+
+
+
+#统计每一个的结果#统计每一个的结果#统计每一个的结果#统计每一个的结果#统计每一个的结果
+
+mode_names <- c("linear", "focal", "period")
+
+file_paths <- list()
+for(i in 1:49){
+  begin <- i*100 - 99
+  end   <- if(i < 49) i*100 else i*100 + 8
+  
+  file_paths[[i]] <- sapply(mode_names, function(m) {
+    paste0("C:/Users/zhoum/OneDrive/modelchecking/", begin, "_", end,
+           "_model_checking_", m, ".RData")
+  })
+}
+
+
+# --- 第一步：收集所有 p 值和模型方向 ---
+all_models <- list()
+all_pvals  <- list()
+all_k_indices <- list()
+all_modes <- list()
+
+for(mode in mode_names){
+  tmp_models <- c()
+  tmp_pvals  <- c()
+  tmp_k     <- c()
+  
+  for(i in 1:49){
+    # 加载对应模式的文件
+    f <- file_paths[[i]][mode]
+    load(f)  # 会加载 all_results
+    
+    begin <- i*100 - 99
+    end   <- if(i < 49) i*100 else i*100 + 8
+    
+    for(j in 1:(end-begin+1)){
+      for(k in 1:4){
+        model <- if (!is_valid_result(all_results[[j]][[k]])) {
+          "model1 > model2"
+        } else {
+          all_results[[j]][[k]][["comparison_linear"]][["vuong"]][["raw"]][["HA"]]
+        }
+        
+        pval <- if (!is_valid_result(all_results[[j]][[k]])) {
+          0.01
+        } else {
+          all_results[[j]][[k]][["comparison_linear"]][["vuong"]][["raw"]][["p"]]
+        }
+        
+        tmp_models <- c(tmp_models, model)
+        tmp_pvals  <- c(tmp_pvals, pval)
+        tmp_k     <- c(tmp_k, k)
+      }
+    }
+  }
+  all_models[[mode]] <- tmp_models
+  all_pvals[[mode]]  <- tmp_pvals
+  all_k_indices[[mode]] <- tmp_k
+  all_modes[[mode]] <- rep(mode, length(tmp_models))
+}
+
+# --- 第二步：对每个模式独立做 BH 校正 ---
+all_pvals_bh <- lapply(all_pvals, function(p) p.adjust(as.numeric(p), method = "BH"))
+
+# --- 第三步：根据 BH 校正后的 p 值统计显著性 ---
+num_mode_result <- array(0, dim = c(4, 3, length(mode_names)),
+                         dimnames = list(
+                           c("sec1","sec2","sec3","sec4"),
+                           c("显著优势","无明显差异","对方显著优势"),
+                           mode_names
+                         ))
+
+# 初始化三模式交集统计矩阵
+num_intersect_result <- matrix(0, nrow = 4, ncol = 3)
+rownames(num_intersect_result) <- c("sec1","sec2","sec3","sec4")
+colnames(num_intersect_result) <- c("显著优势","无明显差异","对方显著优势")
+
+# 遍历 section
+for(k in 1:4){
+  N_total <- length(all_models[[1]]) / 4  # 每个模式总基因数
+  
+  for(g in 1:N_total){
+    idx <- (g-1)*4 + k  # 每个模式在该 section 的索引
+    
+    # 三模式每个模式的方向和 BH p 值
+    models <- sapply(mode_names, function(mode) all_models[[mode]][idx])
+    pvals  <- sapply(mode_names, function(mode) all_pvals_bh[[mode]][idx])
+    
+    # --- 单模式统计 ---
+    for(m in seq_along(mode_names)){
+      if(models[m] == "model1 > model2" & pvals[m] < 0.05){
+        num_mode_result[k, 1, m] <- num_mode_result[k, 1, m] + 1
+      } else if(models[m] == "model2 > model1" & pvals[m] < 0.05){
+        num_mode_result[k, 3, m] <- num_mode_result[k, 3, m] + 1
+      } else {
+        num_mode_result[k, 2, m] <- num_mode_result[k, 2, m] + 1
+      }
+    }
+  
+    
+  }
+}
+
+num_result <- matrix(0, nrow = 4, ncol = 3)
+rownames(num_result) <- c("sec1","sec2","sec3","sec4")
+colnames(num_result) <- c("显著优势","无明显差异","对方显著优势")
+
+# 遍历 section
+for(k in 1:4){
+  N_total <- length(all_models[[1]]) / 4  # 每个模式总基因数
+  
+  for(g in 1:N_total){
+    idx <- (g-1)*4 + k  # 每个模式在该 section 的索引
+    
+    # 三模式每个模式的方向和 BH p 值
+    models <- sapply(mode_names, function(mode) all_models[[mode]][idx])
+    pvals  <- sapply(mode_names, function(mode) all_pvals_bh[[mode]][idx])
+    
+    # --- 判断分类 ---
+    if(all(models == "model1 > model2" & pvals < 0.05)){
+      # 三模式都是 model1>model2 且显著
+      num_result[k, 1] <- num_result[k, 1] + 1
+    } else if(any(models == "model2 > model1" & pvals < 0.05)){
+      # 至少有一个模式 model2>model1 且显著
+      num_result[k, 3] <- num_result[k, 3] + 1
+    } else {
+      # 其余都是无明显差异
+      num_result[k, 2] <- num_result[k, 2] + 1
+    }
+  }
+}
+
+
+num_mode_result        # 单模式统计
+num_result
+
+
+#scc
+{
+  png("C:/Users/zhoum/Desktop/nb_lr_scc.png", width = 2000, height = 800, res = 300)
+  par(mfrow = c(1,3), mar = c(4,4,2,1))
+  titlenum=c("A","B","C")
+  for (s in slice_list) {
+    df <- df_list[[s]]
+    cols <- "black"
+    
+    plot(df$gene, df$pval_bh,
+         col = cols, pch = 16, cex = 0.6,
+         xlab = "Gene index",
+         ylab = "p-value",
+         main = paste("Slice", titlenum[s]))
+    xlim <- par("usr")[1:2]  # usr: c(xmin, xmax, ymin, ymax)
+    
+    segments(x0 = xlim[1], y0 = 0.05, 
+             x1 = xlim[2], y1 = 0.05,
+             col = "red", lty = 1, lwd = 2)
+  }
+  # par(new = TRUE)  # 保留现有图形
+  # par(fig = c(0, 1, 0, 1),  # 整个图形区域
+  #     oma = c(0, 0, 0, 0),  # 无外边距
+  #     mar = c(0, 0, 0, 0),  # 无边距
+  #     xpd = TRUE)           # 允许在任何位置绘图
+  # plot(0, 0, type = "n", bty = "n", 
+  #      xaxt = "n", yaxt = "n", 
+  #      xlab = "", ylab = "")
+  dev.off()
+  
+  
+  #统计每一个的结果#统计每一个的结果#统计每一个的结果#统计每一个的结果#统计每一个的结果
+  mode_names <- c("linear", "focal", "period")
+  
+  file_paths <- list()
+  for(i in 1:44){
+    begin <- i*100 - 99
+    end   <- if(i < 44) i*100 else i*100 + 37
+    
+    file_paths[[i]] <- sapply(mode_names, function(m) {
+      paste0("C:/Users/zhoum/OneDrive/modelchecking/", begin, "_", end,
+             "_model_checking_scc_", m, ".RData")
+    })
+  }
+  
+  
+  # --- 第一步：收集所有 p 值和模型方向 ---
+  all_models <- list()
+  all_pvals  <- list()
+  all_k_indices <- list()
+  all_modes <- list()
+  
+  for(mode in mode_names){
+    tmp_models <- c()
+    tmp_pvals  <- c()
+    tmp_k     <- c()
+    
+    for(i in 1:44){
+      # 加载对应模式的文件
+      f <- file_paths[[i]][mode]
+      load(f)  # 会加载 all_results
+      
+      begin <- i*100 - 99
+      end   <- if(i < 44) i*100 else i*100 + 37
+      
+      for(j in 1:(end-begin+1)){
+        for(k in 1:3){
+          model <- if (!is_valid_result(all_results[[j]][[k]])) {
+            "model1 > model2"
+          } else {
+            all_results[[j]][[k]][["comparison_linear"]][["vuong"]][["raw"]][["HA"]]
+          }
+          
+          pval <- if (!is_valid_result(all_results[[j]][[k]])) {
+            0.01
+          } else {
+            all_results[[j]][[k]][["comparison_linear"]][["vuong"]][["raw"]][["p"]]
+          }
+          
+          tmp_models <- c(tmp_models, model)
+          tmp_pvals  <- c(tmp_pvals, pval)
+          tmp_k     <- c(tmp_k, k)
+        }
+      }
+    }
+    all_models[[mode]] <- tmp_models
+    all_pvals[[mode]]  <- tmp_pvals
+    all_k_indices[[mode]] <- tmp_k
+    all_modes[[mode]] <- rep(mode, length(tmp_models))
+  }
+  
+  # --- 第二步：对每个模式独立做 BH 校正 ---
+  all_pvals_bh <- lapply(all_pvals, function(p) p.adjust(as.numeric(p), method = "BH"))
+  
+  
+  
+  voung_spatial_scc=list("model"=all_models,"pval"=all_pvals,"pval_bh"=all_pvals_bh,
+                         "slice"=all_k_indices,"mode"=all_modes)
+
+  save(voung_spatial_scc,file=here(dir,"voung_spatial_scc.RData"))
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  # --- 第三步：根据 BH 校正后的 p 值统计显著性 ---
+  num_mode_result <- array(0, dim = c(3, 3, length(mode_names)),
+                           dimnames = list(
+                             c("sec1","sec2","sec3"),
+                             c("显著优势","无明显差异","对方显著优势"),
+                             mode_names
+                           ))
+  
+  # 初始化三模式交集统计矩阵
+  num_intersect_result <- matrix(0, nrow = 3, ncol = 3)
+  rownames(num_intersect_result) <- c("sec1","sec2","sec3")
+  colnames(num_intersect_result) <- c("显著优势","无明显差异","对方显著优势")
+  
+  # 遍历 section
+  for(k in 1:3){
+    N_total <- length(all_models[[1]]) / 3  # 每个模式总基因数
+    
+    for(g in 1:N_total){
+      idx <- (g-1)*3 + k  # 每个模式在该 section 的索引
+      
+      # 三模式每个模式的方向和 BH p 值
+      models <- sapply(mode_names, function(mode) all_models[[mode]][idx])
+      pvals  <- sapply(mode_names, function(mode) all_pvals_bh[[mode]][idx])
+      
+      # --- 单模式统计 ---
+      for(m in seq_along(mode_names)){
+        if(models[m] == "model1 > model2" & pvals[m] < 0.05){
+          num_mode_result[k, 1, m] <- num_mode_result[k, 1, m] + 1
+        } else if(models[m] == "model2 > model1" & pvals[m] < 0.05){
+          num_mode_result[k, 3, m] <- num_mode_result[k, 3, m] + 1
+        } else {
+          num_mode_result[k, 2, m] <- num_mode_result[k, 2, m] + 1
+        }
+      }
+      
+      
+    }
+  }
+  
+  num_result <- matrix(0, nrow = 3, ncol = 3)
+  rownames(num_result) <- c("sec1","sec2","sec3")
+  colnames(num_result) <- c("显著优势","无明显差异","对方显著优势")
+  
+  # 遍历 section
+  for(k in 1:3){
+    N_total <- length(all_models[[1]]) / 3  # 每个模式总基因数
+    
+    for(g in 1:N_total){
+      idx <- (g-1)*3 + k  # 每个模式在该 section 的索引
+      
+      # 三模式每个模式的方向和 BH p 值
+      models <- sapply(mode_names, function(mode) all_models[[mode]][idx])
+      pvals  <- sapply(mode_names, function(mode) all_pvals_bh[[mode]][idx])
+      
+      # --- 判断分类 ---
+      if(all(models == "model1 > model2" & pvals < 0.05)){
+        # 三模式都是 model1>model2 且显著
+        num_result[k, 1] <- num_result[k, 1] + 1
+      } else if(any(models == "model2 > model1" & pvals < 0.05)){
+        # 至少有一个模式 model2>model1 且显著
+        num_result[k, 3] <- num_result[k, 3] + 1
+      } else {
+        # 其余都是无明显差异
+        num_result[k, 2] <- num_result[k, 2] + 1
+      }
+    }
+  }
+  
+  
+  num_mode_result        # 单模式统计
+  num_result
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+}
+
+
+
+
+
+
+
+
+##############################################scc############################################################################################
+##############################################scc##################################################################################
+
+load("C:/Users/zhoum/OneDrive/数据结果/scc_P9_new.RData")
+
+load("scc_P9_new.RData")
+matrix1=sample_total[[1]][[1]]#基因✖️点位1143
+matrix2=sample_total[[2]][[1]]#1070
+matrix3=sample_total[[3]][[1]]#1108
+
+position1=sample_total[[1]][[2]]
+position2=sample_total[[2]][[2]]
+position3=sample_total[[3]][[2]]
+
+calpha1=sample_total[[1]][[3]]
+calpha2=sample_total[[2]][[3]]
+calpha3=sample_total[[3]][[3]]
+matrix1[matrix1 < 0] <- 0
+matrix2[matrix2 < 0] <- 0
+matrix3[matrix3 < 0] <- 0
+
+matrix1[is.na(matrix1)] <- 0
+matrix2[is.na(matrix2)] <- 0
+matrix3[is.na(matrix3)] <- 0
+
+matrix1[is.nan(matrix1)] <- 0
+matrix2[is.nan(matrix2)] <- 0
+matrix3[is.nan(matrix3)] <- 0
+
+matrix1[is.infinite(matrix1)] <- 0
+matrix2[is.infinite(matrix2)] <- 0
+matrix3[is.infinite(matrix3)] <- 0
+
+spelist <- list(list(t(matrix1),position1),list(t(matrix2),position2),
+                list(t(matrix3),position3))
+c_alpha <- list(calpha1,calpha2,calpha3)
+
+
+result_ctig <- CTIG_modified(spelist = spelist,pattern = "period")
+
+
+spelist_global <- spelist
+c_alpha_global <- c_alpha
+result_ctig_global <- result_ctig
+
+plan(multisession, workers = 9)  
+for(i in c(35:44)){
+  if(i<=23){
+    begin=100*i-99
+    end=100*i
+    chunk_data=c(begin:end)
+  }else{
+    begin=100*i-99
+    end=100*i+37
+    chunk_data=c(begin:end)
+  }
+  all_results <- future_lapply(chunk_data, function(g) {
+    
+    result_nb <- MODEL_CHECKING(
+      spelist = spelist_global,
+      calpha.list = c_alpha_global,
+      g = g,
+      result = result_ctig_global,
+      model_type = "nb"
+    )
+    
+    result_zinb <- MODEL_CHECKING(
+      spelist = spelist_global,
+      calpha.list = c_alpha_global,
+      g = g,
+      result = result_ctig_global,
+      model_type = "zinb"
+    )
+    
+    one_gene_result <- lapply(1:3, function(gene_index) {
+      compare_models(
+        result_nb = result_nb,
+        result_zinb = result_zinb,
+        spelist = spelist_global,
+        calpha.list = c_alpha_global,
+        g = g,
+        result = result_ctig_global,
+        gene_index = gene_index
+      )
+    })
+    
+    one_gene_result
+  })
+  save(all_results,file=paste0("/gemini/code/modelcheck/",(chunk_data[1]),"_",(chunk_data[100]),"_model_checking_scc_linear.RData"))
+}
+
+#生成结果
+for(spa in c("period")){
+  result_ctig <- CTIG_modified(spelist = spelist,pattern = spa)
+  
+  spelist_global <- spelist
+  c_alpha_global <- c_alpha
+  result_ctig_global <- result_ctig
+  plan(multisession, workers = 10)
+  
+  for(i in c(18:14)){
+    if(i <= 40){
+      begin <- 100*i - 99
+      end <- 100*i
+      chunk_data <- begin:end
+    } else {
+      begin <- 100*i - 99
+      end <- 100*i + 6
+      chunk_data <- begin:end
+    }
+    
+    cat(sprintf("\n=== 处理基因批次: %d-%d (%d个基因) ===\n", 
+                chunk_data[1], chunk_data[length(chunk_data)], length(chunk_data)))
+    
+    all_results <- future_lapply(chunk_data, function(g) {
+      tryCatch({
+        # 记录开始
+        cat(sprintf("开始处理基因 %d...\n", g))
+        
+        result_nb <- MODEL_CHECKING(
+          spelist = spelist_global,
+          calpha.list = c_alpha_global,
+          g = g,
+          result = result_ctig_global,
+          model_type = "nb"
+        )
+        
+        result_zinb <- MODEL_CHECKING(
+          spelist = spelist_global,
+          calpha.list = c_alpha_global,
+          g = g,
+          result = result_ctig_global,
+          model_type = "zinb"
+        )
+        
+        one_gene_result <- lapply(4, function(gene_index) {
+          res <- compare_models(
+            result_nb = result_nb,
+            result_zinb = result_zinb,
+            spelist = spelist_global,
+            calpha.list = c_alpha_global,
+            g = g,
+            result = result_ctig_global,
+            gene_index = gene_index
+          )
+          return(res)
+        })
+        
+        # 检查是否有组织结果全部为NULL（即全部失败）
+        if(all(sapply(one_gene_result, is.null))) {
+          cat(sprintf("警告: 基因 %d 的所有组织处理都失败\n", g))
+          return(NULL)
+        }
+        
+        cat(sprintf("基因 %d 处理完成\n", g))
+        return(one_gene_result)
+        
+      }, error = function(e) {
+        # 捕获错误但不中断
+        message(paste("基因", g, "的MODEL_CHECKING失败:", e$message))
+        return(NULL)
+      })
+    }, future.seed = TRUE)
+    
+    # 保存结果，包括NULL值以便追踪
+    save(all_results, 
+         file = paste0("/gemini/code/modelcheck/", 
+                       (chunk_data[1]), "_", (chunk_data[length(chunk_data)]), 
+                       "_model_checking_dlpfc34711_supple_",spa,".RData"))
+    
+    # 统计成功和失败的基因数
+    success_count <- sum(!sapply(all_results, is.null))
+    fail_count <- sum(sapply(all_results, is.null))
+    
+    cat(sprintf("批次完成: 成功 %d 个基因, 失败 %d 个基因\n", success_count, fail_count))
+    
+    # 如果有失败的，输出失败的基因索引
+    if(fail_count > 0) {
+      failed_indices <- which(sapply(all_results, is.null))
+      cat("失败的基因索引:", chunk_data[failed_indices], "\n")
+    }
+  }
+}
+    
+    
+    
+    
+
+#补充缺失数据结果
+for(i in c(1:44)){
+  if(i<=43){
+    begin <- 100*i - 99
+    end <- 100*i
+  }else{
+    begin <- 100*i - 99
+    end <- 100*i+6
+  }
+  chunkdata=c(begin:end)
+  for(spa in c("linear","focal","period")){
+
+    load(paste0("C:/Users/zhoum/OneDrive/modelchecking/",begin, "_", end, 
+                "_model_checking_dlpfc34711_supple_",spa,".RData"))
+    result1=all_results
+    load(paste0("C:/Users/zhoum/OneDrive/modelchecking/",begin, "_", end, 
+                "_model_checking_dlpfc34711_",spa,".RData"))
+    for(j in seq(chunkdata)){
+      temp=result1[[j]]
+      if(!is.null(temp)){
+        all_results[[j]][[4]]=result1[[j]][[1]]
+      }else{
+        all_results[[j]][[4]]=NA
+      }
+    }
+    save(all_results,file=paste0("C:/Users/zhoum/OneDrive/modelchecking/",begin, "_", end, 
+                                 "_model_checking_dlpfc34711_complete_",spa,".RData"))
+  }
+}   
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+  }
+}

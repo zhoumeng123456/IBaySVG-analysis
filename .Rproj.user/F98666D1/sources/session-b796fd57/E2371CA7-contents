@@ -1,0 +1,626 @@
+
+remotes::install_github('YingMa0107/IRIS')
+
+#SingleCellExperiment', 'SummarizedExperimentggplot2
+library(IRIS)
+
+library(SingleCellExperiment)
+library(ggplot2)
+library(BayesSpace)
+
+library(BASS)
+library(fpc)
+library(mclust)
+#/Users/zhoum/Desktop/dlpfc_data/
+matrix1=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix1_count_126.csv",row.names = 1,check.names = FALSE))
+matrix2=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix2_count_126.csv",row.names = 1,check.names = FALSE))
+matrix3=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix3_count_126.csv",row.names = 1,check.names = FALSE))
+matrix4=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix4_count_126.csv",row.names = 1,check.names = FALSE))
+
+calpha1=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix1_celltype_126.csv",row.names = 1,check.names = FALSE))
+calpha2=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix2_celltype_126.csv",row.names = 1,check.names = FALSE))
+calpha3=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix3_celltype_126.csv",row.names = 1,check.names = FALSE))
+calpha4=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix4_celltype_126.csv",row.names = 1,check.names = FALSE))
+
+position1=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix1_postion_126.csv",row.names = 1,check.names = FALSE))
+position2=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix2_postion_126.csv",row.names = 1,check.names = FALSE))
+position3=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix3_postion_126.csv",row.names = 1,check.names = FALSE))
+position4=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix4_postion_126.csv",row.names = 1,check.names = FALSE))
+
+colnames(position1)=c("row","col")
+colnames(position2)=c("row","col")
+colnames(position3)=c("row","col")
+colnames(position4)=c("row","col")
+
+rowname <- c("nnSVG","SPARKX","SPARK","spVC", "HEARTSVG","proposed","DESpace","startrail","gaston")
+C <- 20
+R <- 7
+set.seed(0)
+load("C:/Users/zhoum/OneDrive/数据结果/data_DLFPC_svgene_list_0714.RData")
+
+for(i in c(5)){
+  if(i <=5){
+    for(j in c(3:4,6:9)){
+      select_gene=data_DLFPC_svgene_list_0714[[i]][[j]]
+      print(length(select_gene))
+      choose_matrix1=matrix1[select_gene,]
+      choose_matrix2=matrix2[select_gene,]
+      choose_matrix3=matrix3[select_gene,]
+      choose_matrix4=matrix4[select_gene,]
+      
+      sparse_matrix1 <- as(choose_matrix1, "dgCMatrix")
+      sparse_matrix2 <- as(choose_matrix2, "dgCMatrix")
+      sparse_matrix3 <- as(choose_matrix3, "dgCMatrix")
+      sparse_matrix4 <- as(choose_matrix4, "dgCMatrix")
+
+      cntm=list(sparse_matrix1,sparse_matrix2,sparse_matrix3,sparse_matrix4)
+      xym=list(position1,position2,position3,position4)
+      BASS <- createBASSObject(cntm, xym, C = C, R = R,
+                               beta_method = "SW", init_method = "mclust", 
+                               nsample = 10000)
+      BASS <- BASS.preprocess(BASS, doLogNormalize = TRUE,
+                              geneSelect = "sparkx", nSE = 3000, doPCA = TRUE, 
+                              scaleFeature = FALSE, nPC = 20)
+      BASS <- BASS.run(BASS)
+      BASS <- BASS.postprocess(BASS)
+      zlabels <- BASS@results$z
+      result_total=zlabels
+      #save(result_total,file=paste0("C:/Users/zhoum/Desktop/bass测试/",rowname[i],j,"_bass_cluster.RData"))
+      save(result_total,file=paste0("/gemini/code/",rowname[i],j,"_bass_cluster.RData"))
+    }
+    
+  }else{
+    select_gene=data_DLFPC_svgene_list_0714[[i]]
+    choose_matrix1=matrix1[select_gene,]
+    choose_matrix2=matrix2[select_gene,]
+    choose_matrix3=matrix3[select_gene,]
+    choose_matrix4=matrix4[select_gene,]
+    
+    sparse_matrix1 <- as(choose_matrix1, "dgCMatrix")
+    sparse_matrix2 <- as(choose_matrix2, "dgCMatrix")
+    sparse_matrix3 <- as(choose_matrix3, "dgCMatrix")
+    sparse_matrix4 <- as(choose_matrix4, "dgCMatrix")
+    
+    cntm=list(sparse_matrix1,sparse_matrix2,sparse_matrix3,sparse_matrix4)
+    xym=list(position1,position2,position3,position4)
+    BASS <- createBASSObject(cntm, xym, C = C, R = R,
+                             beta_method = "SW", init_method = "mclust", 
+                             nsample = 10000)
+    BASS <- BASS.preprocess(BASS, doLogNormalize = TRUE,
+                            geneSelect = "sparkx", nSE = 3000, doPCA = TRUE, 
+                            scaleFeature = FALSE, nPC = 20)
+    BASS <- BASS.run(BASS)
+    BASS <- BASS.postprocess(BASS)
+    zlabels <- BASS@results$z
+    result_total=zlabels
+    #save(result_total,file=paste0("C:/Users/zhoum/Desktop/bass测试/",rowname[i],"_bass_cluster.RData"))
+    save(result_total,file=paste0("/gemini/code/cluster/",rowname[i],"_bass_cluster.RData"))
+  }
+}
+
+
+
+
+#处理不同供体的结果
+load("/gemini/code/3_4_7_11_dlpfc_data.RData")
+load("C:/Users/zhoum/OneDrive/数据结果/3_4_7_11_dlpfc_data.RData")
+matrix1=as.matrix(all_result[[1]][[1]])
+matrix2=as.matrix(all_result[[2]][[1]])
+matrix3=as.matrix(all_result[[3]][[1]])
+matrix4=as.matrix(all_result[[4]][[1]])
+
+dim(colnames(matrix1))=NULL
+dim(colnames(matrix2))=NULL
+dim(colnames(matrix3))=NULL
+dim(colnames(matrix4))=NULL
+
+position1=as.matrix(all_result[[1]][[2]])
+position2=as.matrix(all_result[[2]][[2]])
+position3=as.matrix(all_result[[3]][[2]])
+position4=as.matrix(all_result[[4]][[2]])
+
+dim(rownames(position1))=NULL
+dim(rownames(position2))=NULL
+dim(rownames(position3))=NULL
+dim(rownames(position4))=NULL
+
+colnames(position1)=c("row","col")
+colnames(position2)=c("row","col")
+colnames(position3)=c("row","col")
+colnames(position4)=c("row","col")
+
+rowname <- c("spVC","HEARTSVG","SPARKX","SPARK","nnSVG","proposed","DESpace")
+C <- 20
+R <- 7
+set.seed(0)
+#load("/gemini/code/data_dlpfc_34711_svgene_list_nopaste.RData")
+load("/gemini/code/data_dlpfc_34711_svgene_list_nopaste.RData")
+
+for(i in c(1:5)){
+  if(i <=5){
+    for(j in c(9)){
+      select_gene=data_dlpfc_34711_svgene_list[[i]][[j]]
+      print(length(select_gene))
+      choose_matrix1=matrix1[select_gene,]
+      choose_matrix2=matrix2[select_gene,]
+      choose_matrix3=matrix3[select_gene,]
+      choose_matrix4=matrix4[select_gene,]
+      
+      sparse_matrix1 <- as(choose_matrix1, "dgCMatrix")
+      sparse_matrix2 <- as(choose_matrix2, "dgCMatrix")
+      sparse_matrix3 <- as(choose_matrix3, "dgCMatrix")
+      sparse_matrix4 <- as(choose_matrix4, "dgCMatrix")
+      
+      cntm=list(sparse_matrix1,sparse_matrix2,sparse_matrix3,sparse_matrix4)
+      xym=list(position1,position2,position3,position4)
+      BASS <- createBASSObject(cntm, xym, C = C, R = R,
+                               beta_method = "SW", init_method = "mclust", 
+                               nsample = 10000)
+      BASS <- BASS.preprocess(BASS, doLogNormalize = TRUE,
+                              geneSelect = "sparkx", nSE = 3000, doPCA = TRUE, 
+                              scaleFeature = FALSE, nPC = 20)
+      BASS <- BASS.run(BASS)
+      BASS <- BASS.postprocess(BASS)
+      zlabels <- BASS@results$z
+      result_total=zlabels
+      #save(result_total,file=paste0("C:/Users/zhoum/Desktop/bass测试/",rowname[i],j,"_bass_cluster.RData"))
+      save(result_total,file=paste0("/gemini/code/",rowname[i],j,"_bass_cluster_34711dlpfc.RData"))
+    }
+    
+  }else{
+    select_gene=data_dlpfc_34711_svgene_list[[i]]
+    choose_matrix1=matrix1[select_gene,]
+    choose_matrix2=matrix2[select_gene,]
+    choose_matrix3=matrix3[select_gene,]
+    choose_matrix4=matrix4[select_gene,]
+    
+    sparse_matrix1 <- as(choose_matrix1, "dgCMatrix")
+    sparse_matrix2 <- as(choose_matrix2, "dgCMatrix")
+    sparse_matrix3 <- as(choose_matrix3, "dgCMatrix")
+    sparse_matrix4 <- as(choose_matrix4, "dgCMatrix")
+    
+    cntm=list(sparse_matrix1,sparse_matrix2,sparse_matrix3,sparse_matrix4)
+    xym=list(position1,position2,position3,position4)
+    BASS <- createBASSObject(cntm, xym, C = C, R = R,
+                             beta_method = "SW", init_method = "mclust", 
+                             nsample = 10000)
+    BASS <- BASS.preprocess(BASS, doLogNormalize = TRUE,
+                            geneSelect = "sparkx", nSE = 3000, doPCA = TRUE, 
+                            scaleFeature = FALSE, nPC = 20)
+    BASS <- BASS.run(BASS)
+    BASS <- BASS.postprocess(BASS)
+    zlabels <- BASS@results$z
+    result_total=zlabels
+    #save(result_total,file=paste0("C:/Users/zhoum/Desktop/bass测试/",rowname[i],"_bass_cluster.RData"))
+    save(result_total,file=paste0("/gemini/code/",rowname[i],"_bass_cluster_34711dlpfc.RData"))
+  }
+}
+
+
+
+
+
+
+
+
+# load("C:/Users/zhoum/OneDrive/数据结果/layer_barcode_1218.RData")
+# load("C:/Users/zhoum/Desktop/bass测试/total_bass_cluster_dlpfc.RData")
+
+load("C:/Users/zhoum/Desktop/bass测试/alternative_bass_cluster_34711dlpfc.RData")
+load("C:/Users/zhoum/OneDrive/数据结果/layer_barcode_34711_dlpfc.RData")
+rowname <- c("nnSVG","SPARKX","SPARK","spVC", "HEARTSVG","proposed","DESpace","startrail","gaston")
+
+for(i in c(8)){
+  print(rowname[i])
+  if(i<=5){
+    for(k in c(1:9)){
+      for(j in c(1:4)){
+        print(adjustedRandIndex(result_cluster[[i]][[k]][[j]],layer_barcode[[j]]))
+      }
+    }
+  }else if(i==6|i==7){
+    for(j in c(1:4)){
+      print(adjustedRandIndex(result_cluster[[i]][[1]][[j]],layer_barcode[[j]]))
+    }
+  }else{
+    for(k in c(7)){
+      for(j in c(1:4)){
+        print(adjustedRandIndex(result_cluster[[i]][[k]][[j]],layer_barcode[[j]]))
+      }
+    }
+  }
+}
+
+
+
+result_cluster[[8]]=vector("list",7)
+result_cluster[[9]]=vector("list",7)
+
+for(i in c(1:7)){
+  load(paste0("C:/Users/zhoum/Desktop/bass测试/startrail_bass_cluster_34711dlpfc_",i,".RData"))
+  result_cluster[[8]][[i]]=result_total
+  load(paste0("C:/Users/zhoum/Desktop/bass测试/gaston_bass_cluster_34711dlpfc_",i,".RData"))
+  result_cluster[[9]][[i]]=result_total
+}
+save(result_cluster,file="C:/Users/zhoum/Desktop/bass测试/alternative_bass_cluster_34711dlpfc.RData")
+
+
+
+
+
+load(paste0("C:/Users/zhoum/OneDrive/数据结果/layer_barcode_1218.RData"))
+#记录结果
+load("C:/Users/zhoum/Desktop/bass测试/total_bass_cluster_dlpfc.RData")
+for(j in c(1:4)){
+  ari_matrix=matrix(NA,nrow=9,ncol=7)
+  rownames(ari_matrix)=rowname
+  colnames(ari_matrix)=c("Multi-layer","Single-layer","Union","Intersect","Cauchy","HMP", "PASTE")
+  for(i in c(1:9)){
+    if(i <=5){
+        ari_matrix[i,2]=adjustedRandIndex(result_cluster[[i]][[j]][[j]],layer_barcode[[j]])
+
+        for(k in c(5:6)){
+          
+          ari_matrix[i,k-2]=adjustedRandIndex(result_cluster[[i]][[k]][[j]],layer_barcode[[j]])
+        }
+        for(k in c(7:9)){
+            ari_matrix[i,k-2]=adjustedRandIndex(result_cluster[[i]][[k]][[j]],layer_barcode[[j]])
+        }
+        #ari_matrix[i,7]=adjustedRandIndex(result_cluster[[i]][[7]][[j]],layer_barcode[[j]])
+        
+    }else if(i==6|i==7){
+      ari_matrix[i,1]=adjustedRandIndex(result_cluster[[i]][[1]][[j]],layer_barcode[[j]])
+    }else{
+      ari_matrix[i,2]=adjustedRandIndex(result_cluster[[i]][[j]][[j]],layer_barcode[[j]])
+      for(k in c(5:7)){
+        ari_matrix[i,k-2]=adjustedRandIndex(result_cluster[[i]][[k]][[j]],layer_barcode[[j]])
+      }
+      #ari_matrix[i,7]=adjustedRandIndex(result_cluster[[i]][[7]][[j]],layer_barcode[[j]])
+    }
+  }
+  print(ari_matrix)
+}
+
+library(aricode)
+#计算NMI
+for(j in c(1:4)){
+  ari_matrix=matrix(NA,nrow=9,ncol=7)
+  rownames(ari_matrix)=rowname
+  colnames(ari_matrix)=c("Multi-layer","Single-layer","Union","Intersect","Cauchy","HMP", "PASTE")
+  for(i in c(1:9)){
+    if(i <=5){
+      ari_matrix[i,2]=NMI(layer_barcode[[j]],result_cluster[[i]][[j]][[j]])
+      
+      for(k in c(5:6)){
+        
+        ari_matrix[i,k-2]=NMI(layer_barcode[[j]],result_cluster[[i]][[k]][[j]])
+      }
+      for(k in c(7:9)){
+        ari_matrix[i,k-2]=NMI(layer_barcode[[j]],result_cluster[[i]][[k]][[j]])
+      }
+      #ari_matrix[i,7]=adjustedRandIndex(result_cluster[[i]][[7]][[j]],layer_barcode[[j]])
+      
+    }else if(i==6|i==7){
+      ari_matrix[i,1]=NMI(layer_barcode[[j]],result_cluster[[i]][[1]][[j]])
+    }else{
+      ari_matrix[i,2]=NMI(layer_barcode[[j]],result_cluster[[i]][[j]][[j]])
+      for(k in c(5:7)){
+        ari_matrix[i,k-2]=NMI(layer_barcode[[j]],result_cluster[[i]][[k]][[j]])
+      }
+      #ari_matrix[i,7]=adjustedRandIndex(result_cluster[[i]][[7]][[j]],layer_barcode[[j]])
+    }
+  }
+  print(ari_matrix)
+}
+
+for(j in c(1:4)){
+  
+  print(NMI(layer_barcode[[j]],result_cluster[[i]][[1]][[j]]))
+}
+
+
+
+
+
+
+ari_matrix=matrix(0,nrow=7,ncol=7)
+rownames(ari_matrix)=rowname
+colnames(ari_matrix)=c("Multi-layer","Single-layer","Union","Intersect","Cauchy","HMP", "PASTE")
+for(j in c(1:4)){
+  for(i in c(1:7)){
+    if(i <=5){
+      ari_matrix[i,2]=ari_matrix[i,2]+adjustedRandIndex(result_cluster[[i]][[j]][[j]],layer_barcode[[j]])
+      
+      for(k in c(5:6)){
+        
+        ari_matrix[i,k-2]=ari_matrix[i,k-2]+adjustedRandIndex(result_cluster[[i]][[k]][[j]],layer_barcode[[j]])
+      }
+      for(k in c(7:9)){
+        ari_matrix[i,k-2]=ari_matrix[i,k-2]+adjustedRandIndex(result_cluster[[i]][[k]][[j]],layer_barcode[[j]])
+      }
+      #ari_matrix[i,7]=ari_matrix[i,7]+adjustedRandIndex(result_cluster[[i]][[7]][[j]],layer_barcode[[j]])
+      
+    }else{
+      ari_matrix[i,1]=ari_matrix[i,1]+adjustedRandIndex(result_cluster[[i]][[1]][[j]],layer_barcode[[j]])
+    }
+  }
+}
+print(ari_matrix/4)
+
+
+
+
+
+
+##读取三张切片的
+rowname <- c("nnSVG","SPARKX","SPARK","spVC", "HEARTSVG","proposed","DESpace")
+result_cluster=replicate(7, replicate(8, replicate(3, list(), simplify = FALSE), simplify = FALSE), simplify = FALSE)
+for(i in c(1:7)){
+  print(rowname[i])
+  if(i<=5){
+    for(k in c(1:8)){
+      load(paste0("C:/Users/zhoum/Desktop/bass测试/",rowname[i],k,"_bass_cluster_34711dlpfc.RData"))
+      for(j in c(1:3)){
+        result_cluster[[i]][[k]][[j]]=result_total[[j]]
+      }
+    }
+  }else{
+    load(paste0("C:/Users/zhoum/Desktop/bass测试/",rowname[i],"_bass_cluster_34711dlpfc.RData"))
+    for(j in c(1:3)){
+      result_cluster[[i]][[1]][[j]]=result_total[[j]]
+    }
+  }
+}
+save(result_cluster,file="C:/Users/zhoum/Desktop/bass测试/total_kmeansc3r12_SCC_bass_cluster.RData")
+
+
+
+
+
+load("/gemini/code/startrail_gene_list.RData")
+  select_gene=data_dlpfc_34711_svgene_list[[8]][[7]]
+  print(length(select_gene))
+  choose_matrix1=matrix1[select_gene,]
+  choose_matrix2=matrix2[select_gene,]
+  choose_matrix3=matrix3[select_gene,]
+  choose_matrix4=matrix4[select_gene,]
+  
+  sparse_matrix1 <- as(choose_matrix1, "dgCMatrix")
+  sparse_matrix2 <- as(choose_matrix2, "dgCMatrix")
+  sparse_matrix3 <- as(choose_matrix3, "dgCMatrix")
+  sparse_matrix4 <- as(choose_matrix4, "dgCMatrix")
+  
+  cntm=list(sparse_matrix1,sparse_matrix2,sparse_matrix3,sparse_matrix4)
+  xym=list(position1,position2,position3,position4)
+  BASS <- createBASSObject(cntm, xym, C = C, R = R,
+                           beta_method = "SW", init_method = "mclust", 
+                           nsample = 10000)
+  BASS <- BASS.preprocess(BASS, doLogNormalize = TRUE,
+                          geneSelect = "sparkx", nSE = 3000, doPCA = TRUE, 
+                          scaleFeature = FALSE, nPC = 20)
+  BASS <- BASS.run(BASS)
+  BASS <- BASS.postprocess(BASS)
+  zlabels <- BASS@results$z
+  result_total=zlabels
+  save(result_total,file=paste0("C:/Users/zhoum/Desktop/bass测试/startrail_bass_cluster_34711dlpfc_7.RData"))
+  #save(result_total,file=paste0("C:/Users/zhoum/Desktop/bass测试/gaston_bass_cluster_34711dlpfc_",datanum,".RData"))
+
+  
+save(result_total,file=paste0("C:/Users/zhoum/OneDrive/数据结果/proposed_bass_cluster_12910dlpfc_gm0.01_cq0.66_dq1.33.RData"))
+
+
+
+
+
+##运行scc的数据##运行scc的数据##运行scc的数据##运行scc的数据##运行scc的数据##运行scc的数据##运行scc的数据##运行scc的数据##运行scc的数据
+##运行scc的数据##运行scc的数据##运行scc的数据##运行scc的数据##运行scc的数据##运行scc的数据##运行scc的数据##运行scc的数据##运行scc的数据
+
+#load("/gemini/code/scc_P9_new.RData")
+load("C:/Users/zhoum/OneDrive/数据结果/scc_P9_new.RData")
+matrix1=sample_total[[1]][[1]]#1143
+matrix2=sample_total[[2]][[1]]#1070
+matrix3=sample_total[[3]][[1]]#1108
+
+position1=sample_total[[1]][[2]]
+position2=sample_total[[2]][[2]]
+position3=sample_total[[3]][[2]]
+
+calpha1=sample_total[[1]][[3]]
+calpha2=sample_total[[2]][[3]]
+calpha3=sample_total[[3]][[3]]
+
+colnames(position1)=c("row","col")
+colnames(position2)=c("row","col")
+colnames(position3)=c("row","col")
+
+rowname <- c("nnSVG","SPARKX","SPARK","spVC", "HEARTSVG","proposed","DESpace","StarTrail","GASTON")
+C <- 20
+R <- 8
+set.seed(0)
+load("/gemini/code/data_sccnew_svgene_list_1230.RData")
+
+
+for(i in c(8:9)){
+  if(i <=5){
+    for(j in c(1:7)){
+      select_gene=data_scc_svgene_list_0130[[i]][[j]]
+      if(length(select_gene)<20){
+        npc=length(select_gene)-1
+      }else{
+        npc=20
+      }
+      print(length(select_gene))
+      choose_matrix1=matrix1[select_gene,]
+      choose_matrix2=matrix2[select_gene,]
+      choose_matrix3=matrix3[select_gene,]
+      
+      sparse_matrix1 <- as(choose_matrix1, "dgCMatrix")
+      sparse_matrix2 <- as(choose_matrix2, "dgCMatrix")
+      sparse_matrix3 <- as(choose_matrix3, "dgCMatrix")
+      
+      index1=which(colSums(sparse_matrix1) > 0)
+      index2=which(colSums(sparse_matrix2) > 0)
+      index3=which(colSums(sparse_matrix3) > 0)
+      
+      sparse_matrix1=sparse_matrix1[,index1]
+      sparse_matrix2=sparse_matrix2[,index2]
+      sparse_matrix3=sparse_matrix3[,index3]
+      
+      position_modi1=position1[index1,]
+      position_modi2=position2[index2,]
+      position_modi3=position3[index3,]
+      
+      cntm=list(sparse_matrix1,sparse_matrix2,sparse_matrix3)
+      xym=list(position_modi1,position_modi2,position_modi3)
+      BASS <- createBASSObject(cntm, xym, C = C, R = R,
+                               beta_method = "SW", init_method = "mclust", 
+                               nsample = 10000)
+      BASS <- BASS.preprocess(BASS, doLogNormalize = TRUE,
+                              geneSelect = "sparkx", nSE = 3000, doPCA = TRUE, 
+                              scaleFeature = FALSE, nPC = npc)
+      BASS <- BASS.run(BASS)
+      BASS <- BASS.postprocess(BASS)
+      zlabels <- BASS@results$z
+      result_total=zlabels
+      #save(result_total,file=paste0("C:/Users/zhoum/Desktop/bass测试/",rowname[i],j,"_bass_cluster.RData"))
+      save(result_total,file=paste0("/gemini/code/",rowname[i],j,"_SCC_bass_cluster.RData"))
+    }
+    
+  }else if(i==6|i==7){
+    select_gene=data_scc_svgene_list_0130[[i]]
+    choose_matrix1=matrix1[select_gene,]
+    choose_matrix2=matrix2[select_gene,]
+    choose_matrix3=matrix3[select_gene,]
+    
+    sparse_matrix1 <- as(choose_matrix1, "dgCMatrix")
+    sparse_matrix2 <- as(choose_matrix2, "dgCMatrix")
+    sparse_matrix3 <- as(choose_matrix3, "dgCMatrix")
+    
+    cntm=list(sparse_matrix1,sparse_matrix2,sparse_matrix3)
+    xym=list(position1,position2,position3)
+    BASS <- createBASSObject(cntm, xym, C = C, R = R,
+                             beta_method = "SW", init_method = "mclust", 
+                             nsample = 10000)
+    BASS <- BASS.preprocess(BASS, doLogNormalize = TRUE,
+                            geneSelect = "sparkx", nSE = 3000, doPCA = TRUE, 
+                            scaleFeature = FALSE, nPC = 20)
+    BASS <- BASS.run(BASS)
+    BASS <- BASS.postprocess(BASS)
+    zlabels <- BASS@results$z
+    result_total=zlabels
+    #save(result_total,file=paste0("C:/Users/zhoum/Desktop/bass测试/",rowname[i],"_bass_cluster.RData"))
+    save(result_total,file=paste0("/gemini/code/cluster/",rowname[i],"_SCC_bass_cluster.RData"))
+  }else{
+    for(j in c(1:6)){
+      select_gene=data_scc_svgene_list_0130[[i]][[j]]
+      if(length(select_gene)<20){
+        npc=length(select_gene)-1
+      }else{
+        npc=20
+      }
+      print(length(select_gene))
+      choose_matrix1=matrix1[select_gene,]
+      choose_matrix2=matrix2[select_gene,]
+      choose_matrix3=matrix3[select_gene,]
+      
+      sparse_matrix1 <- as(choose_matrix1, "dgCMatrix")
+      sparse_matrix2 <- as(choose_matrix2, "dgCMatrix")
+      sparse_matrix3 <- as(choose_matrix3, "dgCMatrix")
+      
+      index1=which(colSums(sparse_matrix1) > 0)
+      index2=which(colSums(sparse_matrix2) > 0)
+      index3=which(colSums(sparse_matrix3) > 0)
+      
+      sparse_matrix1=sparse_matrix1[,index1]
+      sparse_matrix2=sparse_matrix2[,index2]
+      sparse_matrix3=sparse_matrix3[,index3]
+      
+      position_modi1=position1[index1,]
+      position_modi2=position2[index2,]
+      position_modi3=position3[index3,]
+      
+      cntm=list(sparse_matrix1,sparse_matrix2,sparse_matrix3)
+      xym=list(position_modi1,position_modi2,position_modi3)
+      BASS <- createBASSObject(cntm, xym, C = C, R = R,
+                               beta_method = "SW", init_method = "mclust", 
+                               nsample = 5000)
+      BASS <- BASS.preprocess(BASS, doLogNormalize = TRUE,
+                              geneSelect = "sparkx", nSE = 3000, doPCA = TRUE, 
+                              scaleFeature = FALSE, nPC = npc)
+      BASS <- BASS.run(BASS)
+      BASS <- BASS.postprocess(BASS)
+      zlabels <- BASS@results$z
+      result_total=zlabels
+      save(result_total,file=paste0("C:/Users/zhoum/Desktop/bass测试/",rowname[i],j,"_bass_cluster.RData"))
+      #save(result_total,file=paste0("/gemini/code/",rowname[i],j,"_SCC_bass_cluster.RData"))
+    }
+  }
+}
+
+
+
+
+
+
+
+for(C in c(3,6)){
+  for(R in c(8)){
+  set.seed(0)
+  select_gene=scc_proposed
+  choose_matrix1=matrix1[select_gene,]
+  choose_matrix2=matrix2[select_gene,]
+  choose_matrix3=matrix3[select_gene,]
+  
+  sparse_matrix1 <- as(choose_matrix1, "dgCMatrix")
+  sparse_matrix2 <- as(choose_matrix2, "dgCMatrix")
+  sparse_matrix3 <- as(choose_matrix3, "dgCMatrix")
+  
+  cntm=list(sparse_matrix1,sparse_matrix2,sparse_matrix3)
+  xym=list(position1,position2,position3)
+  BASS <- createBASSObject(cntm, xym, C = C, R = R,
+                           beta_method = "SW", init_method = "mclust", 
+                           nsample = 10000)
+  BASS <- BASS.preprocess(BASS, doLogNormalize = TRUE,
+                          geneSelect = "sparkx", nSE = 3000, doPCA = TRUE, 
+                          scaleFeature = FALSE, nPC = 20)
+  BASS <- BASS.run(BASS)
+  BASS <- BASS.postprocess(BASS)
+  zlabels <- BASS@results$z
+  result_total=zlabels
+  save(result_total,file=paste0("C:/Users/zhoum/Desktop/bass测试/proposed_gam05_SCC_bass_cluster_C",C,"_R",R,".RData"))
+  }
+}
+
+
+
+rowname <- c("nnSVG","SPARKX","SPARK","spVC", "HEARTSVG","proposed","DESpace","StarTrail","GASTON")
+result_cluster=replicate(9, replicate(8, replicate(3, list(), simplify = FALSE), simplify = FALSE), simplify = FALSE)
+for(i in c(1:9)){
+  print(rowname[i])
+  if(i<=5){
+    for(k in c(1:8)){
+      load(paste0("C:/Users/zhoum/Desktop/bass测试/test_scc_bass/",rowname[i],k,"_SCC_c15r10_bass_cluster.RData"))
+      for(j in c(1:3)){
+        result_cluster[[i]][[k]][[j]]=result_total[[j]]
+      }
+    }
+  }else if(i==6|i==7){
+    load(paste0("C:/Users/zhoum/Desktop/bass测试/",rowname[i],"_SCC_bass_cluster.RData"))
+    for(j in c(1:3)){
+      result_cluster[[i]][[1]][[j]]=result_total[[j]]
+    }
+  }else{
+    for(k in c(1:6)){
+      load(paste0("C:/Users/zhoum/Desktop/bass测试/",rowname[i],k,"_SCC_bass_cluster.RData"))
+      for(j in c(1:3)){
+        result_cluster[[i]][[k]][[j]]=result_total[[j]]
+      }
+    }
+  }
+}
+save(result_cluster,file="C:/Users/zhoum/Desktop/bass测试/total_SCC_bass_cluster.RData")
+
+
+
+
+

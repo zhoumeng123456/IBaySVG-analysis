@@ -1,0 +1,81 @@
+##1. the boundary curve fit process of StarTrail
+from sklearn.datasets import make_blobs
+from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
+import sys
+import numpy as np
+import pandas as pd
+import torch
+import os
+from scipy.io import loadmat
+from math import floor
+import numpy as np
+from sklearn import metrics
+from sklearn.cluster import DBSCAN
+import elpigraph
+
+for datanum in range(1,5):
+  for cellnumber in range(1,7):
+    gradient_mesh = pd.read_csv(f"{datanum}_gradient_gene{cellnumber}.txt",sep='\t')
+    print(f"Processing gene {cellnumber}", flush=True)
+    coord_mesh = gradient_mesh[['s1', 's2']].to_numpy()
+    pred = np.array(gradient_mesh['pred'])
+    L2 = np.array((gradient_mesh.g1**2+gradient_mesh.g2**2)**0.5)
+    index_keep = (L2 > np.quantile(L2, 0.85)) # use 0.9 quantile
+    coord_mesh_grad = coord_mesh[index_keep, :]
+    db = DBSCAN(eps=0.03, min_samples=1).fit(coord_mesh_grad)
+    labels = db.labels_
+    labels_unique, counts = np.unique(labels, return_counts=True)
+    print("Cluster sizes:", counts)
+    print("Max cluster size:", counts.max())
+    min_num_spot =200
+    labels_to_keep = labels_unique[counts > min_num_spot]
+    gene_boundary = []
+    for i in range(labels_to_keep.shape[0]):
+      print(f"  Cluster {i}, n = {counts[counts > min_num_spot][i]}", flush=True)
+      coord_final = coord_mesh_grad[labels==labels_to_keep[i],]
+      coord_final[:,1] = -coord_final[:,1]
+      PG = elpigraph.computeElasticPrincipalCurve(coord_final,NumNodes=int(counts[counts > min_num_spot][i]/50))[0]
+      nodesp = PG["NodePositions"]
+      Edges = PG["Edges"][0].T
+      points_all = []
+      for j in range(Edges.shape[1]):
+        x_coo = np.concatenate((nodesp[Edges[0, j], [0]], nodesp[Edges[1, j], [0]]))
+        y_coo = np.concatenate((nodesp[Edges[0, j], [1]], nodesp[Edges[1, j], [1]]))
+        points_all.append(np.concatenate((x_coo,y_coo),axis=0))
+        print(f"Cell {cellnumber} finished\n", flush=True)
+      points_all = np.array(points_all)
+      gene_boundary.append(gene_boundary)
+      np.savetxt(f'{datanum}_cell{cellnumber}.txt',points_all)
+        
+
+##2.the implement of GASTON
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        

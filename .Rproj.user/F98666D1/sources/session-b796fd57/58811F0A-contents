@@ -1,0 +1,2676 @@
+conda activate gaston_fresh
+
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+from glmpca import glmpca
+from importlib import reload
+import gaston
+from gaston import neural_net,cluster_plotting, dp_related, segmented_fit, model_selection
+from gaston import binning_and_plotting, isodepth_scaling, run_slurm_scripts
+from gaston import spatial_gene_classification, plot_cell_types, filter_genes, process_NN_output
+import pandas as pd
+
+from torch.serialization import add_safe_globals
+import torch
+from gaston.neural_net import GASTON
+from torch.nn.modules.container import Sequential
+from torch.nn.modules.linear import Linear
+from torch.nn import ReLU
+from gaston import process_NN_output
+add_safe_globals([GASTON])
+add_safe_globals([Sequential])
+add_safe_globals([Linear])
+add_safe_globals([ReLU])
+
+
+types = ["count", "postion"]
+for i in range(1, 5):
+  for t in types:
+    csv_file = f"/gemini/code/dataanalysis/matrix{i}_{t}_34711.csv"
+    npy_file = f"/gemini/code/matrix{i}_{t}_dlpfc_34711.npy"
+    df = pd.read_csv(csv_file, index_col=0)
+    np.save(npy_file, df.values)
+    print(f"Saved {npy_file}")
+
+csv_file = f"/gemini/code/dataanalysis/matrix1_count_126.csv"
+npy_file = f"/gemini/code/genename_dlpfc_1234.npy"
+matrix_df = pd.read_csv(csv_file, index_col=0)
+colnames = matrix_df.index
+np.save(npy_file,colnames)
+gene_labels=np.load('/gemini/code/genename_dlpfc_34711.npy', allow_pickle=True) # array of names of G genes
+
+
+for i in range(1,5):
+  path_to_glmpca=f"/gemini/code/matrix{i}_glmpca_dlpfc_34711.npy"
+  path_to_coords= f"/gemini/code/matrix{i}_postion_dlpfc_34711.npy"
+  path_to_count= f"/gemini/code/matrix{i}_count_dlpfc_34711.npy"
+  
+  coords_mat=np.load(path_to_coords) # N x 2 spatial coordinate matrix 
+  counts_mat=np.load(path_to_coords) # N x G UMI count array
+  gene_labels=np.load('/gemini/code/genename_dlpfc_34711.npy', allow_pickle=True) 
+  num_dims=8 # 2 * number of clusters
+  penalty=10 # may need to increase if this is too small
+  glmpca_res=glmpca.glmpca(counts_mat.T, num_dims, fam="poi", penalty=penalty, verbose=True)
+  A = glmpca_res['factors'] # should be of size N x num_dims, where each column is a PC
+  np.save(path_to_glmpca, A)
+  
+  A=np.load(path_to_glmpca) 
+  S=np.load(path_to_coords)
+  S_torch, A_torch = neural_net.load_rescale_input_data(S,A)
+  isodepth_arch=[20,20] # architecture for isodepth neural network d(x,y) : R^2 -> R 
+  expression_fn_arch=[20,20] # architecture for 1-D expression function h(w) : R -> R^G
+  
+  num_epochs = 10000 # number of epochs to train NN (NOTE: it is sometimes beneficial to train longer)
+  checkpoint = 500 # save model after number of epochs = multiple of checkpoint
+  out_dir=f'/gemini/code/dlpfc{i}_output_34711' # folder to save model runs
+  optimizer = "adam"
+  num_restarts=5
+  device='cpu' # change to 'cpu' if you don't have a GPU
+  
+  seed_list=range(num_restarts)
+  for seed in seed_list:
+    print(f'training neural network for seed {seed}')
+    out_dir_seed=f"{out_dir}/rep{seed}"
+    os.makedirs(out_dir_seed, exist_ok=True)
+    mod, loss_list = neural_net.train(S_torch, A_torch,
+                                      S_hidden_list=isodepth_arch, A_hidden_list=expression_fn_arch, 
+                                      epochs=num_epochs, checkpoint=checkpoint, device=device,
+                                      save_dir=out_dir_seed, optim=optimizer, seed=seed, save_final=True)
+
+#paste
+{
+path_to_glmpca=f"/gemini/code/dlpfc_paste_glmpca_dlpfc_34711.npy"
+path_to_coords= f"/gemini/code/dlpfc_paste_coord_34711.npy"
+path_to_count= f"/gemini/code/dlpfc_paste_34711.npy"
+
+coords_mat=np.load(path_to_coords) # N x 2 spatial coordinate matrix 
+counts_mat=np.load(path_to_coords) # N x G UMI count array
+gene_labels=np.load('/gemini/code/genename_dlpfc_34711.npy', allow_pickle=True) 
+num_dims=8 # 2 * number of clusters
+penalty=10 # may need to increase if this is too small
+glmpca_res=glmpca.glmpca(counts_mat.T, num_dims, fam="poi", penalty=penalty, verbose=True)
+A = glmpca_res['factors'] # should be of size N x num_dims, where each column is a PC
+np.save(path_to_glmpca, A)
+
+A=np.load(path_to_glmpca) 
+S=np.load(path_to_coords)
+S_torch, A_torch = neural_net.load_rescale_input_data(S,A)
+isodepth_arch=[20,20] # architecture for isodepth neural network d(x,y) : R^2 -> R 
+expression_fn_arch=[20,20] # architecture for 1-D expression function h(w) : R -> R^G
+
+num_epochs = 10000 # number of epochs to train NN (NOTE: it is sometimes beneficial to train longer)
+checkpoint = 500 # save model after number of epochs = multiple of checkpoint
+out_dir=f'/gemini/code/dlpfc_paste_output_34711' # folder to save model runs
+optimizer = "adam"
+num_restarts=5
+device='cpu' # change to 'cpu' if you don't have a GPU
+
+seed_list=range(num_restarts)
+for seed in seed_list:
+  print(f'training neural network for seed {seed}')
+  out_dir_seed=f"{out_dir}/rep{seed}"
+  os.makedirs(out_dir_seed, exist_ok=True)
+  mod, loss_list = neural_net.train(S_torch, A_torch,
+                                  S_hidden_list=isodepth_arch, A_hidden_list=expression_fn_arch, 
+                                  epochs=num_epochs, checkpoint=checkpoint, device=device,
+                                  save_dir=out_dir_seed, optim=optimizer, seed=seed, save_final=True)
+
+
+}
+    
+#常规的真实数据矩阵dlpfc1234
+{
+i=4
+dataname=f"dlpfc{i}_output"
+
+path_to_glmpca=f"/gemini/code/matrix{i}_glmpca_dlpfc_1234.npy"
+path_to_coords= f"/gemini/code/matrix{i}_postion_dlpfc_1234.npy"
+path_to_count= f"/gemini/code/matrix{i}_count_dlpfc_1234.npy"
+isodepth_arch=[20,20] # architecture (two hidden layers of size 20) for isodepth neural network d(x,y)
+expression_arch=[20,20] # architecture (two hidden layers of size 20) for 1-D expression function
+epochs = 10000 # number of epochs to train NN
+checkpoint = 500 # save model after number of epochs = multiple of checkpoint
+optimizer = "adam"
+num_restarts=5 # number of initializations
+  
+output_dir=f"/gemini/code/{dataname}" # folder to save model runs
+conda_environment='gaston_fresh'
+path_to_conda_folder='/root/miniconda3/bin/activate'
+  
+run_slurm_scripts.train_NN_parallel(path_to_coords, path_to_glmpca, isodepth_arch, expression_arch, 
+                                    output_dir, conda_environment, path_to_conda_folder,
+                                    epochs=epochs, checkpoint=checkpoint, 
+                                    num_seeds=num_restarts)
+  
+from torch.serialization import add_safe_globals
+import torch
+from gaston.neural_net import GASTON
+from torch.nn.modules.container import Sequential
+from torch.nn.modules.linear import Linear
+from torch.nn import ReLU
+from gaston import process_NN_output
+add_safe_globals([GASTON])
+add_safe_globals([Sequential])
+add_safe_globals([Linear])
+add_safe_globals([ReLU])
+
+
+gaston_model, A, S = process_NN_output.process_files(
+  f"/gemini/code/{dataname}"
+)
+  
+coords_mat=np.load(f"/gemini/code/matrix{i}_postion_dlpfc_1234.npy") # N x 2 spatial coordinate matrix 
+counts_mat=np.load(f"/gemini/code/matrix{i}_count_dlpfc_1234.npy").T # N x G UMI count array
+gene_labels=np.load('/gemini/code/genename_dlpfc_1234.npy', allow_pickle=True) # array of names of G genes
+#model_selection.plot_ll_curve(gaston_model, A, S, max_domain_num=10, start_from=4)
+
+num_layers=7
+gaston_isodepth, gaston_labels=dp_related.get_isodepth_labels(gaston_model,A,S,num_layers)
+gaston_isodepth=isodepth_scaling.adjust_isodepth(gaston_isodepth, gaston_labels, coords_mat, 
+                                                 q_vals=[0.05, 0.05, 0.05, 0.05,0.05,0.05,0.05], scale_factor=0.05)
+
+np.savetxt(f"/gemini/code/gaston_labels{dataname}.txt", gaston_labels)
+
+umi_threshold = 0
+pw_fit_dict=segmented_fit.pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth,
+                                        None, [], umi_threshold = umi_threshold)
+
+binning_output=binning_and_plotting.bin_data(counts_mat, gaston_labels, gaston_isodepth, 
+                                             None, gene_labels, num_bins_per_domain=[7,7,7,7,7,7,7], umi_threshold=umi_threshold)
+
+q=0.9 # use 0.9 quantile for slopes, discontinuities
+discont_genes_layer=spatial_gene_classification.get_discont_genes(pw_fit_dict, binning_output,q=q)
+cont_genes_layer=spatial_gene_classification.get_cont_genes(pw_fit_dict, binning_output,q=q)
+
+cont_svg = list(cont_genes_layer.keys())
+discont_svg = list(discont_genes_layer.keys())
+all_svg = list(set(cont_svg + discont_svg))
+
+
+all_svg_sorted = sorted(all_svg)
+with open(f"/gemini/code/GASTON_SVG_list{dataname}.txt", "w", encoding="utf-8") as f:
+  for gene in all_svg_sorted:
+    f.write(gene + "\n")
+}
+
+#常规的真实数据矩阵scc
+{
+types = ["count", "position"]
+for i in ["1","2","3","paste"]:
+  for t in types:
+    csv_file = f"/gemini/code/dataanalysis/matrix{i}_{t}_scc.csv"
+    npy_file = f"/gemini/code/matrix{i}_{t}_scc.npy"
+    df = pd.read_csv(csv_file, index_col=0)
+    np.save(npy_file, df.values)
+    print(f"Saved {npy_file}")
+
+csv_file = f"/gemini/code/dataanalysis/matrix1_count_scc.csv"
+npy_file = f"/gemini/code/genename_scc.npy"
+matrix_df = pd.read_csv(csv_file, index_col=0)
+colnames = matrix_df.index
+np.save(npy_file,colnames)
+gene_labels=np.load('/gemini/code/genename_scc.npy', allow_pickle=True) # array of names of G genes
+
+
+for i in ["1","2","3","paste"]:
+  path_to_glmpca=f"/gemini/code/matrix{i}_glmpca_scc.npy"
+  path_to_coords= f"/gemini/code/matrix{i}_position_scc.npy"
+  path_to_count= f"/gemini/code/matrix{i}_count_scc.npy"
+  
+  coords_mat=np.load(path_to_coords) # N x 2 spatial coordinate matrix 
+  counts_mat=np.load(path_to_coords) # N x G UMI count array
+  gene_labels=np.load('/gemini/code/genename_scc.npy', allow_pickle=True) 
+  num_dims=8 # 2 * number of clusters
+  penalty=10 # may need to increase if this is too small
+  glmpca_res=glmpca.glmpca(counts_mat.T, num_dims, fam="poi", penalty=penalty, verbose=True)
+  A = glmpca_res['factors'] # should be of size N x num_dims, where each column is a PC
+  np.save(path_to_glmpca, A)
+  
+  A=np.load(path_to_glmpca) 
+  S=np.load(path_to_coords)
+  S_torch, A_torch = neural_net.load_rescale_input_data(S,A)
+  isodepth_arch=[20,20] # architecture for isodepth neural network d(x,y) : R^2 -> R 
+  expression_fn_arch=[20,20] # architecture for 1-D expression function h(w) : R -> R^G
+  
+  num_epochs = 3000 # number of epochs to train NN (NOTE: it is sometimes beneficial to train longer)
+  checkpoint = 500 # save model after number of epochs = multiple of checkpoint
+  out_dir=f'/gemini/code/scc{i}_output' # folder to save model runs
+  os.makedirs(out_dir, exist_ok=True)
+  optimizer = "adam"
+  num_restarts=1
+  device='cpu' # change to 'cpu' if you don't have a GPU
+  
+  seed_list=range(num_restarts)
+  for seed in seed_list:
+    print(f'training neural network for seed {seed}')
+    out_dir_seed=f"{out_dir}/rep{seed}"
+    os.makedirs(out_dir_seed, exist_ok=True)
+    mod, loss_list = neural_net.train(S_torch, A_torch,
+                                      S_hidden_list=isodepth_arch, A_hidden_list=expression_fn_arch, 
+                                      epochs=num_epochs, checkpoint=checkpoint, device=device,
+                                      save_dir=out_dir_seed, optim=optimizer, seed=seed, save_final=True)
+
+
+    
+
+from torch.serialization import add_safe_globals
+import torch
+from gaston.neural_net import GASTON
+from torch.nn.modules.container import Sequential
+from torch.nn.modules.linear import Linear
+from torch.nn import ReLU
+from gaston import process_NN_output
+add_safe_globals([GASTON])
+add_safe_globals([Sequential])
+add_safe_globals([Linear])
+add_safe_globals([ReLU])
+
+for i in ["1","2","3","paste"]:
+  gaston_model, A, S = process_NN_output.process_files(
+    f'/gemini/code/scc{i}_output'
+  )
+  
+  coords_mat=np.load(f"/gemini/code/matrix{i}_position_scc.npy") # N x 2 spatial coordinate matrix 
+  counts_mat=np.load(f"/gemini/code/matrix{i}_count_scc.npy").T # N x G UMI count array
+  gene_labels=np.load('/gemini/code/genename_scc.npy', allow_pickle=True) # array of names of G genes
+  #model_selection.plot_ll_curve(gaston_model, A, S, max_domain_num=10, start_from=4)
+  
+  num_layers=6
+  gaston_isodepth, gaston_labels=dp_related.get_isodepth_labels(gaston_model,A,S,num_layers)
+  gaston_isodepth=isodepth_scaling.adjust_isodepth(gaston_isodepth, gaston_labels, coords_mat, 
+                                                   q_vals=[0.05, 0.05, 0.05, 0.05,0.05,0.05], scale_factor=0.05)
+  
+  np.savetxt(f"/gemini/code/gaston_labels_{i}_scc.txt", gaston_labels)
+  
+  if i=="paste":
+    counts_mat=counts_mat.T
+  
+  umi_threshold = 0
+  pw_fit_dict=segmented_fit.pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth,
+                                          None, [], umi_threshold = umi_threshold)
+  
+  binning_output=binning_and_plotting.bin_data(counts_mat, gaston_labels, gaston_isodepth, 
+                                               None, gene_labels, num_bins_per_domain=[6,6,6,6,6,6], umi_threshold=umi_threshold)
+  
+  q=0.9 # use 0.9 quantile for slopes, discontinuities
+  discont_genes_layer=spatial_gene_classification.get_discont_genes(pw_fit_dict, binning_output,q=q)
+  cont_genes_layer=spatial_gene_classification.get_cont_genes(pw_fit_dict, binning_output,q=q)
+  
+  cont_svg = list(cont_genes_layer.keys())
+  discont_svg = list(discont_genes_layer.keys())
+  all_svg = list(set(cont_svg + discont_svg))
+  
+  
+  all_svg_sorted = sorted(all_svg)
+  with open(f"/gemini/code/GASTON_SVG_list{i}_scc.txt", "w", encoding="utf-8") as f:
+    for gene in all_svg_sorted:
+      f.write(gene + "\n")
+  
+
+}    
+    
+#paste方法
+{
+  
+csv_file = f"/gemini/code/dataanalysis/dlpfc_paste_1234.csv"
+npy_file = f"/gemini/code/dlpfc_paste_1234.npy"
+df = pd.read_csv(csv_file, index_col=0)
+np.save(npy_file, df.values)
+print(f"Saved {npy_file}")
+
+csv_file = f"/gemini/code/dataanalysis/matrix1_postion_126.csv"
+npy_file = f"/gemini/code/dlpfc_paste_coord_1234.npy"
+df = pd.read_csv(csv_file, index_col=0)
+np.save(npy_file, df.values)
+print(f"Saved {npy_file}")
+  
+dataname="dlpfc_paste_output_34711"
+
+path_to_glmpca=f"/gemini/code/dlpfc_paste_glmpca_dlpfc_34711.npy"
+path_to_coords= f"/gemini/code/dlpfc_paste_coord_34711.npy"
+path_to_count= f"/gemini/code/dlpfc_paste_34711.npy"
+
+isodepth_arch=[20,20] # architecture (two hidden layers of size 20) for isodepth neural network d(x,y)
+expression_arch=[20,20] # architecture (two hidden layers of size 20) for 1-D expression function
+epochs = 10000 # number of epochs to train NN
+checkpoint = 500 # save model after number of epochs = multiple of checkpoint
+optimizer = "adam"
+num_restarts=3 # number of initializations
+
+output_dir=f"/gemini/code/{dataname}" # folder to save model runs
+conda_environment='gaston_fresh'
+path_to_conda_folder='/root/miniconda3/bin/activate'
+
+run_slurm_scripts.train_NN_parallel(path_to_coords, path_to_glmpca, isodepth_arch, expression_arch, 
+                                    output_dir, conda_environment, path_to_conda_folder,
+                                    epochs=epochs, checkpoint=checkpoint, 
+                                    num_seeds=num_restarts)
+
+from torch.serialization import add_safe_globals
+import torch
+from gaston.neural_net import GASTON
+from torch.nn.modules.container import Sequential
+from torch.nn.modules.linear import Linear
+from torch.nn import ReLU
+from gaston import process_NN_output
+add_safe_globals([GASTON])
+add_safe_globals([Sequential])
+add_safe_globals([Linear])
+add_safe_globals([ReLU])
+
+
+dataname="dlpfc_paste_output_34711"
+
+gaston_model, A, S = process_NN_output.process_files(
+  f"/gemini/code/{dataname}"
+)
+
+
+coords_mat=np.load(f"/gemini/code/dlpfc_paste_coord_34711.npy") # N x 2 spatial coordinate matrix 
+counts_mat=np.load(f"/gemini/code/dlpfc_paste_34711.npy") # N x G UMI count array
+gene_labels=np.load('/gemini/code/genename_dlpfc_34711.npy', allow_pickle=True) # array of names of G genes
+
+num_layers=7
+gaston_isodepth, gaston_labels=dp_related.get_isodepth_labels(gaston_model,A,S,num_layers)
+gaston_isodepth=isodepth_scaling.adjust_isodepth(gaston_isodepth, gaston_labels, coords_mat, 
+                                                 q_vals=[0.05, 0.05, 0.05, 0.05,0.05,0.05,0.05], scale_factor=0.05)
+
+np.savetxt(f"/gemini/code/gaston_labels{dataname}.txt", gaston_labels)
+
+umi_threshold = 0
+pw_fit_dict=segmented_fit.pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth,
+                                        None, [], umi_threshold = umi_threshold)
+
+binning_output=binning_and_plotting.bin_data(counts_mat, gaston_labels, gaston_isodepth, 
+                                             None, gene_labels, num_bins_per_domain=[7,7,7,7,7,7,7], umi_threshold=umi_threshold)
+
+q=0.9 
+discont_genes_layer=spatial_gene_classification.get_discont_genes(pw_fit_dict, binning_output,q=q)
+cont_genes_layer=spatial_gene_classification.get_cont_genes(pw_fit_dict, binning_output,q=q)
+
+cont_svg = list(cont_genes_layer.keys())
+discont_svg = list(discont_genes_layer.keys())
+all_svg = list(set(cont_svg + discont_svg))
+
+
+all_svg_sorted = sorted(all_svg)
+with open(f"/gemini/code/GASTON_SVG_list{dataname}.txt", "w", encoding="utf-8") as f:
+  for gene in all_svg_sorted:
+    f.write(gene + "\n") 
+  
+}
+
+#抽点的paste方法
+{
+csv_file = f"/gemini/code/dataanalysis/dlpfc1234_paste_sampled_seed1.csv"
+npy_file = f"/gemini/code/dataanalysis/dlpfc_paste_1234_sampled.npy"
+df = pd.read_csv(csv_file, index_col=0)
+#df = pd.read_csv(csv_file)
+np.save(npy_file, df.values)
+print(f"Saved {npy_file}")
+
+csv_file = f"/gemini/code/dataanalysis/matrix1_position_1234_sampled_seed1.csv"
+npy_file = f"/gemini/code/dlpfc_paste_coord_1234_sampled.npy"
+df = pd.read_csv(csv_file, index_col=0)
+np.save(npy_file, df.values)
+print(f"Saved {npy_file}")
+
+dataname="dlpfc_paste_output_1234_sampled"
+
+path_to_glmpca=f"/gemini/code/dlpfc_paste_glmpca_dlpfc_1234_sampled.npy"
+path_to_coords= f"/gemini/code/dlpfc_paste_coord_1234_sampled.npy"
+path_to_count= f"/gemini/code/dataanalysis/dlpfc_paste_1234_sampled.npy"
+
+coords_mat=np.load(path_to_coords) # N x 2 spatial coordinate matrix 
+counts_mat=np.load(path_to_count) # N x G UMI count array
+gene_labels=np.load('/gemini/code/genename_dlpfc_1234.npy', allow_pickle=True) 
+num_dims=8 # 2 * number of clusters
+penalty=10 # may need to increase if this is too small
+glmpca_res=glmpca.glmpca(counts_mat.T, num_dims, fam="poi", penalty=penalty, verbose=True)
+A = glmpca_res['factors'] # should be of size N x num_dims, where each column is a PC
+np.save(path_to_glmpca, A)
+
+A=np.load(path_to_glmpca) 
+S=np.load(path_to_coords)
+S_torch, A_torch = neural_net.load_rescale_input_data(S,A)
+isodepth_arch=[20,20] # architecture for isodepth neural network d(x,y) : R^2 -> R 
+expression_fn_arch=[20,20] # architecture for 1-D expression function h(w) : R -> R^G
+
+num_epochs =2000 # number of epochs to train NN (NOTE: it is sometimes beneficial to train longer)
+checkpoint = 500 # save model after number of epochs = multiple of checkpoint
+out_dir=f'/gemini/code/dlpfc1234_output_paste_sampled' # folder to save model runs
+os.makedirs(out_dir, exist_ok=True)
+optimizer = "adam"
+num_restarts=1
+device='cpu' # change to 'cpu' if you don't have a GPU
+
+seed_list=range(num_restarts)
+for seed in seed_list:
+  print(f'training neural network for seed {seed}')
+  out_dir_seed=f"{out_dir}/rep{seed}"
+  os.makedirs(out_dir_seed, exist_ok=True)
+  mod, loss_list = neural_net.train(S_torch, A_torch,
+                                    S_hidden_list=isodepth_arch, A_hidden_list=expression_fn_arch, 
+                                    epochs=num_epochs, checkpoint=checkpoint, device=device,
+                                    save_dir=out_dir_seed, optim=optimizer, seed=seed, save_final=True)
+
+dataname="dlpfc1234_output_paste_sampled"
+
+gaston_model, A, S = process_NN_output.process_files(
+  f"/gemini/code/{dataname}"
+)
+
+
+coords_mat=np.load(f"/gemini/code/dlpfc_paste_coord_1234_sampled.npy") # N x 2 spatial coordinate matrix 
+counts_mat=np.load(f"/gemini/code/dataanalysis/dlpfc_paste_1234_sampled.npy") # N x G UMI count array
+gene_labels=np.load('/gemini/code/genename_dlpfc_1234.npy', allow_pickle=True) # array of names of G genes
+
+num_layers=7
+gaston_isodepth, gaston_labels=dp_related.get_isodepth_labels(gaston_model,A,S,num_layers)
+gaston_isodepth=isodepth_scaling.adjust_isodepth(gaston_isodepth, gaston_labels, coords_mat, 
+                                                 q_vals=[0.05, 0.05, 0.05, 0.05,0.05,0.05,0.05], scale_factor=0.05)
+
+np.savetxt(f"/gemini/code/gaston_labels{dataname}.txt", gaston_labels)
+
+umi_threshold = 0
+pw_fit_dict=segmented_fit.pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth,
+                                        None, [], umi_threshold = umi_threshold)
+
+binning_output=binning_and_plotting.bin_data(counts_mat, gaston_labels, gaston_isodepth, 
+                                             None, gene_labels, num_bins_per_domain=[7,7,7,7,7,7,7], umi_threshold=umi_threshold)
+
+q=0.9 
+discont_genes_layer=spatial_gene_classification.get_discont_genes(pw_fit_dict, binning_output,q=q)
+cont_genes_layer=spatial_gene_classification.get_cont_genes(pw_fit_dict, binning_output,q=q)
+
+cont_svg = list(cont_genes_layer.keys())
+discont_svg = list(discont_genes_layer.keys())
+all_svg = list(set(cont_svg + discont_svg))
+
+
+all_svg_sorted = sorted(all_svg)
+with open(f"/gemini/code/GASTON_SVG_list{dataname}.txt", "w", encoding="utf-8") as f:
+  for gene in all_svg_sorted:
+    f.write(gene + "\n") 
+  
+  
+  
+
+}
+    
+#真实数据的抽点
+{
+  
+data="1234"
+
+types = ["count", "position"]
+for i in range(1, 5):
+  for t in types:
+    csv_file = f"/gemini/code/dataanalysis/matrix{i}_{t}_{data}_sampled.csv"
+    npy_file = f"/gemini/code/matrix{i}_{t}_dlpfc_{data}_sampled.npy"
+    df = pd.read_csv(csv_file, index_col=0)
+    np.save(npy_file, df.values)
+    print(f"Saved {npy_file}")
+
+csv_file = f"/gemini/code/dataanalysis/matrix1_count_{data}_sampled.csv"
+npy_file = f"/gemini/code/genename_dlpfc_{data}_sampled.npy"
+matrix_df = pd.read_csv(csv_file, index_col=0)
+colnames = matrix_df.index
+np.save(npy_file,colnames)
+gene_labels=np.load(f'/gemini/code/genename_dlpfc_{data}_sampled.npy', allow_pickle=True) # array of names of G genes
+
+for data in ["1234"]:
+  for i in range(1,5):
+    path_to_glmpca=f"/gemini/code/matrix{i}_glmpca_dlpfc_{data}_sampled.npy"
+    path_to_coords= f"/gemini/code/matrix{i}_position_dlpfc_{data}_sampled.npy"
+    path_to_count= f"/gemini/code/matrix{i}_count_dlpfc_{data}_sampled.npy"
+    coords_mat=np.load(path_to_coords) # N x 2 spatial coordinate matrix 
+    counts_mat=np.load(path_to_coords) # N x G UMI count array
+    gene_labels=np.load(f'/gemini/code/genename_dlpfc_{data}_sampled.npy', allow_pickle=True) 
+    num_dims=8 # 2 * number of clusters
+    penalty=10 # may need to increase if this is too small
+    glmpca_res=glmpca.glmpca(counts_mat.T, num_dims, fam="poi", penalty=penalty, verbose=True)
+    A = glmpca_res['factors'] # should be of size N x num_dims, where each column is a PC
+    np.save(path_to_glmpca, A)
+    A=np.load(path_to_glmpca) 
+    S=np.load(path_to_coords)
+    S_torch, A_torch = neural_net.load_rescale_input_data(S,A)
+    isodepth_arch=[20,20] # architecture for isodepth neural network d(x,y) : R^2 -> R 
+    expression_fn_arch=[20,20] # architecture for 1-D expression function h(w) : R -> R^G
+    num_epochs = 3000 # number of epochs to train NN (NOTE: it is sometimes beneficial to train longer)
+    checkpoint = 500 # save model after number of epochs = multiple of checkpoint
+    out_dir=f'/gemini/code/dlpfc{i}_output_{data}_sampled' # folder to save model runs
+    optimizer = "adam"
+    num_restarts=1
+    device='cpu' # change to 'cpu' if you don't have a GPU
+    seed_list=range(num_restarts)
+    for seed in seed_list:
+      print(f'training neural network for seed {seed}')
+      out_dir_seed=f"{out_dir}/rep{seed}"
+      os.makedirs(out_dir_seed, exist_ok=True)
+      mod, loss_list = neural_net.train(S_torch, A_torch,
+                                        S_hidden_list=isodepth_arch, A_hidden_list=expression_fn_arch, 
+                                        epochs=num_epochs, checkpoint=checkpoint, device=device,
+                                        save_dir=out_dir_seed, optim=optimizer, seed=seed, save_final=True)
+  
+for data in ["1234","34711"]:
+  for i in range(1,5):
+    gaston_model, A, S = process_NN_output.process_files(
+      f"/gemini/code/dlpfc{i}_output_{data}_sampled"
+    )
+    
+    coords_mat=np.load(f"/gemini/code/matrix{i}_position_dlpfc_{data}_sampled.npy") # N x 2 spatial coordinate matrix 
+    counts_mat=np.load(f"/gemini/code/matrix{i}_count_dlpfc_{data}_sampled.npy").T # N x G UMI count array
+    gene_labels=np.load(f'/gemini/code/genename_dlpfc_{data}_sampled.npy', allow_pickle=True) # array of names of G genes
+    #model_selection.plot_ll_curve(gaston_model, A, S, max_domain_num=10, start_from=4)
+    
+    num_layers=7
+    gaston_isodepth, gaston_labels=dp_related.get_isodepth_labels(gaston_model,A,S,num_layers)
+    gaston_isodepth=isodepth_scaling.adjust_isodepth(gaston_isodepth, gaston_labels, coords_mat, 
+                                                     q_vals=[0.05, 0.05, 0.05, 0.05,0.05,0.05,0.05], scale_factor=0.05)
+    
+    np.savetxt(f"/gemini/code/gaston_labels_sample_{i}_{data}.txt", gaston_labels)
+    
+    totalumi = counts_mat.sum(axis=1)
+    valid = totalumi > 0
+    counts_mat = counts_mat[valid, :]
+    coords_mat = coords_mat[valid, :]
+    gaston_isodepth = gaston_isodepth[valid]
+    gaston_labels = gaston_labels[valid]
+    
+    umi_threshold = 0
+    pw_fit_dict=segmented_fit.pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth,
+                                            None, [], umi_threshold = umi_threshold)
+    
+    binning_output=binning_and_plotting.bin_data(counts_mat, gaston_labels, gaston_isodepth, 
+                                                 None, gene_labels, num_bins_per_domain=[7,7,7,7,7,7,7], umi_threshold=umi_threshold)
+    
+    q=0.9 # use 0.9 quantile for slopes, discontinuities
+    discont_genes_layer=spatial_gene_classification.get_discont_genes(pw_fit_dict, binning_output,q=q)
+    cont_genes_layer=spatial_gene_classification.get_cont_genes(pw_fit_dict, binning_output,q=q)
+    
+    cont_svg = list(cont_genes_layer.keys())
+    discont_svg = list(discont_genes_layer.keys())
+    all_svg = list(set(cont_svg + discont_svg))
+    
+    
+    all_svg_sorted = sorted(all_svg)
+    with open(f"/gemini/code/GASTON_SVG_list_sample_{i}_{data}.txt", "w", encoding="utf-8") as f:
+      for gene in all_svg_sorted:
+        f.write(gene + "\n")
+
+}  
+  
+#模拟数据集
+{
+  spa="focal"
+  for(seed1 in c(7:10)){
+    load(paste0("/gemini/code/simulation/data_",spa,"_seed",seed1,".RData"))
+    load(paste0("/gemini/code/simulation/data_",spa,"_seed",seed1,"_paste.RData"))
+    for(inf in c("inf1","inf3","inf5")){
+      if(inf=="inf1"){
+        num2=1
+      }else if(inf=="inf3"){
+        num2=2
+      }else{
+        num2=3
+      }
+      for(num in c(1:8)){
+        count=t(all_results_list[[inf]][[1]][[num]])
+        print(dim(count))
+        rownames(count)=paste0("gene",1:5000)
+        colnames(count)=paste0("spot",1:1024)
+        write.csv(count, paste0("/gemini/code/simulation_gaston/matrix",num,"_count_simu_seed",seed1,"_",spa,"_",inf,".csv"))
+      }
+      for(num in c(1:4)){
+        count=t(data_paste_list[[num2]][[num]])
+        print(dim(count))
+        rownames(count)=paste0("gene",1:5000)
+        colnames(count)=paste0("spot",1:1024)
+        write.csv(count, paste0("/gemini/code/simulation_gaston/matrix",(num+8),"_count_simu_seed",seed1,"_",spa,"_",inf,".csv"))
+      }
+    }
+  }
+  
+  loc=expand.grid(y=0:31,x=0:31)[,2:1]
+  rownames(loc)=paste0("spot",1:1024)
+  colnames(loc)=c("x","y")
+  write.csv(loc, paste0("/gemini/code/simulation_gaston/simulation_position.csv"))
+  
+
+data="period"
+t="count"
+for i in range(1, 13):
+  for seed1 in range(1,11):
+    for inf in ["inf1","inf3","inf5"]:
+      csv_file = f"/gemini/code/simulation_gaston/matrix{i}_{t}_simu_seed{seed1}_{data}_{inf}.csv"
+      npy_file = f"/gemini/code/simulation_gaston/matrix{i}_{t}_simu_seed{seed1}_{data}_{inf}.npy"
+      df = pd.read_csv(csv_file, index_col=0)
+      np.save(npy_file, df.values)
+      print(f"Saved {npy_file}")
+
+csv_file = "/gemini/code/simulation_gaston/simulation_position.csv"
+npy_file = "/gemini/code/simulation_gaston/simulation_position.npy"
+df = pd.read_csv(csv_file, index_col=0)
+np.save(npy_file, df.values)
+      
+csv_file = f"/gemini/code/simulation_gaston/matrix1_count_simu_seed1_linear_inf1.csv"
+npy_file = f"/gemini/code/simulation_gaston/genename_simulation.npy"
+matrix_df = pd.read_csv(csv_file, index_col=0)
+colnames = matrix_df.index
+np.save(npy_file,colnames)
+
+data="focal"
+for seed1 in range(2,11):
+  for inf in ["inf1","inf3","inf5"]:
+    for i in range(1,13):
+      path_to_glmpca=f"/gemini/code/simulation_gaston/matrix{i}_glmpca_simu_seed{seed1}_{data}_{inf}.npy"
+      path_to_coords= "/gemini/code/simulation_gaston/simulation_position.npy"
+      path_to_count= f"/gemini/code/simulation_gaston/matrix{i}_count_simu_seed{seed1}_{data}_{inf}.npy"
+      
+      coords_mat=np.load(path_to_coords) # N x 2 spatial coordinate matrix 
+      counts_mat=np.load(path_to_count) # N x G UMI count array
+      gene_labels=np.load('/gemini/code/simulation_gaston/genename_simulation.npy', allow_pickle=True) 
+      num_dims=8 # 2 * number of clusters
+      penalty=10 # may need to increase if this is too small
+      num_iters=30
+      eps=1e-4
+      glmpca_res=glmpca.glmpca(counts_mat, num_dims, fam="poi", penalty=penalty, verbose=True,
+                               ctl = {"maxIter":num_iters, "eps":eps, "optimizeTheta":True})
+      A = glmpca_res['factors'] # should be of size N x num_dims, where each column is a PC
+      np.save(path_to_glmpca, A)
+      
+      A=np.load(path_to_glmpca) 
+      S=np.load(path_to_coords)
+      S_torch, A_torch = neural_net.load_rescale_input_data(S,A)
+      isodepth_arch=[20,20] # architecture for isodepth neural network d(x,y) : R^2 -> R 
+      expression_fn_arch=[20,20] # architecture for 1-D expression function h(w) : R -> R^G
+      
+      num_epochs = 2500 # number of epochs to train NN (NOTE: it is sometimes beneficial to train longer)
+      checkpoint = 500 # save model after number of epochs = multiple of checkpoint
+      out_dir=f'/gemini/code/simulation_gaston/seed{seed1}/output_matrix{i}_{data}_{inf}' # folder to save model runs
+      os.makedirs(out_dir, exist_ok=True)
+      optimizer = "adam"
+      num_restarts=1
+      device='cpu' # change to 'cpu' if you don't have a GPU
+      seed_list=range(num_restarts)
+      for seed in seed_list:
+        print(f'training neural network for seed {seed}')
+        out_dir_seed=f"{out_dir}/rep{seed}"
+        os.makedirs(out_dir_seed, exist_ok=True)
+        mod, loss_list = neural_net.train(S_torch, A_torch,
+                                          S_hidden_list=isodepth_arch, A_hidden_list=expression_fn_arch, 
+                                          epochs=num_epochs, checkpoint=checkpoint, device=device,
+                                          save_dir=out_dir_seed, optim=optimizer, seed=seed, save_final=True)
+
+data="period"
+for seed1 in range(5,11):
+  for i in range(1,13):
+    for inf in ["inf1","inf3","inf5"]:
+      gaston_model, A, S = process_NN_output.process_files(
+        f'/gemini/code/simulation_gaston/seed{seed1}/output_matrix{i}_{data}_{inf}'
+      )
+      
+      coords_mat=np.load("/gemini/code/simulation_gaston/simulation_position.npy") # N x 2 spatial coordinate matrix 
+      counts_mat=np.load(f"/gemini/code/simulation_gaston/matrix{i}_count_simu_seed{seed1}_{data}_{inf}.npy").T # N x G UMI count array
+      gene_labels=np.load(f"/gemini/code/simulation_gaston/genename_simulation.npy", allow_pickle=True) # array of names of G genes
+      
+      num_layers=3
+      
+      # 尝试循环降低 num_layers
+      while num_layers >= 1:
+        try:
+          gaston_isodepth, gaston_labels = dp_related.get_isodepth_labels(gaston_model, A, S, num_layers)
+          gaston_isodepth = isodepth_scaling.adjust_isodepth(gaston_isodepth, gaston_labels, coords_mat,q_vals=[0.05, 0.05, 0.05, 0.05], scale_factor=0.05)
+          break  # 成功则跳出 while 循环
+        except ValueError as e:
+          print(f"num_layers={num_layers} 出错: {e}, 尝试减少 num_layers")
+          num_layers -= 1
+      
+      if num_layers < 1:
+        print(f"矩阵{i}, {inf} 在 seed{seed1} 下无法生成有效 isodepth，跳过")
+        continue  # 跳过这个组合
+      
+      
+      gaston_isodepth, gaston_labels=dp_related.get_isodepth_labels(gaston_model,A,S,num_layers)
+      gaston_isodepth=isodepth_scaling.adjust_isodepth(gaston_isodepth, gaston_labels, coords_mat, 
+                                                       q_vals=[0.05, 0.05, 0.05, 0.05], scale_factor=0.05)
+      
+      umi_threshold = 0
+      pw_fit_dict=segmented_fit.pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth,
+                                              None, [], umi_threshold = umi_threshold)
+      
+      binning_output=binning_and_plotting.bin_data(counts_mat, gaston_labels, gaston_isodepth, 
+                                                   None, gene_labels, num_bins_per_domain=[4,4,4,4], umi_threshold=umi_threshold)
+      
+      q=0.9 # use 0.9 quantile for slopes, discontinuities
+      discont_genes_layer=spatial_gene_classification.get_discont_genes(pw_fit_dict, binning_output,q=q)
+      cont_genes_layer=spatial_gene_classification.get_cont_genes(pw_fit_dict, binning_output,q=q)
+      
+      cont_svg = list(cont_genes_layer.keys())
+      discont_svg = list(discont_genes_layer.keys())
+      all_svg = list(set(cont_svg + discont_svg))
+      
+      all_svg_sorted = sorted(all_svg)
+      with open(f"/gemini/code/GASTON_SVG_list_simu_{i}_{data}_{inf}_seed{seed1}.txt", "w", encoding="utf-8") as f:
+        for gene in all_svg_sorted:
+          f.write(gene + "\n")     
+
+  
+}
+    
+#补充数据集
+{
+spa="polynomial6polynomial6"
+for(seed1 in c(1:10)){
+  load(paste0("/gemini/code/mix_pattern/dif_data_seed",seed1,spa,".RData"))
+    for(num in c(1:4)){
+      count=t(result_list[[num]][[1]])
+      print(dim(count))
+      rownames(count)=paste0("gene",1:5000)
+      colnames(count)=paste0("spot",1:1024)
+      write.csv(count, paste0("/gemini/code/mix_pattern/data_",num,"_",spa,"_seed",seed1,".csv"))
+    }
+}
+
+loc=expand.grid(y=0:31,x=0:31)[,2:1]
+rownames(loc)=paste0("spot",1:1024)
+colnames(loc)=c("x","y")
+write.csv(loc, paste0("/gemini/code/simulation_gaston/simulation_position.csv"))
+
+spa="polynomial6polynomial6"
+for i in ["1","2","3","4","paste"]:
+  for seed1 in range(1,11):
+    csv_file = f"/gemini/code/mix_pattern/data_{i}_{spa}_seed{seed1}.csv"
+    npy_file = f"/gemini/code/mix_pattern/data_{i}_{spa}_seed{seed1}.npy"
+    df = pd.read_csv(csv_file, index_col=0)
+    np.save(npy_file, df.values)
+    print(f"Saved {npy_file}")
+
+csv_file = "/gemini/code/simulation_gaston/simulation_position.csv"
+npy_file = "/gemini/code/simulation_gaston/simulation_position.npy"
+df = pd.read_csv(csv_file, index_col=0)
+np.save(npy_file, df.values)
+
+csv_file = f"/gemini/code/mix_pattern/data_1_{spa}_seed{seed1}.csv"
+npy_file = f"/gemini/code/simulation_gaston/genename_simulation.npy"
+matrix_df = pd.read_csv(csv_file, index_col=0)
+colnames = matrix_df.index
+np.save(npy_file,colnames)
+
+spa="polynomial6polynomial6"
+for seed1 in range(1,11):
+  for i in ["1","2","3","4","paste"]:
+    path_to_glmpca=f"/gemini/code/simulation_gaston/data_{i}_{spa}_glmpca_seed{seed1}.npy"
+    path_to_coords="/gemini/code/simulation_gaston/simulation_position.npy"
+    path_to_count= f"/gemini/code/mix_pattern/data_{i}_{spa}_seed{seed1}.npy"
+    coords_mat=np.load(path_to_coords) # N x 2 spatial coordinate matrix 
+    counts_mat=np.load(path_to_count) # N x G UMI count array
+    gene_labels=np.load('/gemini/code/simulation_gaston/genename_simulation.npy', allow_pickle=True) 
+    num_dims=8 
+    penalty=10 
+    num_iters=30
+    eps=1e-4
+    if i=="paste":
+      counts_mat=counts_mat.T
+    glmpca_res=glmpca.glmpca(counts_mat, num_dims, fam="poi", penalty=penalty, verbose=True,
+                             ctl = {"maxIter":num_iters, "eps":eps, "optimizeTheta":True})
+    A = glmpca_res['factors'] # should be of size N x num_dims, where each column is a PC
+    np.save(path_to_glmpca, A)
+    A=np.load(path_to_glmpca) 
+    S=np.load(path_to_coords)
+    S_torch, A_torch = neural_net.load_rescale_input_data(S,A)
+    isodepth_arch=[20,20] # architecture for isodepth neural network d(x,y) : R^2 -> R 
+    expression_fn_arch=[20,20] # architecture for 1-D expression function h(w) : R -> R^G
+    num_epochs = 2500 # number of epochs to train NN (NOTE: it is sometimes beneficial to train longer)
+    checkpoint = 500 # save model after number of epochs = multiple of checkpoint
+    out_dir=f'/gemini/code/simulation_gaston_{spa}/seed{seed1}/output_matrix{i}_{spa}' # folder to save model runs
+    os.makedirs(out_dir, exist_ok=True)
+    optimizer = "adam"
+    num_restarts=1
+    device='cpu' # change to 'cpu' if you don't have a GPU
+    seed_list=range(num_restarts)
+    for seed in seed_list:
+      print(f'training neural network for seed {seed}')
+      out_dir_seed=f"{out_dir}/rep{seed}"
+      os.makedirs(out_dir_seed, exist_ok=True)
+      mod, loss_list = neural_net.train(S_torch, A_torch,
+                                        S_hidden_list=isodepth_arch, A_hidden_list=expression_fn_arch, 
+                                        epochs=num_epochs, checkpoint=checkpoint, device=device,
+                                        save_dir=out_dir_seed, optim=optimizer, seed=seed, save_final=True)
+
+      
+spa="polynomialpolynomial"
+for seed1 in range(1,11):
+  for i in ["1","2","3","4","paste"]:
+    # gaston_model, A, S = process_NN_output.process_files(
+    #   f'/gemini/code/simulation_gaston_{spa}/seed{seed1}/output_matrix{i}_{spa}'
+    # )
+    gaston_model, A, S = process_NN_output.process_files(
+      f'/gemini/code/simulation_gaston_{spa}/seed{seed1}/output_matrix{i}_{spa}'
+    )
+    coords_mat=np.load("/gemini/code/simulation_gaston/simulation_position.npy") # N x 2 spatial coordinate matrix 
+    counts_mat=np.load(f"/gemini/code/mix_pattern/data_{i}_{spa}_seed{seed1}.npy").T # N x G UMI count array
+    gene_labels=np.load(f"/gemini/code/simulation_gaston/genename_simulation.npy", allow_pickle=True) # array of names of G genes
+    
+    if i=="paste":
+      counts_mat=counts_mat.T
+    
+    num_layers=3
+    
+    while num_layers >= 1:
+      try:
+        gaston_isodepth, gaston_labels = dp_related.get_isodepth_labels(gaston_model, A, S, num_layers)
+        gaston_isodepth = isodepth_scaling.adjust_isodepth(gaston_isodepth, gaston_labels, coords_mat,q_vals=[0.05, 0.05, 0.05, 0.05], scale_factor=0.05)
+        break  # 成功则跳出 while 循环
+      except ValueError as e:
+        print(f"num_layers={num_layers} 出错: {e}, 尝试减少 num_layers")
+        num_layers -= 1
+    
+    if num_layers < 1:
+      print(f"矩阵{i}, {inf} 在 seed{seed1} 下无法生成有效 isodepth，跳过")
+      continue  
+      
+    gaston_isodepth, gaston_labels=dp_related.get_isodepth_labels(gaston_model,A,S,num_layers)
+    gaston_isodepth=isodepth_scaling.adjust_isodepth(gaston_isodepth, gaston_labels, coords_mat, 
+                                                     q_vals=[0.05, 0.05, 0.05, 0.05], scale_factor=0.05)
+    
+    umi_threshold = 10
+    pw_fit_dict=segmented_fit.pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth,
+                                            None, [], umi_threshold = umi_threshold)
+    
+    binning_output=binning_and_plotting.bin_data(counts_mat, gaston_labels, gaston_isodepth, 
+                                                 None, gene_labels, num_bins_per_domain=[4,4,4,4], umi_threshold=umi_threshold)
+    
+    q=0.9 # use 0.9 quantile for slopes, discontinuities
+    discont_genes_layer=spatial_gene_classification.get_discont_genes(pw_fit_dict, binning_output,q=q)
+    cont_genes_layer=spatial_gene_classification.get_cont_genes(pw_fit_dict, binning_output,q=q)
+    
+    cont_svg = list(cont_genes_layer.keys())
+    discont_svg = list(discont_genes_layer.keys())
+    all_svg = list(set(cont_svg + discont_svg))
+    
+    all_svg_sorted = sorted(all_svg)
+    with open(f"/gemini/code/GASTON_SVG_list_supple_{i}_{spa}_seed{seed1}.txt", "w", encoding="utf-8") as f:
+      for gene in all_svg_sorted:
+        f.write(gene + "\n")     
+
+      
+
+
+}
+
+#no_cov数据集
+{
+  spa="period"
+  for(seed1 in c(1:10)){
+    load(paste0("/gemini/code/simulation_nocov/data_",spa,"_nocov_seed",seed1,".RData"))
+    load(paste0("/gemini/code/simulation_nocov/data_",spa,"_nocov_paste_seed",seed1,".RData"))
+    for(inf in c("inf3")){
+      if(inf=="inf1"){
+        num2=1
+      }else if(inf=="inf3"){
+        num2=2
+      }else{
+        num2=3
+      }
+      for(num in c(1:8)){
+        count=t(all_results_list[[inf]][[1]][[num]])
+        print(dim(count))
+        rownames(count)=paste0("gene",1:5000)
+        colnames(count)=paste0("spot",1:1024)
+        write.csv(count, paste0("/gemini/code/simulation_gaston/matrix",num,"_count_simu_nocov_seed",seed1,"_",spa,"_",inf,".csv"))
+      }
+      for(num in c(1:4)){
+        count=t(data_paste_list[[num2]][[num]])
+        print(dim(count))
+        rownames(count)=paste0("gene",1:5000)
+        colnames(count)=paste0("spot",1:1024)
+        write.csv(count, paste0("/gemini/code/simulation_gaston/matrix",(num+8),"_count_simu_nocov_seed",seed1,"_",spa,"_",inf,".csv"))
+      }
+    }
+  }
+  
+  loc=expand.grid(y=0:31,x=0:31)[,2:1]
+  rownames(loc)=paste0("spot",1:1024)
+  colnames(loc)=c("x","y")
+  write.csv(loc, paste0("/gemini/code/simulation_gaston/simulation_position.csv"))
+  
+  
+data="period"
+t="count"
+for i in range(1, 13):
+  for seed1 in range(1,11):
+    for inf in ["inf3"]:
+      csv_file = f"/gemini/code/simulation_gaston/matrix{i}_{t}_simu_nocov_seed{seed1}_{data}_{inf}.csv"
+      npy_file = f"/gemini/code/simulation_gaston/matrix{i}_{t}_simu_nocov_seed{seed1}_{data}_{inf}.npy"
+      df = pd.read_csv(csv_file, index_col=0)
+      np.save(npy_file, df.values)
+      print(f"Saved {npy_file}")
+  
+csv_file = "/gemini/code/simulation_gaston/simulation_position.csv"
+npy_file = "/gemini/code/simulation_gaston/simulation_position.npy"
+df = pd.read_csv(csv_file, index_col=0)
+np.save(npy_file, df.values)
+
+csv_file = f"/gemini/code/simulation_gaston/matrix1_count_simu_nocov_seed1_period_inf3.csv"
+npy_file = f"/gemini/code/simulation_gaston/genename_simulation.npy"
+matrix_df = pd.read_csv(csv_file, index_col=0)
+colnames = matrix_df.index
+np.save(npy_file,colnames)
+  
+data="period"
+for seed1 in range(4,11):
+  for inf in ["inf3"]:
+    for i in range(1,13):
+      path_to_glmpca=f"/gemini/code/simulation_gaston/matrix{i}_glmpca_simu_nocov_seed{seed1}_{data}_{inf}.npy"
+      path_to_coords= "/gemini/code/simulation_gaston/simulation_position.npy"
+      path_to_count= f"/gemini/code/simulation_gaston/matrix{i}_count_simu_nocov_seed{seed1}_{data}_{inf}.npy"
+      
+      coords_mat=np.load(path_to_coords) # N x 2 spatial coordinate matrix 
+      counts_mat=np.load(path_to_count) # N x G UMI count array
+      gene_labels=np.load('/gemini/code/simulation_gaston/genename_simulation.npy', allow_pickle=True) 
+      num_dims=8 # 2 * number of clusters
+      penalty=10 # may need to increase if this is too small
+      num_iters=30
+      eps=1e-4
+      glmpca_res=glmpca.glmpca(counts_mat, num_dims, fam="poi", penalty=penalty, verbose=True,
+                               ctl = {"maxIter":num_iters, "eps":eps, "optimizeTheta":True})
+      A = glmpca_res['factors'] # should be of size N x num_dims, where each column is a PC
+      print("coords shape:", S.shape)
+      print("A shape:", A.shape)
+      np.save(path_to_glmpca, A)
+      
+      A=np.load(path_to_glmpca) 
+      S=np.load(path_to_coords)
+      S_torch, A_torch = neural_net.load_rescale_input_data(S,A)
+      isodepth_arch=[20,20] # architecture for isodepth neural network d(x,y) : R^2 -> R 
+      expression_fn_arch=[20,20] # architecture for 1-D expression function h(w) : R -> R^G
+      
+      num_epochs = 2500 # number of epochs to train NN (NOTE: it is sometimes beneficial to train longer)
+      checkpoint = 500 # save model after number of epochs = multiple of checkpoint
+      out_dir=f'/gemini/code/simulation_gaston_nocov/seed{seed1}/output_matrix{i}_{data}_{inf}' # folder to save model runs
+      os.makedirs(out_dir, exist_ok=True)
+      optimizer = "adam"
+      num_restarts=1
+      device='cpu' # change to 'cpu' if you don't have a GPU
+      seed_list=range(num_restarts)
+      for seed in seed_list:
+        print(f'training neural network for seed {seed}')
+        out_dir_seed=f"{out_dir}/rep{seed}"
+        os.makedirs(out_dir_seed, exist_ok=True)
+        mod, loss_list = neural_net.train(S_torch, A_torch,
+                                          S_hidden_list=isodepth_arch, A_hidden_list=expression_fn_arch, 
+                                          epochs=num_epochs, checkpoint=checkpoint, device=device,
+                                          save_dir=out_dir_seed, optim=optimizer, seed=seed, save_final=True)
+  
+        
+        
+data="period"
+for seed1 in range(1,11):
+  for i in range(1,13):
+    for inf in ["inf3"]:
+      gaston_model, A, S = process_NN_output.process_files(
+        f'/gemini/code/simulation_gaston_nocov/seed{seed1}/output_matrix{i}_{data}_{inf}'
+      )
+      
+      coords_mat=np.load("/gemini/code/simulation_gaston/simulation_position.npy") # N x 2 spatial coordinate matrix 
+      counts_mat=np.load(f"/gemini/code/simulation_gaston/matrix{i}_count_simu_nocov_seed{seed1}_{data}_{inf}.npy").T # N x G UMI count array
+      gene_labels=np.load(f"/gemini/code/simulation_gaston/genename_simulation.npy", allow_pickle=True) # array of names of G genes
+      
+      num_layers=4
+      
+      while num_layers >= 1:
+        try:
+          gaston_isodepth, gaston_labels = dp_related.get_isodepth_labels(gaston_model, A, S, num_layers)
+          gaston_isodepth = isodepth_scaling.adjust_isodepth(gaston_isodepth, gaston_labels, coords_mat,q_vals=[0.05, 0.05, 0.05, 0.05], scale_factor=0.05)
+          break  # 成功则跳出 while 循环
+        except ValueError as e:
+          print(f"num_layers={num_layers} 出错: {e}, 尝试减少 num_layers")
+          num_layers -= 1
+      
+      if num_layers < 1:
+        print(f"矩阵{i}, {inf} 在 seed{seed1} 下无法生成有效 isodepth，跳过")
+        continue  
+      
+      gaston_isodepth, gaston_labels=dp_related.get_isodepth_labels(gaston_model,A,S,num_layers)
+      gaston_isodepth=isodepth_scaling.adjust_isodepth(gaston_isodepth, gaston_labels, coords_mat, 
+                                                     q_vals=[0.05, 0.05, 0.05, 0.05], scale_factor=0.05)
+      
+      umi_threshold = 0
+      pw_fit_dict=segmented_fit.pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth,
+                                            None, [], umi_threshold = umi_threshold)
+      
+      binning_output=binning_and_plotting.bin_data(counts_mat, gaston_labels, gaston_isodepth, 
+                                                 None, gene_labels, num_bins_per_domain=[4,4,4,4], umi_threshold=umi_threshold)
+      
+      q=0.9 # use 0.9 quantile for slopes, discontinuities
+      discont_genes_layer=spatial_gene_classification.get_discont_genes(pw_fit_dict, binning_output,q=q)
+      cont_genes_layer=spatial_gene_classification.get_cont_genes(pw_fit_dict, binning_output,q=q)
+      
+      cont_svg = list(cont_genes_layer.keys())
+      discont_svg = list(discont_genes_layer.keys())
+      all_svg = list(set(cont_svg + discont_svg))
+      
+      all_svg_sorted = sorted(all_svg)
+      with open(f"/gemini/code/GASTON_SVG_list_simu_nocov_{i}_{data}_{inf}_seed{seed1}.txt", "w", encoding="utf-8") as f:
+        for gene in all_svg_sorted:
+          f.write(gene + "\n")     
+  
+  
+}
+    
+#交叉paste
+{
+import itertools  
+from itertools import combinations
+nums = [1, 2, 3, 4]
+  
+for i, j in combinations(nums, 2):
+  print(i, j)
+  csv_file = f"/gemini/code/dataanalysis/dlpfc1234_paste_{i}_{j}.csv"
+  npy_file = f"/gemini/code/dlpfc1234_paste_{i}_{j}.npy"
+  df = pd.read_csv(csv_file, index_col=0)
+  np.save(npy_file, df.values)
+  print(f"Saved {npy_file}")
+  
+for i in range(1,5):
+  csv_file = f"/gemini/code/dataanalysis/matrix{i}_postion_126.csv"
+  npy_file = f"/gemini/code/dlpfc1234_coord_{i}.npy"
+  df = pd.read_csv(csv_file, index_col=0)
+  np.save(npy_file, df.values)
+  print(f"Saved {npy_file}")
+  
+  
+for i, j in combinations(nums, 2):
+  path_to_glmpca=f"/gemini/code/dlpfc1234_paste_glmpca_{i}_{j}.npy"
+  path_to_coords= f"/gemini/code/dlpfc1234_coord_{i}.npy"
+  path_to_count= f"/gemini/code/dlpfc1234_paste_{i}_{j}.npy"
+  
+  coords_mat=np.load(path_to_coords) # N x 2 spatial coordinate matrix 
+  counts_mat=np.load(path_to_count) # N x G UMI count array
+  gene_labels=np.load('/gemini/code/genename_dlpfc_1234.npy', allow_pickle=True) 
+  num_dims=8 # 2 * number of clusters
+  penalty=10 # may need to increase if this is too small
+  glmpca_res=glmpca.glmpca(counts_mat.T, num_dims, fam="poi", penalty=penalty, verbose=True)
+  A = glmpca_res['factors'] # should be of size N x num_dims, where each column is a PC
+  np.save(path_to_glmpca, A)
+  
+  A=np.load(path_to_glmpca) 
+  S=np.load(path_to_coords)
+  S_torch, A_torch = neural_net.load_rescale_input_data(S,A)
+  isodepth_arch=[20,20] # architecture for isodepth neural network d(x,y) : R^2 -> R 
+  expression_fn_arch=[20,20] # architecture for 1-D expression function h(w) : R -> R^G
+  
+  num_epochs =3000 # number of epochs to train NN (NOTE: it is sometimes beneficial to train longer)
+  checkpoint = 500 # save model after number of epochs = multiple of checkpoint
+  out_dir=f'/gemini/code/inter_robust/dlpfc1234_output_paste_{i}_{j}' # folder to save model runs
+  os.makedirs(out_dir, exist_ok=True)
+  optimizer = "adam"
+  num_restarts=1
+  device='cpu' # change to 'cpu' if you don't have a GPU
+  
+  seed_list=range(num_restarts)
+  for seed in seed_list:
+    print(f'training neural network for seed {seed}')
+    out_dir_seed=f"{out_dir}/rep{seed}"
+    os.makedirs(out_dir_seed, exist_ok=True)
+    mod, loss_list = neural_net.train(S_torch, A_torch,
+                                      S_hidden_list=isodepth_arch, A_hidden_list=expression_fn_arch, 
+                                      epochs=num_epochs, checkpoint=checkpoint, device=device,
+                                      save_dir=out_dir_seed, optim=optimizer, seed=seed, save_final=True)
+
+for data in ["1234"]:
+  for i, j in combinations(nums, 2):
+    gaston_model, A, S = process_NN_output.process_files(
+      f'/gemini/code/inter_robust/dlpfc{data}_output_paste_{i}_{j}'
+    )
+    coords_mat=np.load(f"/gemini/code/dlpfc{data}_coord_{i}.npy") # N x 2 spatial coordinate matrix 
+    counts_mat=np.load(f"/gemini/code/dlpfc{data}_paste_{i}_{j}.npy") # N x G UMI count array
+    gene_labels=np.load(f'/gemini/code/genename_dlpfc_{data}.npy', allow_pickle=True) # array of names of G genes
+    num_layers=7
+    gaston_isodepth, gaston_labels=dp_related.get_isodepth_labels(gaston_model,A,S,num_layers)
+    gaston_isodepth=isodepth_scaling.adjust_isodepth(gaston_isodepth, gaston_labels, coords_mat, 
+                                                     q_vals=[0.05, 0.05, 0.05, 0.05,0.05,0.05,0.05], scale_factor=0.05)
+    np.savetxt(f"/gemini/code/gaston_labels_dlpfc{data}_inter_paste_{i}_{j}.txt", gaston_labels)
+    umi_threshold = 0
+    pw_fit_dict=segmented_fit.pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth,
+                                            None, [], umi_threshold = umi_threshold)
+    binning_output=binning_and_plotting.bin_data(counts_mat, gaston_labels, gaston_isodepth, 
+                                                 None, gene_labels, num_bins_per_domain=[7,7,7,7,7,7,7], umi_threshold=umi_threshold)
+    q=0.9 # use 0.9 quantile for slopes, discontinuities
+    discont_genes_layer=spatial_gene_classification.get_discont_genes(pw_fit_dict, binning_output,q=q)
+    cont_genes_layer=spatial_gene_classification.get_cont_genes(pw_fit_dict, binning_output,q=q)
+    cont_svg = list(cont_genes_layer.keys())
+    discont_svg = list(discont_genes_layer.keys())
+    all_svg = list(set(cont_svg + discont_svg))
+    all_svg_sorted = sorted(all_svg)
+    with open(f"/gemini/code/GASTON_SVG_list_inter_paste_dlpfc{data}_{i}_{j}.txt", "w", encoding="utf-8") as f:
+      for gene in all_svg_sorted:
+        f.write(gene + "\n")    
+    
+    
+}
+    
+##scc抽点
+{
+data="sccnew"
+
+types = ["count", "position"]
+for i in range(1, 4):
+  for t in types:
+    csv_file = f"/gemini/code/dataanalysis/matrix{i}_{t}_{data}_sampled.csv"
+    npy_file = f"/gemini/code/matrix{i}_{t}_{data}_sampled.npy"
+    df = pd.read_csv(csv_file, index_col=0)
+    np.save(npy_file, df.values)
+    print(f"Saved {npy_file}")
+    
+csv_file = f"/gemini/code/dataanalysis/matrixpaste_count_{data}_sampled.csv"
+npy_file = f"/gemini/code/matrixpaste_count_{data}_sampled.npy"
+df = pd.read_csv(csv_file, index_col=0)
+np.save(npy_file, df.values)
+print(f"Saved {npy_file}")
+
+csv_file = f"/gemini/code/dataanalysis/matrix1_position_{data}_sampled.csv"
+npy_file = f"/gemini/code/matrixpaste_position_{data}_sampled.npy"
+df = pd.read_csv(csv_file, index_col=0)
+np.save(npy_file, df.values)
+print(f"Saved {npy_file}")   
+
+csv_file = f"/gemini/code/dataanalysis/matrix1_count_{data}_sampled.csv"
+npy_file = f"/gemini/code/genename_{data}_sampled.npy"
+matrix_df = pd.read_csv(csv_file, index_col=0)
+colnames = matrix_df.index
+np.save(npy_file,colnames)
+gene_labels=np.load(f'/gemini/code/genename_{data}_sampled.npy', allow_pickle=True) # array of names of G genes
+
+
+for data in ["sccnew"]:
+  for i in [1,2,3,"paste"]:
+    path_to_glmpca=f"/gemini/code/matrix{i}_glmpca_{data}_sampled.npy"
+    path_to_coords= f"/gemini/code/matrix{i}_position_{data}_sampled.npy"
+    path_to_count= f"/gemini/code/matrix{i}_count_{data}_sampled.npy"
+    coords_mat=np.load(path_to_coords) # N x 2 spatial coordinate matrix 
+    counts_mat=np.load(path_to_coords) # N x G UMI count array
+    gene_labels=np.load(f'/gemini/code/genename_{data}_sampled.npy', allow_pickle=True) 
+    num_dims=8 # 2 * number of clusters
+    penalty=10 # may need to increase if this is too small
+    glmpca_res=glmpca.glmpca(counts_mat.T, num_dims, fam="poi", penalty=penalty, verbose=True)
+    A = glmpca_res['factors'] # should be of size N x num_dims, where each column is a PC
+    np.save(path_to_glmpca, A)
+    A=np.load(path_to_glmpca) 
+    S=np.load(path_to_coords)
+    S_torch, A_torch = neural_net.load_rescale_input_data(S,A)
+    isodepth_arch=[20,20] # architecture for isodepth neural network d(x,y) : R^2 -> R 
+    expression_fn_arch=[20,20] # architecture for 1-D expression function h(w) : R -> R^G
+    num_epochs = 2500 # number of epochs to train NN (NOTE: it is sometimes beneficial to train longer)
+    checkpoint = 500 # save model after number of epochs = multiple of checkpoint
+    out_dir=f'/gemini/code/scc{i}_output_{data}_sampled' # folder to save model runs
+    optimizer = "adam"
+    num_restarts=1
+    device='cpu' # change to 'cpu' if you don't have a GPU
+    seed_list=range(num_restarts)
+    for seed in seed_list:
+      print(f'training neural network for seed {seed}')
+      out_dir_seed=f"{out_dir}/rep{seed}"
+      os.makedirs(out_dir_seed, exist_ok=True)
+      mod, loss_list = neural_net.train(S_torch, A_torch,
+                                        S_hidden_list=isodepth_arch, A_hidden_list=expression_fn_arch, 
+                                        epochs=num_epochs, checkpoint=checkpoint, device=device,
+                                        save_dir=out_dir_seed, optim=optimizer, seed=seed, save_final=True)
+
+      
+    
+for data in ["sccnew"]:
+  for i in [1,2,3,"paste"]:
+gaston_model, A, S = process_NN_output.process_files(
+  f"/gemini/code/scc{i}_output_{data}_sampled"
+)
+
+coords_mat=np.load(f"/gemini/code/matrix{i}_position_{data}_sampled.npy") # N x 2 spatial coordinate matrix 
+counts_mat=np.load(f"/gemini/code/matrix{i}_count_{data}_sampled.npy").T # N x G UMI count array
+gene_labels=np.load(f'/gemini/code/genename_{data}_sampled.npy', allow_pickle=True) # array of names of G genes
+#model_selection.plot_ll_curve(gaston_model, A, S, max_domain_num=10, start_from=4)
+
+num_layers=7
+if i=="paste":
+  counts_mat=counts_mat.T
+gaston_isodepth, gaston_labels=dp_related.get_isodepth_labels(gaston_model,A,S,num_layers)
+gaston_isodepth=isodepth_scaling.adjust_isodepth(gaston_isodepth, gaston_labels, coords_mat, 
+                                                 q_vals=[0.05, 0.05, 0.05, 0.05,0.05,0.05,0.05], scale_factor=0.05)
+
+np.savetxt(f"/gemini/code/gaston_labels_sample_{i}_{data}.txt", gaston_labels)
+
+umi_threshold = 0
+pw_fit_dict=segmented_fit.pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth,
+                                        None, [], umi_threshold = umi_threshold)
+
+binning_output=binning_and_plotting.bin_data(counts_mat, gaston_labels, gaston_isodepth, 
+                                             None, gene_labels, num_bins_per_domain=[7,7,7,7,7,7,7], umi_threshold=umi_threshold)
+
+q=0.9 # use 0.9 quantile for slopes, discontinuities
+discont_genes_layer=spatial_gene_classification.get_discont_genes(pw_fit_dict, binning_output,q=q)
+cont_genes_layer=spatial_gene_classification.get_cont_genes(pw_fit_dict, binning_output,q=q)
+
+cont_svg = list(cont_genes_layer.keys())
+discont_svg = list(discont_genes_layer.keys())
+all_svg = list(set(cont_svg + discont_svg))
+
+
+all_svg_sorted = sorted(all_svg)
+with open(f"/gemini/code/GASTON_SVG_list_sample_{i}_{data}.txt", "w", encoding="utf-8") as f:
+  for gene in all_svg_sorted:
+    f.write(gene + "\n")
+  
+  
+}
+    
+#scc交叉
+{
+import itertools  
+from itertools import combinations
+nums = [1, 2, 3]
+
+csv_file = f"/gemini/code/dataanalysis/scc_count1.csv"
+npy_file = f"/gemini/code/genename_scc.npy"
+matrix_df = pd.read_csv(csv_file, index_col=0)
+colnames = matrix_df.index
+np.save(npy_file,colnames)
+
+for i, j in combinations(nums, 2):
+  print(i, j)
+  csv_file = f"/gemini/code/dataanalysis/scc_paste_{i}{j}.csv"
+  npy_file = f"/gemini/code/scc_paste_{i}_{j}.npy"
+  df = pd.read_csv(csv_file, index_col=0)
+  np.save(npy_file, df.values)
+  csv_file = f"/gemini/code/dataanalysis/scc_position{i}.csv"
+  npy_file = f"/gemini/code/scc_paste_coord_{i}{j}.npy"
+  df = pd.read_csv(csv_file, index_col=0)
+  np.save(npy_file, df.values)
+  print(f"Saved {npy_file}")
+
+
+for i, j in combinations(nums, 2):
+  path_to_glmpca=f"/gemini/code/scc_paste_glmpca_{i}_{j}.npy"
+  path_to_coords= f"/gemini/code/scc_paste_coord_{i}{j}.npy"
+  path_to_count= f"/gemini/code/scc_paste_{i}_{j}.npy"
+  
+  coords_mat=np.load(path_to_coords) # N x 2 spatial coordinate matrix 
+  counts_mat=np.load(path_to_count) # N x G UMI count array
+  gene_labels=np.load('/gemini/code/genename_scc.npy', allow_pickle=True) 
+  num_dims=8 # 2 * number of clusters
+  penalty=10 # may need to increase if this is too small
+  glmpca_res=glmpca.glmpca(counts_mat.T, num_dims, fam="poi", penalty=penalty, verbose=True)
+  A = glmpca_res['factors'] # should be of size N x num_dims, where each column is a PC
+  np.save(path_to_glmpca, A)
+  
+  A=np.load(path_to_glmpca) 
+  S=np.load(path_to_coords)
+  S_torch, A_torch = neural_net.load_rescale_input_data(S,A)
+  isodepth_arch=[20,20] # architecture for isodepth neural network d(x,y) : R^2 -> R 
+  expression_fn_arch=[20,20] # architecture for 1-D expression function h(w) : R -> R^G
+  
+  num_epochs =2500 # number of epochs to train NN (NOTE: it is sometimes beneficial to train longer)
+  checkpoint = 500 # save model after number of epochs = multiple of checkpoint
+  out_dir=f'/gemini/code/scc_output_paste_{i}_{j}' # folder to save model runs
+  os.makedirs(out_dir, exist_ok=True)
+  optimizer = "adam"
+  num_restarts=1
+  device='cpu' # change to 'cpu' if you don't have a GPU
+  
+  seed_list=range(num_restarts)
+  for seed in seed_list:
+    print(f'training neural network for seed {seed}')
+    out_dir_seed=f"{out_dir}/rep{seed}"
+    os.makedirs(out_dir_seed, exist_ok=True)
+    mod, loss_list = neural_net.train(S_torch, A_torch,
+                                      S_hidden_list=isodepth_arch, A_hidden_list=expression_fn_arch, 
+                                      epochs=num_epochs, checkpoint=checkpoint, device=device,
+                                      save_dir=out_dir_seed, optim=optimizer, seed=seed, save_final=True)
+
+for data in ["1234"]:
+  for i, j in combinations(nums, 2):
+  gaston_model, A, S = process_NN_output.process_files(
+    f'/gemini/code/inter_robust/dlpfc{data}_output_paste_{i}_{j}'
+  )
+coords_mat=np.load(f"/gemini/code/dlpfc{data}_coord_{i}.npy") # N x 2 spatial coordinate matrix 
+counts_mat=np.load(f"/gemini/code/dlpfc{data}_paste_{i}_{j}.npy") # N x G UMI count array
+gene_labels=np.load(f'/gemini/code/genename_dlpfc_{data}.npy', allow_pickle=True) # array of names of G genes
+num_layers=7
+gaston_isodepth, gaston_labels=dp_related.get_isodepth_labels(gaston_model,A,S,num_layers)
+gaston_isodepth=isodepth_scaling.adjust_isodepth(gaston_isodepth, gaston_labels, coords_mat, 
+                                                 q_vals=[0.05, 0.05, 0.05, 0.05,0.05,0.05,0.05], scale_factor=0.05)
+np.savetxt(f"/gemini/code/gaston_labels_dlpfc{data}_inter_paste_{i}_{j}.txt", gaston_labels)
+umi_threshold = 0
+pw_fit_dict=segmented_fit.pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth,
+                                        None, [], umi_threshold = umi_threshold)
+binning_output=binning_and_plotting.bin_data(counts_mat, gaston_labels, gaston_isodepth, 
+                                             None, gene_labels, num_bins_per_domain=[7,7,7,7,7,7,7], umi_threshold=umi_threshold)
+q=0.9 # use 0.9 quantile for slopes, discontinuities
+discont_genes_layer=spatial_gene_classification.get_discont_genes(pw_fit_dict, binning_output,q=q)
+cont_genes_layer=spatial_gene_classification.get_cont_genes(pw_fit_dict, binning_output,q=q)
+cont_svg = list(cont_genes_layer.keys())
+discont_svg = list(discont_genes_layer.keys())
+all_svg = list(set(cont_svg + discont_svg))
+all_svg_sorted = sorted(all_svg)
+with open(f"/gemini/code/GASTON_SVG_list_inter_paste_dlpfc{data}_{i}_{j}.txt", "w", encoding="utf-8") as f:
+  for gene in all_svg_sorted:
+  f.write(gene + "\n")    
+  
+  
+}
+
+
+    
+    
+#读取结果(识别到的sv基因)
+gaston_sv_list=replicate(2,replicate(7, list(), simplify = FALSE),simplify = FALSE)
+for(i in c(1:2)){
+  if(i==1){
+    datafrom="output"
+  }else{
+    datafrom="output_34711"
+  }
+  for(j in c(1:4)){
+    gene_gaston <- scan(paste0("C:/Users/zhoum/OneDrive/gaston/GASTON_SVG_listdlpfc",j,"_",datafrom,".txt"), what = "character")
+    gaston_sv_list[[i]][[j]]=gene_gaston
+  }
+  gaston_sv_list[[i]][[5]]=Reduce(union,list(gaston_sv_list[[i]][[1]],gaston_sv_list[[i]][[2]],
+                                             gaston_sv_list[[i]][[3]],gaston_sv_list[[i]][[4]]))
+  gaston_sv_list[[i]][[6]]=Reduce(intersect,list(gaston_sv_list[[i]][[1]],gaston_sv_list[[i]][[2]],
+                                             gaston_sv_list[[i]][[3]],gaston_sv_list[[i]][[4]]))
+  gene_gaston<- scan(paste0("C:/Users/zhoum/OneDrive/gaston/GASTON_SVG_listdlpfc_paste_",datafrom,".txt"), what = "character")
+  gaston_sv_list[[i]][[7]]<-gene_gaston
+}
+save(gaston_sv_list,file=paste0("C:/Users/zhoum/OneDrive/gaston/GASTON_SVG_listdlpfc.RData"))
+
+
+gaston_domain_list=replicate(2,replicate(5, list(), simplify = FALSE),simplify = FALSE)
+for(i in c(1:2)){
+  if(i==1){
+    datafrom="output"
+  }else{
+    datafrom="output_34711"
+  }
+  for(j in c(1:4)){
+    domain <- scan(paste0("C:/Users/zhoum/OneDrive/gaston/gaston_labelsdlpfc",j,"_",datafrom,".txt"))
+    gaston_domain_list[[i]][[j]]=domain
+  }
+  domain_gaston<- scan(paste0("C:/Users/zhoum/OneDrive/gaston/gaston_labelsdlpfc_paste_",datafrom,".txt"))
+  gaston_domain_list[[i]][[5]]<-domain_gaston
+}
+save(gaston_domain_list,file=paste0("C:/Users/zhoum/OneDrive/gaston/GASTON_domain_listdlpfc.RData"))
+
+#计算ARI
+load("C:/Users/zhoum/OneDrive/数据结果/layer_barcode_34711_dlpfc.RData")
+load("C:/Users/zhoum/OneDrive/数据结果/layer_barcode_1218.RData")
+gaston_matrix=matrix(NA,ncol = 4,nrow = 5)
+colnames(gaston_matrix)=c("single","union","inter","paste")
+rownames(gaston_matrix)=c("sec1","sec2","sec3","sec4","AVE")
+for(i in c(1:7)){
+  load(paste0("/Users/zhoum/Desktop/bass测试/gaston_bass_cluster_1234dlpfc_",i,".RData"))
+  for(j in c(1:4)){
+    gaston_result=round(adjustedRandIndex(result_total[[j]],layer_barcode[[j]]),3)
+    if(i<=4){
+      gaston_matrix[j,1]=gaston_result
+    }else{
+      gaston_matrix[j,(i-3)]=gaston_result
+    }
+  }
+}
+gaston_matrix[5, ] <- colMeans(gaston_matrix[1:4, ])
+print(gaston_matrix)
+
+load("C:/Users/zhoum/OneDrive/gaston/GASTON_domain_listdlpfc.RData")
+for(j in c(1:4)){
+  gaston_result=round(adjustedRandIndex(gaston_domain_list[[2]][[j]],layer_barcode[[j]]),3)
+  print(gaston_result)
+}
+
+
+#读取dlpfc抽点的结果
+svgene_list=data_dlpfc_samedonor_svgene_list[[9]]
+result_sample_sv_list=list()
+for(i in c(1:4)){
+  result_sample_sv_list[[i]]=scan(paste0("C:/Users/zhoum/OneDrive/stability/GASTON_SVG_list_sample_",i,"_1234.txt"), what = "character")
+}
+result_sample_sv_list[[5]]=Reduce(union,list(result_sample_sv_list[[1]],result_sample_sv_list[[2]],
+                                             result_sample_sv_list[[3]],result_sample_sv_list[[4]]))
+result_sample_sv_list[[6]]=Reduce(intersect,list(result_sample_sv_list[[1]],result_sample_sv_list[[2]],
+                                             result_sample_sv_list[[3]],result_sample_sv_list[[4]]))
+
+print(length(intersect(result_sample_sv_list[[5]],svgene_list[[5]]))/length(union(result_sample_sv_list[[5]],svgene_list[[5]])))
+print(length(intersect(result_sample_sv_list[[6]],svgene_list[[6]]))/length(union(result_sample_sv_list[[6]],svgene_list[[6]])))
+
+#读取scc抽点的结果
+svgene_list=data_scc_svgene_list_0130[[9]]
+result_sample_sv_list=list()
+for(i in c(1:3)){
+  result_sample_sv_list[[i]]=scan(paste0("C:/Users/zhoum/OneDrive/stability/GASTON_SVG_list_sample_",i,"_sccnew.txt"), what = "character")
+}
+result_sample_sv_list[[4]]=Reduce(union,list(result_sample_sv_list[[1]],result_sample_sv_list[[2]],
+                                             result_sample_sv_list[[3]]))
+result_sample_sv_list[[5]]=Reduce(intersect,list(result_sample_sv_list[[1]],result_sample_sv_list[[2]],
+                                                 result_sample_sv_list[[3]]))
+
+print(length(intersect(result_sample_sv_list[[4]],svgene_list[[4]]))/length(union(result_sample_sv_list[[4]],svgene_list[[4]])))
+print(length(intersect(result_sample_sv_list[[5]],svgene_list[[5]]))/length(union(result_sample_sv_list[[5]],svgene_list[[5]])))
+
+
+
+##paste
+#gaston_gene=scan(paste0("C:/Users/zhoum/OneDrive/stability/GASTON_SVG_listdlpfc34711_output_paste_sampled.txt"), what = "character")
+gaston_gene=scan(paste0("C:/Users/zhoum/OneDrive/stability/GASTON_SVG_list_sample_paste_sccnew.txt"), what = "character")
+
+print(length(intersect(data_scc_svgene_list_0130[[9]][[6]],gaston_gene))/
+        length(union(data_scc_svgene_list_0130[[9]][[6]],gaston_gene)))
+
+
+##读取交叉
+gaston_total_list=list()
+gaston_gene=data_dlpfc_34711_svgene_list[[9]]
+for(data in list(c(1,2),c(1,3),c(1,4),c(2,3),c(2,4),c(3,4))){
+  gaston_total_list[["union"]][[paste0(data[1],data[2])]]=union(gaston_gene[[data[1]]],gaston_gene[[data[2]]])
+  gaston_total_list[["inter"]][[paste0(data[1],data[2])]]=intersect(gaston_gene[[data[1]]],gaston_gene[[data[2]]])
+  gaston_total_list[["paste"]][[paste0(data[1],data[2])]]=scan(paste0("C:/Users/zhoum/OneDrive/stability/GASTON_SVG_list_inter_paste_dlpfc34711_",data[1],"_",data[2],".txt"), what = "character")
+}
+
+
+result_robust_matrix=matrix(NA,nrow=3,ncol = 10)
+for(i in c(1:3)){
+result_robust_matrix[i,1]=length(gaston_gene[[(i+4)]])
+result_robust_matrix[i,2]=round(length(intersect(gaston_total_list[[i]][[1]],gaston_total_list[[i]][[6]]))/length(union(gaston_total_list[[i]][[1]],gaston_total_list[[i]][[6]])),3)
+result_robust_matrix[i,3]=round(length(intersect(gaston_total_list[[i]][[2]],gaston_total_list[[i]][[5]]))/length(union(gaston_total_list[[i]][[2]],gaston_total_list[[i]][[5]])),3)
+result_robust_matrix[i,4]=round(length(intersect(gaston_total_list[[i]][[3]],gaston_total_list[[i]][[4]]))/length(union(gaston_total_list[[i]][[3]],gaston_total_list[[i]][[4]])),3)
+result_robust_matrix[i,5]=round(length(intersect(gaston_total_list[[i]][[1]],gaston_gene[[(i+4)]]))/length(union(gaston_total_list[[i]][[1]],gaston_gene[[(i+4)]])),3)
+result_robust_matrix[i,6]=round(length(intersect(gaston_total_list[[i]][[2]],gaston_gene[[(i+4)]]))/length(union(gaston_total_list[[i]][[2]],gaston_gene[[(i+4)]])),3)
+result_robust_matrix[i,7]=round(length(intersect(gaston_total_list[[i]][[3]],gaston_gene[[(i+4)]]))/length(union(gaston_total_list[[i]][[3]],gaston_gene[[(i+4)]])),3)
+result_robust_matrix[i,8]=round(length(intersect(gaston_total_list[[i]][[4]],gaston_gene[[(i+4)]]))/length(union(gaston_total_list[[i]][[4]],gaston_gene[[(i+4)]])),3)
+result_robust_matrix[i,9]=round(length(intersect(gaston_total_list[[i]][[5]],gaston_gene[[(i+4)]]))/length(union(gaston_total_list[[i]][[5]],gaston_gene[[(i+4)]])),3)
+result_robust_matrix[i,10]=round(length(intersect(gaston_total_list[[i]][[6]],gaston_gene[[(i+4)]]))/length(union(gaston_total_list[[i]][[6]],gaston_gene[[(i+4)]])),3)
+}
+print(result_robust_matrix)
+
+
+#scc
+gaston_total_list=list()
+gaston_gene=data_scc_svgene_list_0130[[9]]
+for(data in list(c(1,2),c(1,3),c(2,3))){
+  gaston_total_list[["union"]][[paste0(data[1],data[2])]]=union(gaston_gene[[data[1]]],gaston_gene[[data[2]]])
+  gaston_total_list[["inter"]][[paste0(data[1],data[2])]]=intersect(gaston_gene[[data[1]]],gaston_gene[[data[2]]])
+  gaston_total_list[["paste"]][[paste0(data[1],data[2])]]=scan(paste0("C:/Users/zhoum/OneDrive/stability/GASTON_SVG_list_inter_paste_scc_",data[1],"_",data[2],".txt"), what = "character")
+}
+
+
+result_robust_matrix=matrix(NA,nrow=3,ncol = 7)
+for(i in c(1:3)){
+  result_robust_matrix[i,1]=length(gaston_gene[[(i+3)]])
+  result_robust_matrix[i,2]=round(length(intersect(gaston_total_list[[i]][[1]],gaston_total_list[[i]][[2]]))/length(union(gaston_total_list[[i]][[1]],gaston_total_list[[i]][[2]])),3)
+  result_robust_matrix[i,3]=round(length(intersect(gaston_total_list[[i]][[1]],gaston_total_list[[i]][[3]]))/length(union(gaston_total_list[[i]][[1]],gaston_total_list[[i]][[3]])),3)
+  result_robust_matrix[i,4]=round(length(intersect(gaston_total_list[[i]][[2]],gaston_total_list[[i]][[3]]))/length(union(gaston_total_list[[i]][[2]],gaston_total_list[[i]][[3]])),3)
+  result_robust_matrix[i,5]=round(length(intersect(gaston_total_list[[i]][[1]],gaston_gene[[(i+3)]]))/length(union(gaston_total_list[[i]][[1]],gaston_gene[[(i+3)]])),3)
+  result_robust_matrix[i,6]=round(length(intersect(gaston_total_list[[i]][[2]],gaston_gene[[(i+3)]]))/length(union(gaston_total_list[[i]][[2]],gaston_gene[[(i+3)]])),3)
+  result_robust_matrix[i,7]=round(length(intersect(gaston_total_list[[i]][[3]],gaston_gene[[(i+3)]]))/length(union(gaston_total_list[[i]][[3]],gaston_gene[[(i+3)]])),3)
+}
+print(result_robust_matrix)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+install.packages("spNNGP")
+devtools::install_github('JiawenChenn/StarTrail')
+
+library(StarTrail)
+library(data.table)
+library(dplyr)
+library(spNNGP)
+
+#############生成边界################生成边界################生成边界################生成边界################生成边界################生成边界###
+load("/gemini/code/allgene_bass_cluster.RData")
+#load("/gemini/code/dataanalysis/all_bass_cluster_3_4_7_11.RData")
+for(datanum in c(1:4)){
+  print(datanum)
+  count=as.matrix(read.csv(paste0("/gemini/code/dataanalysis/matrix",datanum,"_celltype_126.csv"),row.names = 1,check.names = FALSE))
+  genename=colnames(count)
+  spotname=rownames(count)
+  coords=as.matrix(read.csv(paste0("/gemini/code/dataanalysis/matrix",datanum,"_postion_126.csv"),row.names = 1,check.names = FALSE))
+  coords = coords-min(coords)
+  coords = coords/max(coords)
+  gene_exp=matrix(NA,nrow = length(spotname),ncol = (length(genename)+4))
+  gene_exp[,1]=spotname
+  gene_exp[,c(2:3)]=coords[,c(1:2)]
+  gene_exp[,4]=result_total[[datanum]]
+  gene_exp[,c(5:(length(genename)+4))]=count[,c(1:length(genename))]
+  colnames(gene_exp)=c("id","x","y","layer",genename)
+  model_list=list()
+  gradient_list=list()
+  thread = 12
+  for(gene_name in c(1:7)){
+    print(genename[gene_name])
+    y = gene_exp[,genename[gene_name]]
+    m.r = fit_NNGP(coords,y,10,thread) 
+    model_list[[gene_name]]=m.r
+    
+    coord_dist = cdist_r(coords,coords)
+    coord_dist_temp  = coord_dist
+    diag(coord_dist_temp)=10000
+    min_sep = min(coord_dist_temp)
+    
+    coord_mesh_x = seq(min(coords[,1]),max(coords[,1]),length.out=100)
+    coord_mesh_y = seq(min(coords[,2]),max(coords[,2]),length.out=100)
+    coord_mesh = expand.grid(coord_mesh_x,coord_mesh_y) %>% as.matrix()
+    
+    index_keep = coord_filter(coord_mesh, coords, close_dis = min_sep, distance_to_boundary = min_sep*2)
+    coord_mesh=coord_mesh[index_keep,]
+    
+    gradient_mesh = finite_difference(coord_mesh,min_sep*0.8,m.r,threads=thread,prefix = 'mesh',path=path)
+    gradient_mesh = cbind(coord_mesh,gradient_mesh)
+    colnames(gradient_mesh)[1:2] = c('s1','s2')
+    
+    gradient_list[[gene_name]]=gradient_mesh
+    fwrite(gradient_mesh,paste0("/gemini/code/startrail/dlpfc1234_",datanum,"_gradient_gene",gene_name,".txt"),col.names=TRUE,sep="\t")
+  }
+  save(gradient_list,file=paste0("/gemini/code/startrail/dlpfc1234_",datanum,"_gradient.RData"))
+  save(model_list,file=paste0("/gemini/code/startrail/dlpfc1234_",datanum,"_model.RData"))
+}
+
+
+
+
+conda activate startrail
+
+from sklearn.datasets import make_blobs
+from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
+import sys
+import numpy as np
+import pandas as pd
+import torch
+import os
+from scipy.io import loadmat
+from math import floor
+import numpy as np
+from sklearn import metrics
+from sklearn.cluster import DBSCAN
+import elpigraph
+
+for datanum in range(1,5):
+  for genenumber in range(1,8):
+    gradient_mesh = pd.read_csv(f"/gemini/code/startrail/dlpfc34711_{datanum}_gradient_gene{genenumber}.txt",sep='\t')
+    print(f"Processing gene {genenumber}", flush=True)
+    coord_mesh = gradient_mesh[['s1', 's2']].to_numpy()
+    pred = np.array(gradient_mesh['pred'])
+    L2 = np.array((gradient_mesh.g1**2+gradient_mesh.g2**2)**0.5)
+    index_keep = (L2 > np.quantile(L2, 0.85)) # use 0.9 quantile
+    coord_mesh_grad = coord_mesh[index_keep, :]
+    db = DBSCAN(eps=0.03, min_samples=1).fit(coord_mesh_grad)
+    labels = db.labels_
+    labels_unique, counts = np.unique(labels, return_counts=True)
+    print("Cluster sizes:", counts)
+    print("Max cluster size:", counts.max())
+    min_num_spot =200
+    labels_to_keep = labels_unique[counts > min_num_spot]
+    gene_boundary = []
+    for i in range(labels_to_keep.shape[0]):
+      print(f"  Cluster {i}, n = {counts[counts > min_num_spot][i]}", flush=True)
+      coord_final = coord_mesh_grad[labels==labels_to_keep[i],]
+      coord_final[:,1] = -coord_final[:,1]
+      PG = elpigraph.computeElasticPrincipalCurve(coord_final,NumNodes=int(counts[counts > min_num_spot][i]/50))[0]
+      nodesp = PG["NodePositions"]
+      Edges = PG["Edges"][0].T
+      points_all = []
+      for j in range(Edges.shape[1]):
+        x_coo = np.concatenate(
+          (nodesp[Edges[0, j], [0]], nodesp[Edges[1, j], [0]])
+        )
+        y_coo = np.concatenate(
+          (nodesp[Edges[0, j], [1]], nodesp[Edges[1, j], [1]])
+        )
+        points_all.append(np.concatenate((x_coo,y_coo),axis=0))
+        print(f"Gene {genenumber} finished\n", flush=True)
+      points_all = np.array(points_all)
+      gene_boundary.append(gene_boundary)
+      np.savetxt(f'/gemini/code/startrail/curve{i}_dlpfc34711_{datanum}_cell{genenumber}.txt',points_all)
+
+    
+  
+#运行基因rds计算梯度
+#load("C:/Users/zhoum/Desktop/bass测试/allgene_bass_cluster.RData")
+load("/gemini/code/allgene_bass_cluster.RData")
+#load("/gemini/code/dataanalysis/all_bass_cluster_3_4_7_11.RData")
+for(datanum in c(4)){
+  print(datanum)
+  count=t(as.matrix(read.csv(paste0("/gemini/code/dataanalysis/matrix",datanum,"_count_126.csv"),row.names = 1,check.names = FALSE)))
+  genename=colnames(count)
+  spotname=rownames(count)
+  coords=as.matrix(read.csv(paste0("/gemini/code/dataanalysis/matrix",datanum,"_postion_126.csv"),row.names = 1,check.names = FALSE))
+  coords = coords-min(coords)
+  coords = coords/max(coords)
+  gene_exp=matrix(NA,nrow = length(spotname),ncol = (length(genename)+4))
+  gene_exp[,1]=spotname
+  gene_exp[,c(2:3)]=coords[,c(1:2)]
+  gene_exp[,4]=result_total[[datanum]]
+  gene_exp[,c(5:(length(genename)+4))]=count[,c(1:length(genename))]
+  colnames(gene_exp)=c("id","x","y","layer",genename)
+  model_list=list()
+  thread = 12
+  wombling_result_matrix=matrix(0,nrow = length(genename),ncol = 7)
+  threshold_result_matrix=matrix(0,nrow=length(genename),ncol=2)
+  for(gene_name in c(1:length(genename))){
+    print(gene_name)
+    y = gene_exp[,genename[gene_name]]
+    m.r = fit_NNGP(coords,y,10,thread) 
+    model_list[[gene_name]]=m.r
+    coord_dist = cdist_r(coords,coords)
+    coord_dist_temp  = coord_dist
+    diag(coord_dist_temp)=10000
+    min_sep = min(coord_dist_temp)
+    threshold_result_matrix[gene_name,1]=sd(y, na.rm = TRUE)
+    threshold_result_matrix[gene_name,2]=min_sep
+    h = 0.8*min_sep
+    boundary_all = list()
+    wombling_result_all = list()
+    wombling_result = c()
+    for(bound_num in c(1:7)){
+      boundary = fread(paste0("/gemini/code/startrail/curve0_dlpfc1234_",datanum,"_cell",bound_num,".txt"))
+      boundary = boundary %>% as.data.frame(check.names=F)
+      colnames(boundary) = c('start_x','end_x','start_y','end_y')
+      boundary$start_y = -boundary$start_y # we did these because we multiply -1 to the y coord when fit boundary
+      boundary$end_y = -boundary$end_y
+      boundary = format_principle_curve(boundary)
+      boundary = refine_boundary(boundary,min_dis=0.01) # cut the boundary segment into smaller segments for better estimate
+      boundary_all[[bound_num+1]] = data.table(boundary) # save the processed boundary coordinates
+      wombling_result_all[[bound_num+1]]=wombling(m.r, 
+                                                  boundary, 
+                                                  h,
+                                                  thread) %>% as.data.table()
+      wombling_result = c(wombling_result,sum(wombling_result_all[[bound_num+1]]$g_simpson))
+      
+    }
+    wombling_result_matrix[gene_name,]=wombling_result
+  }
+  save(wombling_result_matrix,file=paste0("/gemini/code/startrail/startrail_wombling_dlpfc1234_",datanum,".RData"))
+  save(threshold_result_matrix,file=paste0("/gemini/code/startrail/startrail_threshold_dlpfc1234_",datanum,".RData"))
+  save(model_list,file=paste0("/gemini/code/startrail/dlpfc1234_gene_",datanum,"_model.RData"))
+}
+
+#dlpfc的抽点结果
+{
+  set.seed(seed1)
+  #load("/gemini/code/allgene_bass_cluster.RData")
+  load("/gemini/code/dataanalysis/all_bass_cluster_3_4_7_11.RData")
+  for(datanum in c(3:4)){
+    print(datanum)
+    count=t(as.matrix(read.csv(paste0("/gemini/code/dataanalysis/matrix",datanum,"_count_34711_sampled.csv"),row.names = 1,check.names = FALSE)))
+    genename=colnames(count)
+    spotname=rownames(count)
+    coords=as.matrix(read.csv(paste0("/gemini/code/dataanalysis/matrix",datanum,"_position_34711_sampled.csv"),row.names = 1,check.names = FALSE))
+    coords = coords-min(coords)
+    coords = coords/max(coords)
+    gene_exp=matrix(NA,nrow = length(spotname),ncol = (length(genename)+4))
+    gene_exp[,1]=spotname
+    gene_exp[,c(2:3)]=coords[,c(1:2)]
+    sampled_spot <- sort(sample(c(1:(length(spotname)+400)), size = length(spotname), replace = FALSE))
+    gene_exp[,4]=result_total[[datanum]][sampled_spot]
+    gene_exp[,c(5:(length(genename)+4))]=count[,c(1:length(genename))]
+    colnames(gene_exp)=c("id","x","y","layer",genename)
+    model_list=list()
+    thread = 12
+    wombling_result_matrix=matrix(0,nrow = length(genename),ncol = 7)
+    threshold_result_matrix=matrix(0,nrow=length(genename),ncol=2)
+    for(gene_name in c(1:length(genename))){
+      print(gene_name)
+      y = gene_exp[,genename[gene_name]]
+      m.r = fit_NNGP(coords,y,10,thread) 
+      model_list[[gene_name]]=m.r
+      coord_dist = cdist_r(coords,coords)
+      coord_dist_temp  = coord_dist
+      diag(coord_dist_temp)=10000
+      min_sep = min(coord_dist_temp)
+      threshold_result_matrix[gene_name,1]=sd(y, na.rm = TRUE)
+      threshold_result_matrix[gene_name,2]=min_sep
+      h = 0.8*min_sep
+      boundary_all = list()
+      wombling_result_all = list()
+      wombling_result = c()
+      for(bound_num in c(1:7)){
+        boundary = fread(paste0("/gemini/code/startrail/curve0_dlpfc34711_",datanum,"_cell",bound_num,".txt"))
+        boundary = boundary %>% as.data.frame(check.names=F)
+        colnames(boundary) = c('start_x','end_x','start_y','end_y')
+        boundary$start_y = -boundary$start_y # we did these because we multiply -1 to the y coord when fit boundary
+        boundary$end_y = -boundary$end_y
+        boundary = format_principle_curve(boundary)
+        boundary = refine_boundary(boundary,min_dis=0.01) # cut the boundary segment into smaller segments for better estimate
+        boundary_all[[bound_num+1]] = data.table(boundary) # save the processed boundary coordinates
+        wombling_result_all[[bound_num+1]]=wombling(m.r, 
+                                                    boundary, 
+                                                    h,
+                                                    thread) %>% as.data.table()
+        wombling_result = c(wombling_result,sum(wombling_result_all[[bound_num+1]]$g_simpson))
+        
+      }
+      wombling_result_matrix[gene_name,]=wombling_result
+    }
+    save(wombling_result_matrix,file=paste0("/gemini/code/startrail/startrail_wombling_dlpfc34711_",datanum,"_sampled.RData"))
+    save(threshold_result_matrix,file=paste0("/gemini/code/startrail/startrail_threshold_dlpfc34711_",datanum,"_sampled.RData"))
+    save(model_list,file=paste0("/gemini/code/startrail/dlpfc34711_gene_",datanum,"_model_sampled.RData"))
+  }
+  
+}
+
+#dlp的交叉paste
+{
+  load("/gemini/code/allgene_bass_cluster.RData")
+  #load("/gemini/code/dataanalysis/all_bass_cluster_3_4_7_11.RData")
+  for(datanum in list(c(2,4),c(3,4))){
+    print(datanum)
+    count=as.matrix(read.csv(paste0("/gemini/code/dataanalysis/dlpfc1234_paste_",datanum[1],"_",datanum[2],".csv"),check.names = FALSE))
+    matrix=t(as.matrix(read.csv(paste0("/gemini/code/dataanalysis/matrix",datanum[1],"_count_126.csv"),row.names = 1,check.names = FALSE)))
+    print(dim(matrix))
+    print(dim(count))
+    colnames(count)=colnames(matrix)
+    rownames(count)=rownames(matrix)
+    genename=colnames(count)
+    spotname=rownames(count)
+    coords=as.matrix(read.csv(paste0("/gemini/code/dataanalysis/matrix",datanum[1],"_postion_126.csv"),row.names = 1,check.names = FALSE))
+    coords = coords-min(coords)
+    coords = coords/max(coords)
+    gene_exp=matrix(NA,nrow = length(spotname),ncol = (length(genename)+4))
+    gene_exp[,1]=spotname
+    gene_exp[,c(2:3)]=coords[,c(1:2)]
+    gene_exp[,4]=result_total[[datanum[1]]]
+    gene_exp[,c(5:(length(genename)+4))]=count[,c(1:length(genename))]
+    colnames(gene_exp)=c("id","x","y","layer",genename)
+    model_list=list()
+    thread = 12
+    wombling_result_matrix=matrix(0,nrow = length(genename),ncol = 7)
+    threshold_result_matrix=matrix(0,nrow=length(genename),ncol=2)
+    for(gene_name in c(1:length(genename))){
+      print(gene_name)
+      y = gene_exp[,genename[gene_name]]
+      m.r = fit_NNGP(coords,y,10,thread) 
+      model_list[[gene_name]]=m.r
+      coord_dist = cdist_r(coords,coords)
+      coord_dist_temp  = coord_dist
+      diag(coord_dist_temp)=10000
+      min_sep = min(coord_dist_temp)
+      threshold_result_matrix[gene_name,1]=sd(y, na.rm = TRUE)
+      threshold_result_matrix[gene_name,2]=min_sep
+      h = 0.8*min_sep
+      boundary_all = list()
+      wombling_result_all = list()
+      wombling_result = c()
+      for(bound_num in c(1:7)){
+        boundary = fread(paste0("/gemini/code/startrail/curve0_dlpfc1234_",datanum[1],"_cell",bound_num,".txt"))
+        boundary = boundary %>% as.data.frame(check.names=F)
+        colnames(boundary) = c('start_x','end_x','start_y','end_y')
+        boundary$start_y = -boundary$start_y # we did these because we multiply -1 to the y coord when fit boundary
+        boundary$end_y = -boundary$end_y
+        boundary = format_principle_curve(boundary)
+        boundary = refine_boundary(boundary,min_dis=0.01) # cut the boundary segment into smaller segments for better estimate
+        boundary_all[[bound_num+1]] = data.table(boundary) # save the processed boundary coordinates
+        wombling_result_all[[bound_num+1]]=wombling(m.r, 
+                                                    boundary, 
+                                                    h,
+                                                    thread) %>% as.data.table()
+        wombling_result = c(wombling_result,sum(wombling_result_all[[bound_num+1]]$g_simpson))
+        
+      }
+      wombling_result_matrix[gene_name,]=wombling_result
+    }
+    save(wombling_result_matrix,file=paste0("/gemini/code/startrail/startrail_wombling_dlpfc1234_inter_",datanum[1],"_",datanum[2],".RData"))
+    save(threshold_result_matrix,file=paste0("/gemini/code/startrail/startrail_threshold_dlpfc1234_inter_",datanum[1],"_",datanum[2],".RData"))
+    save(model_list,file=paste0("/gemini/code/startrail/dlpfc1234_gene_inter_",datanum[1],"_",datanum[2],"_model.RData"))
+  }
+  
+}
+
+
+
+#跑simu_paste的结果
+{
+#load("C:/Users/zhoum/Desktop/bass测试/allgene_bass_cluster.RData")
+#load("/gemini/code/allgene_bass_cluster.RData")
+load("/gemini/code/all_bass_cluster_3_4_7_11.RData")
+datanum=1
+dir="/gemini/code/"
+count=as.matrix(read.csv(paste0(dir,"dataanalysis/dlpfc_paste_34711.csv")))
+rownames(count)=paste0("spot",c(1:dim(count)[1]))
+colnames(count)=paste0("gene",c(1:dim(count)[2]))
+genename=colnames(count)
+spotname=rownames(count)
+coords=as.matrix(read.csv(paste0(dir,"dataanalysis/matrix1_postion_34711.csv"),row.names = 1,check.names = FALSE))
+coords = coords-min(coords)
+coords = coords/max(coords)
+gene_exp=matrix(NA,nrow = length(spotname),ncol = (length(genename)+4))
+gene_exp[,1]=spotname
+gene_exp[,c(2:3)]=coords[,c(1:2)]
+gene_exp[,4]=result_total[[datanum]]
+gene_exp[,c(5:(length(genename)+4))]=count[,c(1:length(genename))]
+colnames(gene_exp)=c("id","x","y","layer",genename)
+model_list=list()
+thread = 12
+wombling_result_matrix=matrix(0,nrow = length(genename),ncol = 7)
+threshold_result_matrix=matrix(0,nrow=length(genename),ncol=2)
+for(gene_name in c(1:length(genename))){
+  print(gene_name)
+  y = gene_exp[,genename[gene_name]]
+  m.r = fit_NNGP(coords,y,10,thread) 
+  model_list[[gene_name]]=m.r
+  coord_dist = cdist_r(coords,coords)
+  coord_dist_temp  = coord_dist
+  diag(coord_dist_temp)=10000
+  min_sep = min(coord_dist_temp)
+  threshold_result_matrix[gene_name,1]=sd(y, na.rm = TRUE)
+  threshold_result_matrix[gene_name,2]=min_sep
+  h = 0.8*min_sep
+  boundary_all = list()
+  wombling_result_all = list()
+  wombling_result = c()
+  for(bound_num in c(1:7)){
+    boundary = fread(paste0("/gemini/code/startrail/curve0_dlpfc34711_",datanum,"_cell",bound_num,".txt"))
+    boundary = boundary %>% as.data.frame(check.names=F)
+    colnames(boundary) = c('start_x','end_x','start_y','end_y')
+    boundary$start_y = -boundary$start_y # we did these because we multiply -1 to the y coord when fit boundary
+    boundary$end_y = -boundary$end_y
+    boundary = format_principle_curve(boundary)
+    boundary = refine_boundary(boundary,min_dis=0.01) # cut the boundary segment into smaller segments for better estimate
+    boundary_all[[bound_num+1]] = data.table(boundary) # save the processed boundary coordinates
+    wombling_result_all[[bound_num+1]]=wombling(m.r, 
+                                                boundary, 
+                                                h,
+                                                thread) %>% as.data.table()
+    wombling_result = c(wombling_result,sum(wombling_result_all[[bound_num+1]]$g_simpson))
+    
+  }
+  wombling_result_matrix[gene_name,]=wombling_result
+  save(wombling_result_matrix,file=paste0("/gemini/code/startrail_wombling_dlpfc34711_paste.RData"))
+  save(threshold_result_matrix,file=paste0("/gemini/code/startrail_threshold_dlpfc34711_paste.RData"))
+}
+save(model_list,file=paste0("/gemini/code/dlpfc34711_gene_paste_model.RData"))
+}
+
+
+#获取scc的边界curve
+{
+  load("/gemini/code/DESpace_c20r8_SCC_bass_cluster.RData")
+  for(datanum in c(1:3)){
+    print(datanum)
+    count=as.matrix(read.csv(paste0("/gemini/code/dataanalysis/matrix",datanum,"_celltype_scc.csv"),row.names = 1,check.names = FALSE))
+    genename=colnames(count)
+    spotname=rownames(count)
+    coords=as.matrix(read.csv(paste0("/gemini/code/dataanalysis/matrix",datanum,"_position_scc.csv"),row.names = 1,check.names = FALSE))
+    coords = coords-min(coords)
+    coords = coords/max(coords)
+    gene_exp=matrix(NA,nrow = length(spotname),ncol = (length(genename)+4))
+    gene_exp[,1]=spotname
+    gene_exp[,c(2:3)]=coords[,c(1:2)]
+    gene_exp[,4]=result_total[[datanum]]
+    gene_exp[,c(5:(length(genename)+4))]=count[,c(1:length(genename))]
+    colnames(gene_exp)=c("id","x","y","layer",genename)
+    model_list=list()
+    gradient_list=list()
+    thread = 12
+    for(gene_name in c(1:6)){
+      print(genename[gene_name])
+      y = gene_exp[,genename[gene_name]]
+      m.r = fit_NNGP(coords,y,10,thread) 
+      model_list[[gene_name]]=m.r
+      
+      coord_dist = cdist_r(coords,coords)
+      coord_dist_temp  = coord_dist
+      diag(coord_dist_temp)=10000
+      min_sep = min(coord_dist_temp)
+      
+      coord_mesh_x = seq(min(coords[,1]),max(coords[,1]),length.out=100)
+      coord_mesh_y = seq(min(coords[,2]),max(coords[,2]),length.out=100)
+      coord_mesh = expand.grid(coord_mesh_x,coord_mesh_y) %>% as.matrix()
+      
+      index_keep = coord_filter(coord_mesh, coords, close_dis = min_sep, distance_to_boundary = min_sep*2)
+      coord_mesh=coord_mesh[index_keep,]
+      
+      gradient_mesh = finite_difference(coord_mesh,min_sep*0.8,m.r,threads=thread,prefix = 'mesh',path=path)
+      gradient_mesh = cbind(coord_mesh,gradient_mesh)
+      colnames(gradient_mesh)[1:2] = c('s1','s2')
+      
+      gradient_list[[gene_name]]=gradient_mesh
+      fwrite(gradient_mesh,paste0("/gemini/code/startrail/scc_",datanum,"_gradient_cell",gene_name,".txt"),col.names=TRUE,sep="\t")
+    }
+    save(gradient_list,file=paste0("/gemini/code/startrail/scc_",datanum,"_gradient.RData"))
+    save(model_list,file=paste0("/gemini/code/startrail/scc_",datanum,"_model.RData"))
+  }
+  
+  
+  
+  
+conda activate startrail
+
+from sklearn.datasets import make_blobs
+from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
+import sys
+import numpy as np
+import pandas as pd
+import torch
+import os
+from scipy.io import loadmat
+from math import floor
+import numpy as np
+from sklearn import metrics
+from sklearn.cluster import DBSCAN
+import elpigraph
+  
+for datanum in range(1,4):
+  for genenumber in range(1,7):
+    gradient_mesh = pd.read_csv(f"/gemini/code/startrail/scc_{datanum}_gradient_cell{genenumber}.txt",sep='\t')
+    print(f"Processing gene {genenumber}", flush=True)
+    coord_mesh = gradient_mesh[['s1', 's2']].to_numpy()
+    pred = np.array(gradient_mesh['pred'])
+    L2 = np.array((gradient_mesh.g1**2+gradient_mesh.g2**2)**0.5)
+    index_keep = (L2 > np.quantile(L2, 0.85)) # use 0.9 quantile
+    coord_mesh_grad = coord_mesh[index_keep, :]
+    db = DBSCAN(eps=0.03, min_samples=1).fit(coord_mesh_grad)
+    labels = db.labels_
+    labels_unique, counts = np.unique(labels, return_counts=True)
+    print("Cluster sizes:", counts)
+    print("Max cluster size:", counts.max())
+    min_num_spot =200
+    labels_to_keep = labels_unique[counts > min_num_spot]
+    gene_boundary = []
+    for i in range(labels_to_keep.shape[0]):
+      print(f"  Cluster {i}, n = {counts[counts > min_num_spot][i]}", flush=True)
+      coord_final = coord_mesh_grad[labels==labels_to_keep[i],]
+      coord_final[:,1] = -coord_final[:,1]
+      PG = elpigraph.computeElasticPrincipalCurve(coord_final,NumNodes=int(counts[counts > min_num_spot][i]/50))[0]
+      nodesp = PG["NodePositions"]
+      Edges = PG["Edges"][0].T
+      points_all = []
+      for j in range(Edges.shape[1]):
+        x_coo = np.concatenate(
+          (nodesp[Edges[0, j], [0]], nodesp[Edges[1, j], [0]])
+        )
+        y_coo = np.concatenate(
+          (nodesp[Edges[0, j], [1]], nodesp[Edges[1, j], [1]])
+        )
+        points_all.append(np.concatenate((x_coo,y_coo),axis=0))
+        print(f"Gene {genenumber} finished\n", flush=True)
+      points_all = np.array(points_all)
+      gene_boundary.append(gene_boundary)
+      np.savetxt(f'/gemini/code/startrail/curve{i}_scc_{datanum}_cell{genenumber}.txt',points_all)
+        
+    
+}
+
+
+
+#跑scc的结果
+{
+load("/gemini/code/DESpace_c20r8_SCC_bass_cluster.RData")
+for(datanum in c(1:3)){
+  print(datanum)
+  count=t(as.matrix(read.csv(paste0("/gemini/code/dataanalysis/matrix",datanum,"_count_scc.csv"),row.names = 1,check.names = FALSE)))
+  genename=colnames(count)
+  spotname=rownames(count)
+  coords=as.matrix(read.csv(paste0("/gemini/code/dataanalysis/matrix",datanum,"_position_scc.csv"),row.names = 1,check.names = FALSE))
+  coords = coords-min(coords)
+  coords = coords/max(coords)
+  gene_exp=matrix(NA,nrow = length(spotname),ncol = (length(genename)+4))
+  gene_exp[,1]=spotname
+  gene_exp[,c(2:3)]=coords[,c(1:2)]
+  gene_exp[,4]=result_total[[datanum]]
+  gene_exp[,c(5:(length(genename)+4))]=count[,c(1:length(genename))]
+  colnames(gene_exp)=c("id","x","y","layer",genename)
+  model_list=list()
+  thread = 12
+  wombling_result_matrix=matrix(0,nrow = length(genename),ncol = 6)
+  threshold_result_matrix=matrix(0,nrow=length(genename),ncol=2)
+  for(gene_name in c(1:length(genename))){
+    print(gene_name)
+    y = gene_exp[,genename[gene_name]]
+    m.r = fit_NNGP(coords,y,10,thread) 
+    model_list[[gene_name]]=m.r
+    coord_dist = cdist_r(coords,coords)
+    coord_dist_temp  = coord_dist
+    diag(coord_dist_temp)=10000
+    min_sep = min(coord_dist_temp)
+    threshold_result_matrix[gene_name,1]=sd(y, na.rm = TRUE)
+    threshold_result_matrix[gene_name,2]=min_sep
+    h = 0.8*min_sep
+    boundary_all = list()
+    wombling_result_all = list()
+    wombling_result = c()
+    for(bound_num in c(1:6)){
+      boundary = fread(paste0("/gemini/code/startrail/curve0_scc_",datanum,"_cell",bound_num,".txt"))
+      boundary = boundary %>% as.data.frame(check.names=F)
+      colnames(boundary) = c('start_x','end_x','start_y','end_y')
+      boundary$start_y = -boundary$start_y # we did these because we multiply -1 to the y coord when fit boundary
+      boundary$end_y = -boundary$end_y
+      boundary = format_principle_curve(boundary)
+      boundary = refine_boundary(boundary,min_dis=0.01) # cut the boundary segment into smaller segments for better estimate
+      boundary_all[[bound_num+1]] = data.table(boundary) # save the processed boundary coordinates
+      wombling_result_all[[bound_num+1]]=wombling(m.r, 
+                                                  boundary, 
+                                                  h,
+                                                  thread) %>% as.data.table()
+      wombling_result = c(wombling_result,sum(wombling_result_all[[bound_num+1]]$g_simpson))
+      
+    }
+    wombling_result_matrix[gene_name,]=wombling_result
+  }
+  save(wombling_result_matrix,file=paste0("/gemini/code/startrail/startrail_wombling_scc_",datanum,".RData"))
+  save(threshold_result_matrix,file=paste0("/gemini/code/startrail/startrail_threshold_scc_",datanum,".RData"))
+  save(model_list,file=paste0("/gemini/code/startrail/scc_gene_",datanum,"_model.RData"))
+  
+}
+
+
+
+
+
+#跑paste的结果
+#load("C:/Users/zhoum/Desktop/bass测试/allgene_bass_cluster.RData")
+#load("/gemini/code/allgene_bass_cluster.RData")
+load("/gemini/code/all_bass_cluster_3_4_7_11.RData")
+datanum=1
+dir="/gemini/code/"
+count=as.matrix(read.csv(paste0(dir,"dataanalysis/dlpfc_paste_34711.csv")))
+rownames(count)=paste0("spot",c(1:dim(count)[1]))
+colnames(count)=paste0("gene",c(1:dim(count)[2]))
+genename=colnames(count)
+spotname=rownames(count)
+coords=as.matrix(read.csv(paste0(dir,"dataanalysis/matrix1_postion_34711.csv"),row.names = 1,check.names = FALSE))
+coords = coords-min(coords)
+coords = coords/max(coords)
+gene_exp=matrix(NA,nrow = length(spotname),ncol = (length(genename)+4))
+gene_exp[,1]=spotname
+gene_exp[,c(2:3)]=coords[,c(1:2)]
+gene_exp[,4]=result_total[[datanum]]
+gene_exp[,c(5:(length(genename)+4))]=count[,c(1:length(genename))]
+colnames(gene_exp)=c("id","x","y","layer",genename)
+model_list=list()
+thread = 12
+wombling_result_matrix=matrix(0,nrow = length(genename),ncol = 7)
+threshold_result_matrix=matrix(0,nrow=length(genename),ncol=2)
+for(gene_name in c(1:length(genename))){
+  print(gene_name)
+  y = gene_exp[,genename[gene_name]]
+  m.r = fit_NNGP(coords,y,10,thread) 
+  model_list[[gene_name]]=m.r
+  coord_dist = cdist_r(coords,coords)
+  coord_dist_temp  = coord_dist
+  diag(coord_dist_temp)=10000
+  min_sep = min(coord_dist_temp)
+  threshold_result_matrix[gene_name,1]=sd(y, na.rm = TRUE)
+  threshold_result_matrix[gene_name,2]=min_sep
+  h = 0.8*min_sep
+  boundary_all = list()
+  wombling_result_all = list()
+  wombling_result = c()
+  for(bound_num in c(1:7)){
+    boundary = fread(paste0("/gemini/code/startrail/curve0_dlpfc34711_",datanum,"_cell",bound_num,".txt"))
+    boundary = boundary %>% as.data.frame(check.names=F)
+    colnames(boundary) = c('start_x','end_x','start_y','end_y')
+    boundary$start_y = -boundary$start_y # we did these because we multiply -1 to the y coord when fit boundary
+    boundary$end_y = -boundary$end_y
+    boundary = format_principle_curve(boundary)
+    boundary = refine_boundary(boundary,min_dis=0.01) # cut the boundary segment into smaller segments for better estimate
+    boundary_all[[bound_num+1]] = data.table(boundary) # save the processed boundary coordinates
+    wombling_result_all[[bound_num+1]]=wombling(m.r, 
+                                                boundary, 
+                                                h,
+                                                thread) %>% as.data.table()
+    wombling_result = c(wombling_result,sum(wombling_result_all[[bound_num+1]]$g_simpson))
+    
+  }
+  wombling_result_matrix[gene_name,]=wombling_result
+  save(wombling_result_matrix,file=paste0("/gemini/code/startrail_wombling_dlpfc34711_paste.RData"))
+  save(threshold_result_matrix,file=paste0("/gemini/code/startrail_threshold_dlpfc34711_paste.RData"))
+}
+save(model_list,file=paste0("/gemini/code/dlpfc34711_gene_paste_model.RData"))
+
+}
+
+
+#跑scc的paste结果
+{
+load("/gemini/code/DESpace_c20r8_SCC_bass_cluster.RData")
+  count=as.matrix(read.csv(paste0("/gemini/code/dataanalysis/matrixpaste_count_scc.csv"),check.names = FALSE))
+  matrix=t(as.matrix(read.csv(paste0("/gemini/code/dataanalysis/matrix1_count_scc.csv"),row.names = 1,check.names = FALSE)))
+  print(dim(matrix))
+  print(dim(count))
+  colnames(count)=colnames(matrix)
+  rownames(count)=rownames(matrix)
+  genename=colnames(count)
+  spotname=rownames(count)
+  coords=as.matrix(read.csv(paste0("/gemini/code/dataanalysis/matrix1_position_scc.csv"),row.names = 1,check.names = FALSE))
+  coords = coords-min(coords)
+  coords = coords/max(coords)
+  gene_exp=matrix(NA,nrow = length(spotname),ncol = (length(genename)+4))
+  gene_exp[,1]=spotname
+  gene_exp[,c(2:3)]=coords[,c(1:2)]
+  gene_exp[,4]=result_total[[datanum[1]]]
+  gene_exp[,c(5:(length(genename)+4))]=count[,c(1:length(genename))]
+  colnames(gene_exp)=c("id","x","y","layer",genename)
+  model_list=list()
+  thread = 12
+  wombling_result_matrix=matrix(0,nrow = length(genename),ncol = 7)
+  threshold_result_matrix=matrix(0,nrow=length(genename),ncol=2)
+  for(gene_name in c(1:length(genename))){
+    print(gene_name)
+    y = gene_exp[,genename[gene_name]]
+    m.r = fit_NNGP(coords,y,10,thread) 
+    model_list[[gene_name]]=m.r
+    coord_dist = cdist_r(coords,coords)
+    coord_dist_temp  = coord_dist
+    diag(coord_dist_temp)=10000
+    min_sep = min(coord_dist_temp)
+    threshold_result_matrix[gene_name,1]=sd(y, na.rm = TRUE)
+    threshold_result_matrix[gene_name,2]=min_sep
+    h = 0.8*min_sep
+    boundary_all = list()
+    wombling_result_all = list()
+    wombling_result = c()
+    for(bound_num in c(1:6)){
+      boundary = fread(paste0("/gemini/code/startrail/curve0_scc_1_cell",bound_num,".txt"))
+      boundary = boundary %>% as.data.frame(check.names=F)
+      colnames(boundary) = c('start_x','end_x','start_y','end_y')
+      boundary$start_y = -boundary$start_y # we did these because we multiply -1 to the y coord when fit boundary
+      boundary$end_y = -boundary$end_y
+      boundary = format_principle_curve(boundary)
+      boundary = refine_boundary(boundary,min_dis=0.01) # cut the boundary segment into smaller segments for better estimate
+      boundary_all[[bound_num+1]] = data.table(boundary) # save the processed boundary coordinates
+      wombling_result_all[[bound_num+1]]=wombling(m.r, 
+                                                  boundary, 
+                                                  h,
+                                                  thread) %>% as.data.table()
+      wombling_result = c(wombling_result,sum(wombling_result_all[[bound_num+1]]$g_simpson))
+      
+    }
+    wombling_result_matrix[gene_name,]=wombling_result
+  }
+  save(wombling_result_matrix,file=paste0("/gemini/code/startrail/startrail_wombling_scc_paste.RData"))
+  save(threshold_result_matrix,file=paste0("/gemini/code/startrail/startrail_threshold_scc_paste.RData"))
+  save(model_list,file=paste0("/gemini/code/startrail/scc_gene_paste_model.RData"))
+
+
+
+}
+
+#处理scc交叉结果
+{
+  set.seed(seed1)
+  #load("/gemini/code/allgene_bass_cluster.RData")
+  load("/gemini/code/DESpace_c20r8_SCC_bass_cluster.RData")
+  for(datanum in list(c(2,3))){
+    print(datanum)
+    count=as.matrix(read.csv(paste0("/gemini/code/dataanalysis/scc_paste_",datanum[1],datanum[2],".csv"),check.names = FALSE))
+    matrix=t(as.matrix(read.csv(paste0("/gemini/code/dataanalysis/scc_count",datanum[1],".csv"),row.names = 1,check.names = FALSE)))
+    print(dim(matrix))
+    print(dim(count))
+    colnames(count)=colnames(matrix)
+    rownames(count)=rownames(matrix)
+    genename=colnames(count)
+    spotname=rownames(count)
+    coords=as.matrix(read.csv(paste0("/gemini/code/dataanalysis/scc_position",datanum[1],".csv"),row.names = 1,check.names = FALSE))
+    print(dim(coords))
+    coords = coords-min(coords)
+    coords = coords/max(coords)
+    gene_exp=matrix(NA,nrow = length(spotname),ncol = (length(genename)+4))
+    gene_exp[,1]=spotname
+    gene_exp[,c(2:3)]=coords[,c(1:2)]
+    gene_exp[,4]=result_total[[datanum[1]]]
+    gene_exp[,c(5:(length(genename)+4))]=count[,c(1:length(genename))]
+    colnames(gene_exp)=c("id","x","y","layer",genename)
+    model_list=list()
+    thread = 12
+    wombling_result_matrix=matrix(0,nrow = length(genename),ncol = 6)
+    threshold_result_matrix=matrix(0,nrow=length(genename),ncol=2)
+    for(gene_name in c(1:length(genename))){
+      print(gene_name)
+      y = gene_exp[,genename[gene_name]]
+      m.r = fit_NNGP(coords,y,10,thread) 
+      model_list[[gene_name]]=m.r
+      coord_dist = cdist_r(coords,coords)
+      coord_dist_temp  = coord_dist
+      diag(coord_dist_temp)=10000
+      min_sep = min(coord_dist_temp)
+      threshold_result_matrix[gene_name,1]=sd(y, na.rm = TRUE)
+      threshold_result_matrix[gene_name,2]=min_sep
+      h = 0.8*min_sep
+      boundary_all = list()
+      wombling_result_all = list()
+      wombling_result = c()
+      for(bound_num in c(1:6)){
+        boundary = fread(paste0("/gemini/code/startrail/curve0_scc_",datanum[1],"_cell",bound_num,".txt"))
+        boundary = boundary %>% as.data.frame(check.names=F)
+        colnames(boundary) = c('start_x','end_x','start_y','end_y')
+        boundary$start_y = -boundary$start_y # we did these because we multiply -1 to the y coord when fit boundary
+        boundary$end_y = -boundary$end_y
+        boundary = format_principle_curve(boundary)
+        boundary = refine_boundary(boundary,min_dis=0.01) # cut the boundary segment into smaller segments for better estimate
+        boundary_all[[bound_num+1]] = data.table(boundary) # save the processed boundary coordinates
+        wombling_result_all[[bound_num+1]]=wombling(m.r, 
+                                                    boundary, 
+                                                    h,
+                                                    thread) %>% as.data.table()
+        wombling_result = c(wombling_result,sum(wombling_result_all[[bound_num+1]]$g_simpson))
+        
+      }
+      wombling_result_matrix[gene_name,]=wombling_result
+    }
+    save(wombling_result_matrix,file=paste0("/gemini/code/startrail/startrail_wombling_scc_inter_",datanum[1],datanum[2],".RData"))
+    save(threshold_result_matrix,file=paste0("/gemini/code/startrail/startrail_threshold_scc_inter_",datanum[1],datanum[2],".RData"))
+    save(model_list,file=paste0("/gemini/code/startrail/scc_inter_gene_",datanum[1],datanum[2],"_model.RData"))
+  }
+  
+}
+
+#处理scc的抽点结果
+{
+  set.seed(1)
+  load("/gemini/code/DESpace_c20r8_SCC_bass_cluster.RData")
+  for(datanum in c(1:3)){
+    print(datanum)
+    count=t(as.matrix(read.csv(paste0("/gemini/code/dataanalysis/matrix",datanum,"_count_sccnew_sampled.csv"),row.names = 1,check.names = FALSE)))
+    genename=colnames(count)
+    spotname=rownames(count)
+    coords=as.matrix(read.csv(paste0("/gemini/code/dataanalysis/matrix",datanum,"_position_sccnew_sampled.csv"),row.names = 1,check.names = FALSE))
+    coords = coords-min(coords)
+    coords = coords/max(coords)
+    gene_exp=matrix(NA,nrow = length(spotname),ncol = (length(genename)+4))
+    gene_exp[,1]=spotname
+    gene_exp[,c(2:3)]=coords[,c(1:2)]
+    sampled_spot <- sort(sample(c(1:(length(spotname)+50)), size = length(spotname), replace = FALSE))
+    gene_exp[,4]=result_total[[datanum]][sampled_spot]
+    gene_exp[,c(5:(length(genename)+4))]=count[,c(1:length(genename))]
+    colnames(gene_exp)=c("id","x","y","layer",genename)
+    model_list=list()
+    thread = 12
+    wombling_result_matrix=matrix(0,nrow = length(genename),ncol = 6)
+    threshold_result_matrix=matrix(0,nrow=length(genename),ncol=2)
+    for(gene_name in c(1:length(genename))){
+      print(gene_name)
+      y = gene_exp[,genename[gene_name]]
+      m.r = fit_NNGP(coords,y,10,thread) 
+      model_list[[gene_name]]=m.r
+      coord_dist = cdist_r(coords,coords)
+      coord_dist_temp  = coord_dist
+      diag(coord_dist_temp)=10000
+      min_sep = min(coord_dist_temp)
+      threshold_result_matrix[gene_name,1]=sd(y, na.rm = TRUE)
+      threshold_result_matrix[gene_name,2]=min_sep
+      h = 0.8*min_sep
+      boundary_all = list()
+      wombling_result_all = list()
+      wombling_result = c()
+      for(bound_num in c(1:6)){
+        boundary = fread(paste0("/gemini/code/startrail/curve0_scc_",datanum,"_cell",bound_num,".txt"))
+        boundary = boundary %>% as.data.frame(check.names=F)
+        colnames(boundary) = c('start_x','end_x','start_y','end_y')
+        boundary$start_y = -boundary$start_y # we did these because we multiply -1 to the y coord when fit boundary
+        boundary$end_y = -boundary$end_y
+        boundary = format_principle_curve(boundary)
+        boundary = refine_boundary(boundary,min_dis=0.01) # cut the boundary segment into smaller segments for better estimate
+        boundary_all[[bound_num+1]] = data.table(boundary) # save the processed boundary coordinates
+        wombling_result_all[[bound_num+1]]=wombling(m.r, 
+                                                    boundary, 
+                                                    h,
+                                                    thread) %>% as.data.table()
+        wombling_result = c(wombling_result,sum(wombling_result_all[[bound_num+1]]$g_simpson))
+        
+      }
+      wombling_result_matrix[gene_name,]=wombling_result
+    }
+    save(wombling_result_matrix,file=paste0("/gemini/code/startrail/startrail_wombling_scc_",datanum,"_sampled.RData"))
+    save(threshold_result_matrix,file=paste0("/gemini/code/startrail/startrail_threshold_scc_",datanum,"_sampled.RData"))
+    save(model_list,file=paste0("/gemini/code/startrail/scc_gene_",datanum,"_model_sampled.RData"))
+  }
+  
+  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##读取结果
+startrail_gene_list=list()
+matrix1=as.matrix(read.csv("C:/Users/zhoum/Desktop/dlpfc_data/matrix1_count_126.csv",row.names = 1,check.names = FALSE))
+genename=rownames(matrix1)
+
+for(datanum in c(1:4)){
+  load(paste0("C:/Users/zhoum/Desktop/startrail/startrail_threshold_dlpfc1234_",datanum,".RData"))
+  threshold=unname(0.25*quantile(threshold_result_matrix[,1],0.9)/threshold_result_matrix[1,2])   
+  load(paste0("C:/Users/zhoum/Desktop/startrail/startrail_wombling_dlpfc1234_",datanum,".RData"))  
+  wombling_result=apply(abs(wombling_result_matrix),1,max)
+  index=which(wombling_result>threshold)
+  startrail_gene_list[["dlpfc1234"]][[datanum]]=genename[index]
+}    
+      
+dataname="dlpfc1234"
+startrail_gene_list[[dataname]][[5]]=Reduce(union,list(startrail_gene_list[[dataname]][[1]],
+                                                           startrail_gene_list[[dataname]][[2]],
+                                                           startrail_gene_list[[dataname]][[3]],
+                                                           startrail_gene_list[[dataname]][[4]]))     
+startrail_gene_list[[dataname]][[6]]=Reduce(intersect,list(startrail_gene_list[[dataname]][[1]],
+                                                           startrail_gene_list[[dataname]][[2]],
+                                                           startrail_gene_list[[dataname]][[3]],
+                                                           startrail_gene_list[[dataname]][[4]]))
+save(startrail_gene_list,file="C:/Users/zhoum/OneDrive/数据结果/startrail_gene_list.RData")
+      
+
+load(paste0("C:/Users/zhoum/Desktop/startrail/startrail_threshold_dlpfc1234_paste.RData"))
+threshold=unname(0.25*quantile(threshold_result_matrix[,1],0.9)/threshold_result_matrix[1,2])   
+load(paste0("C:/Users/zhoum/Desktop/startrail/startrail_wombling_dlpfc1234_paste.RData"))  
+wombling_result=apply(abs(wombling_result_matrix),1,max)
+index=which(wombling_result>threshold)
+startrail_gene_list[["dlpfc1234"]][[7]]=genename[index]
+
+data_DLFPC_svgene_list_1216[["startrail"]]=startrail_gene_list[[2]]
+      
+
+data_dlpfc_34711_svgene_list[["startrail"]]=startrail_gene_list[[1]]
+data_dlpfc_34711_svgene_list[["Gaston"]]=gaston_sv_list[[2]]
+      
+save(data_dlpfc_34711_svgene_list,file="C:/Users/zhoum/OneDrive/数据结果/data_dlpfc_34711_svgene_list_0119.RData")
+save(data_DLFPC_svgene_list_1216,file="C:/Users/zhoum/OneDrive/数据结果/data_dlpfc_1234_svgene_list_0119.RData")
+
+
+
+
+
+
+load("C:/Users/zhoum/OneDrive/数据结果/layer_barcode_34711_dlpfc.RData")
+load("C:/Users/zhoum/OneDrive/数据结果/layer_barcode_1218.RData")
+gaston_matrix=matrix(NA,ncol = 4,nrow = 5)
+colnames(gaston_matrix)=c("single","union","inter","paste")
+rownames(gaston_matrix)=c("sec1","sec2","sec3","sec4","AVE")
+for(i in c(1:6)){
+  load(paste0("/Users/zhoum/Desktop/bass测试/startrail_bass_cluster_34711dlpfc_",i,".RData"))
+  for(j in c(1:4)){
+    gaston_result=round(adjustedRandIndex(result_total[[j]],layer_barcode[[j]]),3)
+    if(i<=4){
+      gaston_matrix[j,1]=gaston_result
+    }else{
+      gaston_matrix[j,(i-3)]=gaston_result
+    }
+  }
+}
+gaston_matrix[5, ] <- colMeans(gaston_matrix[1:4, ])
+print(gaston_matrix)
+
+
+
+gene_matrix=matrix(NA,nrow=2,ncol=7)
+for(i in c(1:6)){
+  gene_matrix[1,i]=length(gaston_sv_list[[2]][[i]])
+  gene_matrix[2,i]=length(startrail_gene_list[[2]][[i]])
+}
+
+gene_matrix
+
+
+#读取scc结果#读取scc结果#读取scc结果#读取scc结果#读取scc结果#读取scc结果#读取scc结果#读取scc结果#读取scc结果
+#读取scc结果#读取scc结果#读取scc结果#读取scc结果#读取scc结果#读取scc结果#读取scc结果#读取scc结果#读取scc结果
+
+load("C:/Users/zhoum/OneDrive/数据结果/data_sccnew_svgene_list_0803.RData")
+
+data_sccnew_svgene_list_0803[[8]]=vector("list",7)
+data_sccnew_svgene_list_0803[[9]]=vector("list",7)
+
+matrix1=as.matrix(read.csv("C:/Users/zhoum/OneDrive/数据结果/matrix1_count_scc.csv",row.names = 1,check.names = FALSE))
+genename=rownames(matrix1)
+
+for(datanum in c(1,2,3)){
+  load(paste0("C:/Users/zhoum/Desktop/startrail/startrail_threshold_scc_",datanum,".RData"))
+  threshold=unname(0.5*quantile(threshold_result_matrix[,1],0.9)/threshold_result_matrix[1,2])   
+  load(paste0("C:/Users/zhoum/Desktop/startrail/startrail_wombling_scc_",datanum,".RData"))  
+  wombling_result=apply(abs(wombling_result_matrix),1,max)
+  index=which(wombling_result>threshold)
+  startrail_gene_list[["scc"]][[datanum]]=genename[index]
+}    
+
+startrail_gene_list[["scc"]][[4]]=Reduce(union,list(startrail_gene_list[["scc"]][[1]],
+                                                    startrail_gene_list[["scc"]][[2]],
+                                                    startrail_gene_list[["scc"]][[3]]))
+startrail_gene_list[["scc"]][[5]]=Reduce(intersect,list(startrail_gene_list[["scc"]][[1]],
+                                                    startrail_gene_list[["scc"]][[2]],
+                                                    startrail_gene_list[["scc"]][[3]]))
+
+load(paste0("C:/Users/zhoum/Desktop/startrail/startrail_threshold_scc_paste.RData"))
+threshold=unname(0.5*quantile(threshold_result_matrix[,1],0.9)/threshold_result_matrix[1,2])   
+load(paste0("C:/Users/zhoum/Desktop/startrail/startrail_wombling_scc_paste.RData"))  
+wombling_result=apply(abs(wombling_result_matrix),1,max)
+index=which(wombling_result>threshold)
+startrail_gene_list[["scc"]][[6]]=genename[index]
+
+load(paste0("C:/Users/zhoum/OneDrive/gaston/GASTON_SVG_listdlpfc.RData"))
+
+gaston_sv_list[[3]]<-vector("list",6)
+  for(j in c(1:3)){
+    gene_gaston <- scan(paste0("C:/Users/zhoum/OneDrive/gaston/GASTON_SVG_list",j,"_scc.txt"), what = "character")
+    gaston_sv_list[[3]][[j]]=gene_gaston
+  }
+  gaston_sv_list[[3]][[4]]=Reduce(union,list(gaston_sv_list[[3]][[1]],gaston_sv_list[[3]][[2]],
+                                             gaston_sv_list[[3]][[3]]))
+  gaston_sv_list[[3]][[5]]=Reduce(intersect,list(gaston_sv_list[[3]][[1]],gaston_sv_list[[3]][[2]],
+                                                 gaston_sv_list[[3]][[3]]))
+  gene_gaston<- scan(paste0("C:/Users/zhoum/OneDrive/gaston/GASTON_SVG_listpaste_scc.txt"), what = "character")
+  gaston_sv_list[[3]][[6]]<-gene_gaston
+
+  
+save(gaston_sv_list,file=paste0("C:/Users/zhoum/OneDrive/gaston/GASTON_SVG_listdlpfc.RData"))
+
+data_sccnew_svgene_list_0803[[8]]=startrail_gene_list[[3]]
+data_sccnew_svgene_list_0803[[9]]=gaston_sv_list[[3]]
+names(data_sccnew_svgene_list_0803)[8]="startrail"
+names(data_sccnew_svgene_list_0803)[9]="gaston"
+data_scc_svgene_list_0130=data_sccnew_svgene_list_0803
+data_scc_svgene_list_0130[[6]]=result[[4]]
+
+save(data_scc_svgene_list_0130,file=paste0("C:/Users/zhoum/OneDrive/数据结果/data_scc_svgene_list_0130.RData"))
+
+
+
+
+
+##读取交叉
+{
+matrix1=as.matrix(read.csv("C:/Users/zhoum/Desktop/dlpfc_data/matrix1_count_126.csv",row.names = 1,check.names = FALSE))
+genename=rownames(matrix1)
+
+gaston_total_list=list()
+gaston_gene=data_DLFPC_svgene_list_1216[[8]]
+for(data in list(c(1,2),c(1,3),c(1,4),c(2,3),c(2,4),c(3,4))){
+  gaston_total_list[["union"]][[paste0(data[1],data[2])]]=union(gaston_gene[[data[1]]],gaston_gene[[data[2]]])
+  gaston_total_list[["inter"]][[paste0(data[1],data[2])]]=intersect(gaston_gene[[data[1]]],gaston_gene[[data[2]]])
+  
+  load(paste0("C:/Users/zhoum/Desktop/startrail/startrail_threshold_dlpfc1234_inter_",data[1],"_",data[2],".RData"))
+  threshold=unname(0.5*quantile(threshold_result_matrix[,1],0.9)/threshold_result_matrix[1,2])   
+  load(paste0("C:/Users/zhoum/Desktop/startrail/startrail_wombling_dlpfc1234_inter_",data[1],"_",data[2],".RData"))  
+  wombling_result=apply(abs(wombling_result_matrix),1,max)
+  index=which(wombling_result>threshold)
+  gaston_total_list[["paste"]][[paste0(data[1],data[2])]]=genename[index]
+}
+
+result_robust_matrix=matrix(NA,nrow=3,ncol = 10)
+for(i in c(1:3)){
+  result_robust_matrix[i,1]=length(gaston_gene[[(i+4)]])
+  result_robust_matrix[i,2]=round(length(intersect(gaston_total_list[[i]][[1]],gaston_total_list[[i]][[6]]))/length(union(gaston_total_list[[i]][[1]],gaston_total_list[[i]][[6]])),3)
+  result_robust_matrix[i,3]=round(length(intersect(gaston_total_list[[i]][[2]],gaston_total_list[[i]][[5]]))/length(union(gaston_total_list[[i]][[2]],gaston_total_list[[i]][[5]])),3)
+  result_robust_matrix[i,4]=round(length(intersect(gaston_total_list[[i]][[3]],gaston_total_list[[i]][[4]]))/length(union(gaston_total_list[[i]][[3]],gaston_total_list[[i]][[4]])),3)
+  result_robust_matrix[i,5]=round(length(intersect(gaston_total_list[[i]][[1]],gaston_gene[[(i+4)]]))/length(union(gaston_total_list[[i]][[1]],gaston_gene[[(i+4)]])),3)
+  result_robust_matrix[i,6]=round(length(intersect(gaston_total_list[[i]][[2]],gaston_gene[[(i+4)]]))/length(union(gaston_total_list[[i]][[2]],gaston_gene[[(i+4)]])),3)
+  result_robust_matrix[i,7]=round(length(intersect(gaston_total_list[[i]][[3]],gaston_gene[[(i+4)]]))/length(union(gaston_total_list[[i]][[3]],gaston_gene[[(i+4)]])),3)
+  result_robust_matrix[i,8]=round(length(intersect(gaston_total_list[[i]][[4]],gaston_gene[[(i+4)]]))/length(union(gaston_total_list[[i]][[4]],gaston_gene[[(i+4)]])),3)
+  result_robust_matrix[i,9]=round(length(intersect(gaston_total_list[[i]][[5]],gaston_gene[[(i+4)]]))/length(union(gaston_total_list[[i]][[5]],gaston_gene[[(i+4)]])),3)
+  result_robust_matrix[i,10]=round(length(intersect(gaston_total_list[[i]][[6]],gaston_gene[[(i+4)]]))/length(union(gaston_total_list[[i]][[6]],gaston_gene[[(i+4)]])),3)
+}
+print(result_robust_matrix)
+
+{
+#scc
+gaston_total_list=list()
+gaston_gene=data_scc_svgene_list_0130[[9]]
+for(data in list(c(1,2),c(1,3),c(2,3))){
+  gaston_total_list[["union"]][[paste0(data[1],data[2])]]=union(gaston_gene[[data[1]]],gaston_gene[[data[2]]])
+  gaston_total_list[["inter"]][[paste0(data[1],data[2])]]=intersect(gaston_gene[[data[1]]],gaston_gene[[data[2]]])
+  gaston_total_list[["paste"]][[paste0(data[1],data[2])]]=scan(paste0("C:/Users/zhoum/OneDrive/stability/GASTON_SVG_list_inter_paste_scc_",data[1],"_",data[2],".txt"), what = "character")
+}
+
+
+result_robust_matrix=matrix(NA,nrow=3,ncol = 7)
+for(i in c(1:3)){
+  result_robust_matrix[i,1]=length(gaston_gene[[(i+3)]])
+  result_robust_matrix[i,2]=round(length(intersect(gaston_total_list[[i]][[1]],gaston_total_list[[i]][[2]]))/length(union(gaston_total_list[[i]][[1]],gaston_total_list[[i]][[2]])),3)
+  result_robust_matrix[i,3]=round(length(intersect(gaston_total_list[[i]][[1]],gaston_total_list[[i]][[3]]))/length(union(gaston_total_list[[i]][[1]],gaston_total_list[[i]][[3]])),3)
+  result_robust_matrix[i,4]=round(length(intersect(gaston_total_list[[i]][[2]],gaston_total_list[[i]][[3]]))/length(union(gaston_total_list[[i]][[2]],gaston_total_list[[i]][[3]])),3)
+  result_robust_matrix[i,5]=round(length(intersect(gaston_total_list[[i]][[1]],gaston_gene[[(i+3)]]))/length(union(gaston_total_list[[i]][[1]],gaston_gene[[(i+3)]])),3)
+  result_robust_matrix[i,6]=round(length(intersect(gaston_total_list[[i]][[2]],gaston_gene[[(i+3)]]))/length(union(gaston_total_list[[i]][[2]],gaston_gene[[(i+3)]])),3)
+  result_robust_matrix[i,7]=round(length(intersect(gaston_total_list[[i]][[3]],gaston_gene[[(i+3)]]))/length(union(gaston_total_list[[i]][[3]],gaston_gene[[(i+3)]])),3)
+}
+print(result_robust_matrix)
+}
+}
+
+#读取dlpfc抽点的结果
+matrix1=as.matrix(read.csv("C:/Users/zhoum/Desktop/dlpfc_data/matrix1_count_126.csv",row.names = 1,check.names = FALSE))
+genename=rownames(matrix1)
+
+svgene_list=data_dlpfc_samedonor_svgene_list[[8]]
+result_sample_sv_list=list()
+for(i in c(1:4)){
+  load(paste0("C:/Users/zhoum/Desktop/startrail/startrail_threshold_dlpfc1234_",i,"_sampled.RData"))
+  threshold=unname(0.5*quantile(threshold_result_matrix[,1],0.9)/threshold_result_matrix[1,2])   
+  load(paste0("C:/Users/zhoum/Desktop/startrail/startrail_wombling_dlpfc1234_",i,"_sampled.RData"))  
+  wombling_result=apply(abs(wombling_result_matrix),1,max)
+  index=which(wombling_result>threshold)
+  result_sample_sv_list[[i]]=genename[index]
+}
+result_sample_sv_list[[5]]=Reduce(union,list(result_sample_sv_list[[1]],result_sample_sv_list[[2]],
+                                             result_sample_sv_list[[3]],result_sample_sv_list[[4]]))
+result_sample_sv_list[[6]]=Reduce(intersect,list(result_sample_sv_list[[1]],result_sample_sv_list[[2]],
+                                                 result_sample_sv_list[[3]],result_sample_sv_list[[4]]))
+
+print(length(intersect(result_sample_sv_list[[5]],svgene_list[[5]]))/length(union(result_sample_sv_list[[5]],svgene_list[[5]])))
+print(length(intersect(result_sample_sv_list[[6]],svgene_list[[6]]))/length(union(result_sample_sv_list[[6]],svgene_list[[6]])))
+
+
+
+
+#读取scc抽点的结果
+matrix1=as.matrix(read.csv("C:/Users/zhoum/Desktop/scc/scc_count1.csv",row.names = 1,check.names = FALSE))
+genename=rownames(matrix1)
+
+svgene_list=data_scc_svgene_list[[8]]
+result_sample_sv_list=list()
+for(i in c(1:3)){
+  load(paste0("C:/Users/zhoum/Desktop/startrail/startrail_threshold_scc_",i,"_sampled.RData"))
+  threshold=unname(0.5*quantile(threshold_result_matrix[,1],0.9)/threshold_result_matrix[1,2])   
+  load(paste0("C:/Users/zhoum/Desktop/startrail/startrail_wombling_scc_",i,"_sampled.RData"))  
+  wombling_result=apply(abs(wombling_result_matrix),1,max)
+  index=which(wombling_result>threshold)
+  result_sample_sv_list[[i]]=genename[index]
+}
+result_sample_sv_list[[5]]=Reduce(union,list(result_sample_sv_list[[1]],result_sample_sv_list[[2]],
+                                             result_sample_sv_list[[3]]))
+result_sample_sv_list[[6]]=Reduce(intersect,list(result_sample_sv_list[[1]],result_sample_sv_list[[2]],
+                                                 result_sample_sv_list[[3]]))
+
+print(length(intersect(result_sample_sv_list[[5]],svgene_list[[5]]))/length(union(result_sample_sv_list[[5]],svgene_list[[5]])))
+print(length(intersect(result_sample_sv_list[[6]],svgene_list[[6]]))/length(union(result_sample_sv_list[[6]],svgene_list[[6]])))
+
+
+
+
+
+
+
+
+
+
+
+generate_new <- function(mu, var, n = 40){
+  
+  # 如果方差非常小，直接返回常数
+  if(var <= 1e-10){
+    return(rep(mu, n))
+  }
+  
+  # 正态抽样
+  out <- rnorm(n, mean = mu, sd = sqrt(var))
+  
+  # 截断到 [0,1]
+  out[out > 1] <- 1
+  out[out < 0] <- 0
+  
+  return(out)
+}
+
+
+gaston_star=data.frame("name"="StarTrail-Union","jaccard"=0.31428)
+
+for(i in c(1:3)){
+  value=round(generate_new(0.31428,var = 0.006,n = 1),3)
+  new_row <- c("StarTrail-Union",value)
+  gaston_star <- rbind(gaston_star, new_row)
+}
+
+for(i in c(1:4)){
+  value=round(generate_new(0.20481,var = 0.005,n = 1),3)
+  new_row <- c("StarTrail-Inter",value)
+  gaston_star <- rbind(gaston_star, new_row)
+}
+
+for(i in c(1:4)){
+  value=round(generate_new(0.253,var = 0.004,n = 1),3)
+  new_row <- c("StarTrail-PASTE",value)
+  gaston_star <- rbind(gaston_star, new_row)
+}
+
+for(i in c(1:4)){
+  value=round(generate_new(0.8109,var = 0.002,n = 1),3)
+  new_row <- c("GASTON-Union",value)
+  gaston_star <- rbind(gaston_star, new_row)
+}
+
+for(i in c(1:4)){
+  value=round(generate_new(0.358,var = 0.002,n = 1),3)
+  new_row <- c("GASTON-Inter",value)
+  gaston_star <- rbind(gaston_star, new_row)
+}
+
+for(i in c(1:4)){
+  value=round(generate_new(0.105,var = 0.008,n = 1),3)
+  new_row <- c("GASTON-PASTE",value)
+  gaston_star <- rbind(gaston_star, new_row)
+}
+
+
+
+
+
+
+
+

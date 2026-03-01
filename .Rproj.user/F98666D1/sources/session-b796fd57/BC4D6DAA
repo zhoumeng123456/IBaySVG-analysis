@@ -1,0 +1,28 @@
+{
+    "id": "BC4D6DAA",
+    "path": null,
+    "project_path": null,
+    "type": "object_explorer",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1772209942543.0,
+    "source_on_save": false,
+    "relative_order": 20,
+    "properties": {
+        "id": "add9906f802f43eeb2da6307a309df37",
+        "name": "data_example",
+        "title": "data_example",
+        "language": "R",
+        "source_window_id": "",
+        "Source": "Source"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 2237607914528,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1772209942543,
+    "read_only": false,
+    "read_only_alternatives": []
+}

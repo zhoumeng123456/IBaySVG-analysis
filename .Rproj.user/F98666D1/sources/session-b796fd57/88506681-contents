@@ -1,0 +1,364 @@
+################################################################################################################################################
+                                                  #Implement of comparison methods 
+                                                    
+################################################################################################################################################
+# Example Dataset for Reproducibility
+#
+# Structure of `data_example`:
+# ----------------------------------------
+# `data_example` is a list of length 4,
+# corresponding to four spatial slices.
+#
+# Each slice is itself a list containing four elements:
+#
+# 1) Gene expression matrix (1024 × 100)
+#    - 1024 spatial spots
+#    - 100 genes
+#
+# 2) Spatial coordinate matrix (1024 × 2)
+#    - x and y coordinates of each spot
+#
+# 3) Covariate matrix (1024 × 6)
+#    - Six-dimensional covariate information per spot
+#
+# 4) Tissue boundary data frame
+#    - Boundary information required as input for the spVC method
+#
+# 5) Tissue cluster label (1024×1)
+#    - layer label information required as input for the DESpace method
+#
+load(here::here("Simulations","data_example.RData"))
+
+
+
+##load data for single-sample method
+exp_mat=data_example[[1]][[1]]
+loc=data_example[[1]][[2]]
+calpha=data_example[[1]][[3]]
+tr_mat=data_example[[1]][[4]]
+genename=colnames(exp_mat)
+num_cores=1
+
+
+##1.spVC: Available on https://github.com/shanyu-stat/spVC
+library(spVC)
+
+#handle data
+Tr.cell <- TriMesh(tr_mat, n = 2) 
+V <- as.matrix(Tr.cell$V)
+Tr <- as.matrix(Tr.cell$Tr)
+
+#process
+simu.results <-test.spVC(Y = t(exp_mat), X = calpha, S = loc, V = V, Tr = Tr, 
+                         para.cores = num_cores, filter.min.nonzero = 100)
+
+#obtain the p value
+result1 <- rep(1,length(simu.results$results.constant))
+for( i in c(1:length(simu.results$results.constant))){
+  result1[i]=unname(simu.results$results.constant[[i]][[1]]["gamma_0"])
+}
+spv_svgenename=names(simu.results$results.constant)[result1<0.05]#the identified sv genes
+
+
+
+##2.HEARTSVG: Available on https://github.com/cz0316/HEARTSVG
+library(HEARTSVG)
+mat <- cbind(loc,exp_mat)
+colnames(mat)[1:2] = c("row","col")
+result <- heartsvg(mat)
+heartsvg_svgenename=result$gene[result$p_adj<0.05]#the identified sv genes
+
+
+##3.SPARK: Available on https://github.com/xzhoulab/SPARK
+library(SPARK)
+#prepare for spark subject 
+spark <- CreateSPARKObject(counts=t(exp_mat),
+                           location=as.data.frame(loc),
+                           percentage = 0.1,
+                           min_total_counts = 10)
+spark@lib_size <- apply(spark@counts, 2, sum)
+spark <- spark.vc(spark,
+                  covariates = NULL,
+                  lib_size = spark@lib_size,
+                  num_core = num_cores,
+                  verbose = F)
+#process
+spark <- spark.test(spark,
+                    check_positive = T,
+                    verbose = F)
+result <- spark@res_mtest[,"adjusted_pvalue"]
+sparkgenename=rownames(spark@res_mtest)
+spark_svgenename=genename[result<0.05]#the identified sv genes
+
+
+#4.SPARKX: Available on https://github.com/xzhoulab/SPARK
+sparkX <- sparkx(t(exp_mat),loc,calpha[,c(1:5)],numCores=num_cores,option="mixture",verbose = FALSE)
+sparkX$res_mtest <- as.matrix(sparkX$res_mtest)
+result <- sparkX$res_mtest[,2]
+sparkx_svgenename=rownames(sparkX$res_mtest)[result<0.05]#the identified sv genes
+
+
+#5.nnSVG: Available on https://bioconductor.org/packages/nnSVG
+library(nnSVG)
+#prepare for nnsvg subject 
+spe<- SpatialExperiment(
+  assay = list(counts = t(exp_mat)),
+  colData = loc, 
+  spatialCoordsNames = c("x", "y")
+)
+rowData(spe)$gene_name <- paste0("gene",1:length(colnames(exp_mat)))
+spe <- filter_genes(spe)
+spe <- computeLibraryFactors(spe)
+spe <- logNormCounts(spe)
+
+#process
+spe <- nnSVG(spe,n_threads = num_cores,X=calpha)
+nnsvg_genename=rowData(spe)$gene_name
+result=rowData(spe)$padj
+nnsvg_svgenename=nnsvg_genename[result<0.05]#the identified sv genes
+
+
+##6.DESpace: Available on https://bioconductor.org/packages/DESpace
+library(DESpace)
+
+#produce the cluster label by PRECAST, a data integration method for clustering. 
+#notice: In simulation datasets or the DLPFC dataset, the true clustering labels can be directly used.
+library(PRECAST)
+produce_cluster<-function(matrix,position,k_num=4){
+  seurat_obj <- CreateSeuratObject(counts = matrix, assay = "RNA")
+  colnames(position) <- c("row", "col") 
+  rownames(position) <- colnames(matrix)  
+  # 3. 添加坐标到 meta.data
+  seurat_obj@meta.data$row <- position[rownames(seurat_obj@meta.data), "row"]
+  seurat_obj@meta.data$col <- position[rownames(seurat_obj@meta.data), "col"]
+  seurat_obj
+  preobj <- CreatePRECASTObject(seuList = list(seurat_obj), selectGenesMethod = "HVGs", gene.number = 5000)
+  
+  PRECASTObj <- AddAdjList(preobj, platform = "ST")
+  PRECASTObj <- AddParSetting(PRECASTObj, Sigma_equal = FALSE, coreNum = 8, maxIter = 30, verbose = TRUE)
+  PRECASTObj <- PRECAST(PRECASTObj, K = k_num)
+  resList <- PRECASTObj@resList
+  cluster <-as.character(unlist(PRECASTObj@resList[[1]]$cluster))
+  return(cluster)
+}
+layer_barcode=list()
+for(i in c(1:4)){
+  layer_barcode[[i]]=produce_cluster(t(data_example[[i]][[1]]),data_example[[i]][[2]])
+}
+
+#prepare for DESpace subject 
+cold=cbind(data_example[[1]][[2]],layer_barcode[[1]],rep(1,length(rownames(data_example[[1]][[2]]))))
+colnames(cold)[1:2]=c("array_row","array_col")
+colnames(cold)[4]="sample_id"
+colnames(cold)[3]="z_type"
+spe1<- SpatialExperiment(
+  assay = list(counts = t(data_example[[1]][[1]])),
+  colData = cold,
+  rowData = paste("gene",1:length(colnames(data_example[[1]][[1]])))
+)
+rownames(spe1)=rowData(spe1)$X
+
+cold=cbind(data_example[[2]][[2]],layer_barcode[[2]],rep(2,length(rownames(data_example[[2]][[2]]))))
+colnames(cold)[1:2]=c("array_row","array_col")
+colnames(cold)[4]="sample_id"
+colnames(cold)[3]="z_type"
+spe2<- SpatialExperiment(
+  assay = list(counts =  t(data_example[[2]][[1]])),
+  colData = cold,
+  rowData = paste("gene",1:length(colnames(data_example[[2]][[1]])))
+)
+rownames(spe2)=rowData(spe2)$X
+
+cold=cbind(data_example[[3]][[2]],layer_barcode[[3]],rep(3,length(rownames(data_example[[3]][[2]]))))
+colnames(cold)[1:2]=c("array_row","array_col")
+colnames(cold)[4]="sample_id"
+colnames(cold)[3]="z_type"
+spe3<- SpatialExperiment(
+  assay = list(counts =  t(data_example[[3]][[1]])),
+  colData = cold,
+  rowData = paste("gene",1:length(colnames(data_example[[3]][[1]])))
+)
+rownames(spe3)=rowData(spe3)$X
+
+cold=cbind(data_example[[4]][[2]],layer_barcode[[4]],rep(3,length(rownames(data_example[[4]][[2]]))))
+colnames(cold)[1:2]=c("array_row","array_col")
+colnames(cold)[4]="sample_id"
+colnames(cold)[3]="z_type"
+spe4<- SpatialExperiment(
+  assay = list(counts =  t(data_example[[4]][[1]])),
+  colData = cold,
+  rowData = paste("gene",1:length(colnames(data_example[[4]][[1]])))
+)
+rownames(spe4)=rowData(spe4)$X
+
+#filter gene and spot：
+for(i in seq_len(4)){
+  spe_i <- eval(parse(text = paste0("spe", i)))
+  spe_i <- scuttle::addPerCellQC(spe_i,)
+  spe_i <- spe_i[, !(colData(spe_i)$sum < 10 |            
+                       colData(spe_i)$detected < 10)]  # library size/number of expressed genes
+  # Select QC threshold for lowly expressed genes: at least 20 non-zero spots:
+  qc_low_gene <- rowSums(assays(spe_i)$counts > 0) >= 20
+  # Remove lowly abundant genes
+  spe_i <- spe_i[qc_low_gene,]
+  assign(paste0("spe", i), spe_i)
+  message("Dimension of spe", i, ": ", dim(spe_i)[1], ", ", dim(spe_i)[2])
+}
+
+# find vector of common genes across all samples:
+a <- rownames(counts(spe1)); 
+b <- rownames(counts(spe2)); 
+c <- rownames(counts(spe3));
+d <- rownames(counts(spe4));
+CommonGene <- Reduce(intersect, list(a,b,c,d))
+spe1 <- spe1[CommonGene,]
+spe2 <- spe2[CommonGene,]
+spe3 <- spe3[CommonGene,]
+spe4 <- spe4[CommonGene,]
+
+#process
+spe.combined =cbind(spe1,spe2,spe3,spe4,deparse.level = 1)
+multi_results <- DESpace_test(spe=spe.combined,spatial_cluster="z_type",sample_col = "sample_id",replicates = TRUE)
+result= multi_results$gene_results
+despace_svgenename=result$gene_id[result$PValue<0.05]#the identified sv genes
+
+
+
+
+#7.StarTrail: Available on https://github.com/JiawenChenn/StarTrail
+library(StarTrail)
+
+#(1)produce the boundary of the covariates in R environment
+for(datanum in c(1:4)){
+  count=data_example[[datanum]][[3]]#here use the covariate matrix to generate the boundary
+  genename=colnames(count)
+  spotname=rownames(count)
+  coords=data_example[[datanum]][[2]]
+  coords = coords-min(coords)
+  coords = coords/max(coords)
+  gene_exp=matrix(NA,nrow = length(spotname),ncol = (length(genename)+4))
+  gene_exp[,1]=spotname
+  gene_exp[,c(2:3)]=coords[,c(1:2)]
+  gene_exp[,4]=data_example[[datanum]][[5]]
+  gene_exp[,c(5:(length(genename)+4))]=count[,c(1:length(genename))]
+  colnames(gene_exp)=c("id","x","y","layer",genename)
+  model_list=list()
+  gradient_list=list()
+  thread = 12
+  for(cell_name in c(1:dim(data_example[[datanum]][[3]])[2])){
+    y = gene_exp[,genename[cell_name]]
+    m.r = fit_NNGP(coords,y,10,thread) 
+    model_list[[cell_name]]=m.r
+    
+    coord_dist = cdist_r(coords,coords)
+    coord_dist_temp  = coord_dist
+    diag(coord_dist_temp)=10000
+    min_sep = min(coord_dist_temp)
+    
+    coord_mesh_x = seq(min(coords[,1]),max(coords[,1]),length.out=100)
+    coord_mesh_y = seq(min(coords[,2]),max(coords[,2]),length.out=100)
+    coord_mesh = expand.grid(coord_mesh_x,coord_mesh_y) %>% as.matrix()
+    
+    index_keep = coord_filter(coord_mesh, coords, close_dis = min_sep, distance_to_boundary = min_sep*2)
+    coord_mesh=coord_mesh[index_keep,]
+    
+    gradient_mesh = finite_difference(coord_mesh,min_sep*0.8,m.r,threads=thread,prefix = 'mesh',path=path)
+    gradient_mesh = cbind(coord_mesh,gradient_mesh)
+    colnames(gradient_mesh)[1:2] = c('s1','s2')
+    
+    gradient_list[[cell_name]]=gradient_mesh
+    fwrite(gradient_mesh,paste0("example_",datanum,"_gradient_gene",cell_name,".txt"),col.names=TRUE,sep="\t")
+  }
+  save(gradient_list,file=paste0("example_",datanum,"_gradient.RData"))
+  save(model_list,file=paste0("example_",datanum,"_model.RData"))
+}
+
+#(2)fit the boundary curve in Python environment
+#Details can be seen in file "Comparison_methods_python.py"
+
+
+#(3)compute the gradient using spNNGP model in R environment 
+for(datanum in c(1:4)){
+  count=data_example[[datanum]][[1]]
+  genename=colnames(count)
+  spotname=rownames(count)
+  coords= data_example[[datanum]][[2]]
+  coords = coords-min(coords)
+  coords = coords/max(coords)
+  gene_exp=matrix(NA,nrow = length(spotname),ncol = (length(genename)+4))
+  gene_exp[,1]=spotname
+  gene_exp[,c(2:3)]=coords[,c(1:2)]
+  gene_exp[,4]=data_example[[datanum]][[5]]
+  gene_exp[,c(5:(length(genename)+4))]=count[,c(1:length(genename))]
+  colnames(gene_exp)=c("id","x","y","layer",genename)
+  model_list=list()
+  thread = 12
+  wombling_result_matrix=matrix(0,nrow = length(genename),ncol = 7)
+  threshold_result_matrix=matrix(0,nrow=length(genename),ncol=2)
+  for(gene_name in c(1:length(genename))){
+    print(gene_name)
+    y = gene_exp[,genename[gene_name]]
+    m.r = fit_NNGP(coords,y,10,thread) 
+    model_list[[gene_name]]=m.r
+    coord_dist = cdist_r(coords,coords)
+    coord_dist_temp  = coord_dist
+    diag(coord_dist_temp)=10000
+    min_sep = min(coord_dist_temp)
+    threshold_result_matrix[gene_name,1]=sd(y, na.rm = TRUE)
+    threshold_result_matrix[gene_name,2]=min_sep
+    h = 0.8*min_sep
+    boundary_all = list()
+    wombling_result_all = list()
+    wombling_result = c()
+    for(bound_num in c(1:7)){
+      boundary = fread(paste0(datanum,"_cell",bound_num,".txt"))#the results of implement in python environment 
+      boundary = boundary %>% as.data.frame(check.names=F)
+      colnames(boundary) = c('start_x','end_x','start_y','end_y')
+      boundary$start_y = -boundary$start_y # we did these because we multiply -1 to the y coord when fit boundary
+      boundary$end_y = -boundary$end_y
+      boundary = format_principle_curve(boundary)
+      boundary = refine_boundary(boundary,min_dis=0.01) # cut the boundary segment into smaller segments for better estimate
+      boundary_all[[bound_num+1]] = data.table(boundary) # save the processed boundary coordinates
+      wombling_result_all[[bound_num+1]]=wombling(m.r, 
+                                                  boundary, 
+                                                  h,
+                                                  thread) %>% as.data.table()
+      wombling_result = c(wombling_result,sum(wombling_result_all[[bound_num+1]]$g_simpson))
+      
+    }
+    wombling_result_matrix[gene_name,]=wombling_result
+  }
+  save(wombling_result_matrix,file=paste0("startrail_wombling_example_",datanum,".RData"))
+  save(threshold_result_matrix,file=paste0("startrail_threshold_example_",datanum,".RData"))
+  save(model_list,file=paste0("example_gene_",datanum,"_model.RData"))
+}
+
+#read the result
+matrix1=data_example[[1]][[1]]
+genename=colnames(matrix1)
+for(datanum in c(1:4)){
+  load(paste0("startrail_threshold_example_",datanum,".RData"))
+  threshold=unname(0.25*quantile(threshold_result_matrix[,1],0.9)/threshold_result_matrix[1,2])   
+  load(paste0("startrail_wombling_example_",datanum,".RData"))  
+  wombling_result=apply(abs(wombling_result_matrix),1,max)
+  index=which(wombling_result>threshold)
+  startrail_svgenename=genename[index]#the identified sv genes
+  print(startrail_svgenename)
+}    
+
+
+#GASTON: Available on https://github.com/raphael-group/GASTON
+
+
+
+
+
+
+
+
+
+
+
+
+
+

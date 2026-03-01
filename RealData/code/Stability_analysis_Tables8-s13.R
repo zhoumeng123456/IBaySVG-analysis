@@ -1,0 +1,393 @@
+###################################################################################################################################################
+                                              #1.subsampling analysis for using 90% randomly subsampled spots for Table S8,S10,S12
+
+
+###################################################################################################################################################
+##1.example for using 90% randomly subsampled spots in dlpfc dataset.
+set.seed(1)
+dataset="acrossdonor"
+matrix1=as.matrix(read.csv(here::here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix1_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
+matrix2=as.matrix(read.csv(here::here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix2_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
+matrix3=as.matrix(read.csv(here::here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix3_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
+matrix4=as.matrix(read.csv(here::here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix4_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
+position1=as.matrix(read.csv(here::here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix1_position_",dataset,".csv")),row.names = 1))
+position2=as.matrix(read.csv(here::here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix2_position_",dataset,".csv")),row.names = 1))
+position3=as.matrix(read.csv(here::here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix3_position_",dataset,".csv")),row.names = 1))
+position4=as.matrix(read.csv(here::here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix4_position_",dataset,".csv")),row.names = 1))
+calpha1=as.matrix(read.csv(here::here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix1_celltype_",dataset,".csv")),row.names = 1))
+calpha2=as.matrix(read.csv(here::here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix2_celltype_",dataset,".csv")),row.names = 1))
+calpha3=as.matrix(read.csv(here::here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix3_celltype_",dataset,".csv")),row.names = 1))
+calpha4=as.matrix(read.csv(here::here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix4_celltype_",dataset,".csv")),row.names = 1))
+
+sampled_spot1 <- sort(sample(c(1:length(colnames(matrix1))), size = (length(colnames(matrix1))-300), replace = FALSE))
+sampled_spot2 <- sort(sample(c(1:length(colnames(matrix2))), size = (length(colnames(matrix2))-300), replace = FALSE))
+sampled_spot3 <- sort(sample(c(1:length(colnames(matrix3))), size = (length(colnames(matrix3))-300), replace = FALSE))
+sampled_spot4 <- sort(sample(c(1:length(colnames(matrix4))), size = (length(colnames(matrix4))-300), replace = FALSE))
+
+matrix1_modified=matrix1[,sampled_spot1]
+matrix2_modified=matrix2[,sampled_spot2]
+matrix3_modified=matrix3[,sampled_spot3]
+matrix4_modified=matrix4[,sampled_spot4]
+position1_modified=position1[sampled_spot1,]
+position2_modified=position2[sampled_spot2,]
+position3_modified=position3[sampled_spot3,]
+position4_modified=position4[sampled_spot4,]
+calpha1_modified=calpha1[sampled_spot1,]
+calpha2_modified=calpha2[sampled_spot2,]
+calpha3_modified=calpha3[sampled_spot3,]
+calpha4_modified=calpha4[sampled_spot4,]
+
+spelist <- list(list(t(matrix1_modified),position1_modified),list(t(matrix2_modified),position2_modified),list(t(matrix3_modified),position3_modified),list(t(matrix4_modified),position4_modified))
+c_alpha <- list(calpha1_modified,calpha2_modified,calpha3_modified,calpha4_modified)
+
+result <- IBaySVG(spelist = spelist,c_alpha = c_alpha,num_cores =12,max_iter=200)
+
+
+##2.result for using 90% randomly subsampled spots
+#function for showing result
+subsample_read=function(svgenelist,result,secnum=4){
+  summary_stat <- result %>%
+    group_by(method) %>%
+    summarise(
+      sum=length(jaccard),
+      mu = mean(jaccard),
+      var = var(jaccard),
+      .groups = "drop"
+    )
+  
+  summary_stat <- summary_stat %>%
+    mutate(
+      mean_var = sprintf("%.3f (%.3f)", mu, var)
+    )
+  
+  namelist  <- c("spVC","HEARTSVG","SPARKX","SPARK","nnSVG","proposed","DESpace","StarTrail","GASTON")
+  intername <- c("Union","Inter","Cauchy","HMP","PASTE")
+  
+  gene_count_df <- data.frame(
+    method = character(),
+    gene_n = numeric()
+  )
+  
+  # 前5种方法
+  for(i in 1:5){
+    for(j in 1:5){
+      gene_count_df <- rbind(
+        gene_count_df,
+        data.frame(
+          method = paste0(namelist[i], "-", intername[j]),
+          gene_n = length(svgenelist[[namelist[i]]][[(j+secnum)]])
+        )
+      )
+    }
+  }
+  
+  gastondomain=c(1,2,5)
+  for(i in 8:9){
+    for(j in seq(gastondomain)){
+      gene_count_df <- rbind(
+        gene_count_df,
+        data.frame(
+          method = paste0(namelist[i], "-", intername[gastondomain[j]]),
+          gene_n = length(svgenelist[[namelist[i]]][[j+secnum]])
+        )
+      )
+    }
+  }
+  
+  # proposed
+  gene_count_df <- rbind(
+    gene_count_df,
+    data.frame(
+      method = "IBaySVG",
+      gene_n = length(svgenelist[[6]])
+    )
+  )
+  
+  # DEspace
+  gene_count_df <- rbind(
+    gene_count_df,
+    data.frame(
+      method = "DESpace",
+      gene_n = length(svgenelist[[7]])
+    )
+  )
+  
+  final_result <- summary_stat %>%
+    left_join(gene_count_df, by="method") %>%
+    dplyr::select(method, gene_n, mean_var)
+  
+  return(as.matrix(final_result))
+}
+
+#process
+dataset="acrossdonor"#alternative choose:"samedonor"
+load(here::here("RealData/result_data/realdata svgene",paste0("data_dlpfc_",dataset,"_svgene_list.RData")))
+result=c()
+for(i in c("IBaySVG","DESpace","StarTrail-Union","StarTrail-Inter", "StarTrail-PASTE",
+           "SPARK-Union","SPARKX-Union","HEARTSVG-Union","nnSVG-Union","spVC-Union","GASTON-Union",
+           "SPARK-Inter","SPARKX-Inter","HEARTSVG-Inter","nnSVG-Inter", "spVC-Inter","GASTON-Inter",
+           "SPARK-Cauchy","SPARKX-Cauchy","HEARTSVG-Cauchy","nnSVG-Cauchy","spVC-Cauchy","SPARK-HMP","SPARKX-HMP",
+           "HEARTSVG-HMP","nnSVG-HMP","spVC-HMP","SPARK-PASTE","SPARKX-PASTE","HEARTSVG-PASTE","nnSVG-PASTE","spVC-PASTE","GASTON-PASTE"
+)){
+  temp=read.csv(here::here(paste0("RealData/result_data/stability/dlpfc_",dataset,"_subsample"),paste0(i,"_subsample.csv")))
+  result=rbind(result,temp)
+}
+subsample_read(data_dlpfc_acrossdonor_svgene_list,result)
+
+
+dataset="scc"#
+load(here::here("RealData/result_data/realdata svgene",paste0("data_scc_svgene_list.RData")))
+result=c()
+for(i in c("IBaySVG","DESpace","StarTrail-Union","StarTrail-Inter", "StarTrail-PASTE",
+           "SPARK-Union","SPARKX-Union","HEARTSVG-Union","nnSVG-Union","spVC-Union","GASTON-Union",
+           "SPARK-Inter","SPARKX-Inter","HEARTSVG-Inter","nnSVG-Inter", "spVC-Inter","GASTON-Inter",
+           "SPARK-Cauchy","SPARKX-Cauchy","HEARTSVG-Cauchy","nnSVG-Cauchy","spVC-Cauchy","SPARK-HMP","SPARKX-HMP",
+           "HEARTSVG-HMP","nnSVG-HMP","spVC-HMP","SPARK-PASTE","SPARKX-PASTE","HEARTSVG-PASTE","nnSVG-PASTE","spVC-PASTE","GASTON-PASTE"
+)){
+  temp=read.csv(here::here(paste0("RealData/result_data/stability/",dataset,"_subsample"),paste0(i,"_subsample.csv")))
+  result=rbind(result,temp)
+}#The results are averaged across three runs, each using one of the three slices as the sampled dataset.
+subsample_read(data_scc_svgene_list,result,secnum=3)
+
+
+
+###################################################################################################################################################
+                                              #2.subsampling analysis for pairwise comparisons for Table S9,S11,S13
+###################################################################################################################################################
+##1.example for pairwise comparisons in dlpfc dataset.
+dataset="acrossdonor"
+matrix1=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix1_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
+matrix2=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix2_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
+matrix3=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix3_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
+matrix4=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix4_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
+position1=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix1_position_",dataset,".csv")),row.names = 1))
+position2=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix2_position_",dataset,".csv")),row.names = 1))
+position3=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix3_position_",dataset,".csv")),row.names = 1))
+position4=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix4_position_",dataset,".csv")),row.names = 1))
+calpha1=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix1_celltype_",dataset,".csv")),row.names = 1))
+calpha2=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix2_celltype_",dataset,".csv")),row.names = 1))
+calpha3=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix3_celltype_",dataset,".csv")),row.names = 1))
+calpha4=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix4_celltype_",dataset,".csv")),row.names = 1))
+spelist <- list(list(t(matrix1),position1),list(t(matrix2),position2),list(t(matrix3),position3),list(t(matrix4),position4))
+c_alpha <- list(calpha1,calpha2,calpha3,calpha4)
+
+for(num in list(c(1,2),c(1,3),c(1,4),c(2,3),c(2,4),c(3,4))) {
+  tryCatch({
+    result <- IBaySVG(spelist = list(spelist[[num[1]]], spelist[[num[2]]]),c_alpha = list(c_alpha[[num[1]]], c_alpha[[num[2]]])
+                      ,num_cores =11,max_iter=200,gamma2 = 0.0001)
+    result=list(result[[1]],result[[2]],result[[3]],result[[4]])
+    save(result, file = paste0("IBaySVG_inter_",dataset,"_", num[1], num[2], "_robust.RData"))
+  }, error = function(e) {
+    message(sprintf("Failed on (%d, %d): %s", num[1], num[2], e$message))
+  })
+}
+
+##2.result for pairwise comparisons
+#function for reading the results
+compute_robust_matrix <- function(result_robust_list,data_dlpfc_acrossdonor_svgene_list) {
+  counter_gene_list <- list(
+    data_dlpfc_acrossdonor_svgene_list[[6]],
+    data_dlpfc_acrossdonor_svgene_list[[7]],
+    data_dlpfc_acrossdonor_svgene_list[[1]][[5]],
+    data_dlpfc_acrossdonor_svgene_list[[2]][[5]],
+    data_dlpfc_acrossdonor_svgene_list[[3]][[5]],
+    data_dlpfc_acrossdonor_svgene_list[[4]][[5]],
+    data_dlpfc_acrossdonor_svgene_list[[5]][[5]],
+    data_dlpfc_acrossdonor_svgene_list[[1]][[6]],
+    data_dlpfc_acrossdonor_svgene_list[[2]][[6]],
+    data_dlpfc_acrossdonor_svgene_list[[3]][[6]],
+    data_dlpfc_acrossdonor_svgene_list[[4]][[6]],
+    data_dlpfc_acrossdonor_svgene_list[[5]][[6]],
+    data_dlpfc_acrossdonor_svgene_list[[1]][[7]],
+    data_dlpfc_acrossdonor_svgene_list[[1]][[8]],
+    data_dlpfc_acrossdonor_svgene_list[[2]][[7]],
+    data_dlpfc_acrossdonor_svgene_list[[2]][[8]],
+    data_dlpfc_acrossdonor_svgene_list[[3]][[7]],
+    data_dlpfc_acrossdonor_svgene_list[[3]][[8]],
+    data_dlpfc_acrossdonor_svgene_list[[4]][[7]],
+    data_dlpfc_acrossdonor_svgene_list[[4]][[8]],
+    data_dlpfc_acrossdonor_svgene_list[[5]][[7]],
+    data_dlpfc_acrossdonor_svgene_list[[5]][[8]],
+    data_dlpfc_acrossdonor_svgene_list[[1]][[9]],
+    data_dlpfc_acrossdonor_svgene_list[[2]][[9]],
+    data_dlpfc_acrossdonor_svgene_list[[3]][[9]],
+    data_dlpfc_acrossdonor_svgene_list[[4]][[9]],
+    data_dlpfc_acrossdonor_svgene_list[[5]][[9]],
+    data_dlpfc_acrossdonor_svgene_list[[9]][[5]],
+    data_dlpfc_acrossdonor_svgene_list[[9]][[6]],
+    data_dlpfc_acrossdonor_svgene_list[[9]][[7]],
+    data_dlpfc_acrossdonor_svgene_list[[8]][[5]],
+    data_dlpfc_acrossdonor_svgene_list[[8]][[6]],
+    data_dlpfc_acrossdonor_svgene_list[[8]][[7]]
+  )
+  
+  n <- length(counter_gene_list)
+  jaccard <- function(x, y) {
+    length(intersect(x, y)) / length(union(x, y))
+  }
+  
+  result_robust_matrix <- matrix(NA, nrow = n, ncol = 10)
+  rownames(result_robust_matrix) <- names(result_robust_list)
+  for (i in seq_len(n)) {
+    
+    result_robust_matrix[i,1] <- length(counter_gene_list[[i]])
+    
+    result_robust_matrix[i,2] <- round(jaccard(result_robust_list[[i]][[1]],
+                                               result_robust_list[[i]][[6]]), 3)
+    result_robust_matrix[i,3] <- round(jaccard(result_robust_list[[i]][[2]],
+                                               result_robust_list[[i]][[5]]), 3)
+    result_robust_matrix[i,4] <- round(jaccard(result_robust_list[[i]][[3]],
+                                               result_robust_list[[i]][[4]]), 3)
+    
+    for (k in 1:6) {
+      result_robust_matrix[i, 4 + k] <- round(
+        jaccard(result_robust_list[[i]][[k]],
+                counter_gene_list[[i]]), 3)
+    }
+  }
+
+  
+  rn <- rownames(result_robust_matrix)
+  
+  method_order <- c("Proposed", "DESpace",
+                    "nnSVG", "SPARKX", "SPARK",
+                    "spVC", "HEARTSVG",
+                    "GASTON", "StarTrail")
+  
+  type_order <- c("Union", "Inter", "Cauchy", "HMP", "PASTE")
+  
+  split_name <- strsplit(rn, "-")
+  method_name <- sapply(split_name, `[`, 1)
+  type_name <- sapply(split_name, function(x) {
+    if (length(x) > 1) x[2] else NA
+  })
+  
+  method_rank <- match(method_name, method_order)
+  type_rank <- match(type_name, type_order)
+  type_rank[is.na(type_rank)] <- 0
+  
+  new_index <- order(method_rank, type_rank)
+  
+  result_robust_matrix <- result_robust_matrix[new_index, , drop = FALSE]
+  
+  return(result_robust_matrix)
+}
+compute_robust_matrix_scc <- function(result_robust_list,data_scc_svgene_list) {
+  
+  counter_gene_list <- vector("list", 33)
+  
+  counter_gene_list[[1]]  <- data_scc_svgene_list[[6]]
+  counter_gene_list[[2]]  <- data_scc_svgene_list[[7]]
+  
+  counter_gene_list[[3]]  <- data_scc_svgene_list[[5]][[4]]
+  counter_gene_list[[4]]  <- data_scc_svgene_list[[3]][[4]]
+  counter_gene_list[[5]]  <- data_scc_svgene_list[[4]][[4]]
+  counter_gene_list[[6]]  <- data_scc_svgene_list[[1]][[4]]
+  counter_gene_list[[7]]  <- data_scc_svgene_list[[2]][[4]]
+  
+  counter_gene_list[[8]]  <- data_scc_svgene_list[[5]][[5]]
+  counter_gene_list[[9]]  <- data_scc_svgene_list[[3]][[5]]
+  counter_gene_list[[10]] <- data_scc_svgene_list[[4]][[5]]
+  counter_gene_list[[11]] <- data_scc_svgene_list[[1]][[5]]
+  counter_gene_list[[12]] <- data_scc_svgene_list[[2]][[5]]
+  
+  counter_gene_list[[13]] <- data_scc_svgene_list[[1]][[6]]
+  counter_gene_list[[14]] <- data_scc_svgene_list[[1]][[7]]
+  counter_gene_list[[15]] <- data_scc_svgene_list[[2]][[6]]
+  counter_gene_list[[16]] <- data_scc_svgene_list[[2]][[7]]
+  counter_gene_list[[17]] <- data_scc_svgene_list[[3]][[6]]
+  counter_gene_list[[18]] <- data_scc_svgene_list[[3]][[7]]
+  counter_gene_list[[19]] <- data_scc_svgene_list[[4]][[6]]
+  counter_gene_list[[20]] <- data_scc_svgene_list[[4]][[7]]
+  counter_gene_list[[21]] <- data_scc_svgene_list[[5]][[6]]
+  counter_gene_list[[22]] <- data_scc_svgene_list[[5]][[7]]
+  
+  counter_gene_list[[23]] <- data_scc_svgene_list[[5]][[8]]
+  counter_gene_list[[24]] <- data_scc_svgene_list[[3]][[8]]
+  counter_gene_list[[25]] <- data_scc_svgene_list[[4]][[8]]
+  counter_gene_list[[26]] <- data_scc_svgene_list[[1]][[8]]
+  counter_gene_list[[27]] <- data_scc_svgene_list[[2]][[8]]
+  
+  counter_gene_list[[28]] <- data_scc_svgene_list[[9]][[4]]
+  counter_gene_list[[29]] <- data_scc_svgene_list[[9]][[5]]
+  counter_gene_list[[30]] <- data_scc_svgene_list[[9]][[6]]
+  
+  counter_gene_list[[31]] <- data_scc_svgene_list[[8]][[4]]
+  counter_gene_list[[32]] <- data_scc_svgene_list[[8]][[5]]
+  counter_gene_list[[33]] <- data_scc_svgene_list[[8]][[6]]
+  
+  
+  n <- length(result_robust_list)
+  
+  result_robust_matrix <- matrix(NA, nrow = n, ncol = 7)
+  rownames(result_robust_matrix) <- names(result_robust_list)
+  
+  for (i in seq_len(n)) {
+    
+    A <- result_robust_list[[i]][[1]]
+    B <- result_robust_list[[i]][[2]]
+    C <- result_robust_list[[i]][[3]]
+    D <- counter_gene_list[[i]]
+    
+    result_robust_matrix[i,1] <- length(D)
+    result_robust_matrix[i,2] <- round(length(intersect(A,B))/length(union(A,B)),3)
+    result_robust_matrix[i,3] <- round(length(intersect(A,C))/length(union(A,C)),3)
+    result_robust_matrix[i,4] <- round(length(intersect(B,C))/length(union(B,C)),3)
+    result_robust_matrix[i,5] <- round(length(intersect(A,D))/length(union(A,D)),3)
+    result_robust_matrix[i,6] <- round(length(intersect(B,D))/length(union(B,D)),3)
+    result_robust_matrix[i,7] <- round(length(intersect(C,D))/length(union(C,D)),3)
+  }
+  
+  
+  
+  method_order <- c("Proposed","DESpace","nnSVG","SPARKX",
+                    "SPARK","spVC","HEARTSVG","GASTON","StarTrail")
+  
+  combine_order <- c("Union","Inter","Cauchy","HMP","PASTE")
+  
+  rown <- rownames(result_robust_matrix)
+  
+  method_part  <- sapply(strsplit(rown,"-"), `[`, 1)
+  combine_part <- sapply(strsplit(rown,"-"), function(x){
+    if(length(x)==2) x[2] else NA
+  })
+  
+  method_rank  <- match(method_part, method_order)
+  combine_rank <- match(combine_part, combine_order)
+  
+  combine_rank[is.na(combine_rank)] <- 0
+  
+  new_order <- order(method_rank, combine_rank)
+  
+  result_robust_matrix <- result_robust_matrix[new_order, , drop=FALSE]
+  
+  return(result_robust_matrix)
+}
+
+#produce the result for dlpfc dataset with acrossdonor
+dataset="acrossdonor"
+load(here::here("RealData/result_data/stability",paste0("dlpfc_",dataset,"_inter_stability_result.RData")))#load the result of all method
+load(here::here("RealData/result_data/realdata svgene",paste0("data_dlpfc_",dataset,"_svgene_list.RData")))
+compute_robust_matrix(result_robust_list,data_dlpfc_acrossdonor_svgene_list)
+
+#produce the result for dlpfc dataset with acrossdonor
+dataset="samedonor"
+load(here::here("RealData/result_data/stability",paste0("dlpfc_",dataset,"_inter_stability_result.RData")))#load the result of all method
+load(here::here("RealData/result_data/realdata svgene",paste0("data_dlpfc_",dataset,"_svgene_list.RData")))
+compute_robust_matrix(result_robust_list,data_dlpfc_samedonor_svgene_list)
+
+#produce the result for scc dataset
+load(here::here("RealData/result_data/stability",paste0("dlpfc_scc_inter_stability_result.RData")))#load the result of all method
+load(here::here("RealData/result_data/realdata svgene",paste0("data_scc_svgene_list.RData")))
+compute_robust_matrix_scc(result_robust_list,data_scc_svgene_list)
+
+
+
+
+
+
+
+
+
+
+

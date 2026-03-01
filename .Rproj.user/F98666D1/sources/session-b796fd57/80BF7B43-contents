@@ -1,0 +1,84 @@
+################################################################################################################################################
+                                                        #comparison between ZINB and NB model for Tables35-s36
+
+
+################################################################################################################################################
+##1.example for using the IBaySVG model without inflation structure
+#load the code. Notice:The non-spatial model is included exclusively for ablation analysis and does not constitute the main component of the IBaySVG methodology.
+source(here("RealData/result_data/noinflation","IBaySVG_noinflation.R"))
+
+#load the example data
+load(here("RealData/result_data/noinflation","example_linear_inf5.RData"))
+
+#produce the result
+result <- NBIMSVG_noinflation(spelist = example_linear_inf5[[1]],c_alpha = example_linear_inf5[[2]],num_cores =10,max_iter=200)
+tp=mean(result[[3]][1:500],na.rm=TRUE)
+fp=mean(result[[3]][501:5000],na.rm=TRUE)
+tp
+fp
+
+
+##2.load the results of comparison between ZINB and NB model 
+#function for comparison between ZINB and NB model
+make_table <- function(df, inf_name) {
+  df %>%
+    filter(inf == inf_name,
+           set %in% c("F1", "FPR", "recall")  # 只保留三种) %>%
+    ) %>%
+    group_by(pattern, inte_situ, method, set) %>%
+    summarise(
+      mean_val = round(mean(value, na.rm = TRUE),3),
+      sd_val = round(sd(value, na.rm = TRUE),3),
+      .groups = "drop"
+    ) %>%
+    mutate(mean_sd = sprintf("%.3f (%.3f)", mean_val, sd_val)) %>%
+    dplyr::select(-mean_val, -sd_val) %>%
+    pivot_wider(
+      names_from = c(method, set),
+      values_from = mean_sd
+    ) %>%
+    arrange(
+      factor(pattern, levels = c("linear", "focal", "period")),
+      factor(inte_situ, levels = c("scenario 1", "scenario 2", "scenario 3", "scenario 4"))
+    )%>%
+    dplyr::select(
+      pattern, inte_situ,
+      IBaySVG_recall,IBaySVG_FPR, IBaySVG_F1,
+      IBaySVG_noinflation_recall, IBaySVG_noinflation_FPR, IBaySVG_noinflation_F1
+    )
+}
+
+#load the result
+result_no_inflation_simu=read.csv(here("RealData/result_data/noinflation","IBaySVG_noinflation_simu.csv"), row.names = NULL)
+result_basic_simu=read.csv(here("Simulations/result_data/simulation result/basic simulation results","IBaySVG_basic_simu.csv"), row.names = NULL)
+total_result=rbind(result_no_inflation_simu,result_basic_simu)
+
+#plot the result
+table_inf1 <- make_table(total_result, "inf5")
+table_inf2 <- make_table(total_result, "inf3")
+table_inf1[,-c(1:2)]
+table_inf2[,-c(1:2)]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

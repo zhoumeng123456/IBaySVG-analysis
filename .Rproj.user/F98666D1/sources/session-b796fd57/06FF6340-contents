@@ -1,0 +1,1273 @@
+
+seeddomain=c(11:13)#运行十次取平均值
+k1="period"#暂时只考察线性
+s1=1#只考虑高中中中
+num_cores=22
+inf="inf5"
+
+for(seed1 in seeddomain){
+  load(paste0("/gemini/code/simulation/data_",k1,"_seed", seed1,".RData"))#从最原始的数据里取样
+  loc=expand.grid(y=0:31,x=0:31)[,2:1]
+  rownames(loc)=paste0("spot",1:1024)
+  colnames(loc)=c("x","y")
+  loc <- as.matrix(loc)
+  spelist=list(list(as.matrix(all_results_list[[inf]][[1]][[1]]),loc),list(as.matrix(all_results_list[[inf]][[1]][[2]]),loc)
+               ,list(as.matrix(all_results_list[[inf]][[1]][[3]]),loc),list(as.matrix(all_results_list[[inf]][[1]][[4]]),loc))
+  c_alpha=list(as.matrix(all_results_list[[inf]][[2]][[1]]),as.matrix(all_results_list[[inf]][[2]][[2]]),
+               as.matrix(all_results_list[[inf]][[2]][[3]]),as.matrix(all_results_list[[inf]][[2]][[4]]))
+  rownames(c_alpha[[1]])=paste0("spot",c(1:1024))
+  rownames(c_alpha[[2]])=paste0("spot",c(1:1024))
+  rownames(c_alpha[[3]])=paste0("spot",c(1:1024))
+  rownames(c_alpha[[4]])=paste0("spot",c(1:1024))
+  print("success")
+  
+  #选择参数调整
+  
+  #a_pi / b_pi
+  result_total=replicate(5, replicate(5, list(), simplify = FALSE), simplify = FALSE)
+  para1_domain=c(0.6,0.8,1,1.2,1.4)
+  para2_domain=c(0.6,0.8,1,1.2,1.4)
+  for(a_pi in seq(para1_domain)){
+    print(a_pi)
+      for(b_pi in seq(para2_domain)){
+        print(b_pi)
+          result <- NBIMSVG(spelist = spelist,c_alpha = c_alpha,num_cores =num_cores,a_pi=para1_domain[a_pi],b_pi=para2_domain[b_pi])
+          tp=mean(result[[3]][1:500],na.rm=TRUE)
+          fp=mean(result[[3]][501:5000],na.rm=TRUE)
+          result[[5]]=c(tp,fp)
+          print(paste0("a_pi: ",a_pi," b_pi: ",b_pi,"spatial:",k1,"seed:",seed1," tp: ",tp,"fp: ",fp))
+          result_total[[a_pi]][[b_pi]]=result
+      }
+  }
+  save(result_total,file=paste0("/gemini/code/simulation/abpi_sensi_result_",k1,"_seed", seed1,".RData"))
+
+
+  #aphi / bphi
+  result_total=replicate(5, replicate(5, list(), simplify = FALSE), simplify = FALSE)
+  para1_domain=c(0.0001,0.0005,0.001,0.005,0.01)
+  para2_domain=c(0.0001,0.0005,0.001,0.005,0.01)
+  for(a_pi in seq(para1_domain)){
+    print(a_pi)
+    for(b_pi in seq(para2_domain)){
+      print(b_pi)
+      result <- NBIMSVG(spelist = spelist,c_alpha = c_alpha,num_cores =num_cores,a_phi_single=para1_domain[a_pi],b_phi_single=para2_domain[b_pi])
+      tp=mean(result[[3]][1:500],na.rm=TRUE)
+      fp=mean(result[[3]][501:5000],na.rm=TRUE)
+      result[[5]]=c(tp,fp)
+      print(paste0("a_pi: ",a_pi," b_pi: ",b_pi,"spatial:",k1,"seed:",seed1," tp: ",tp,"fp: ",fp))
+      result_total[[a_pi]][[b_pi]]=result
+    }
+  }
+  save(result_total,file=paste0("/gemini/code/simulation/abphi_sensi_result_",k1,"_seed", seed1,".RData"))
+
+  
+  #sigma_eta^m / sigma_psi^m 
+  result_total=replicate(5, replicate(5, list(), simplify = FALSE), simplify = FALSE)
+  para1_domain=c(0.6,0.8,1,1.2,1.4)
+  para2_domain=c(0.6,0.8,1,1.2,1.4)
+  for(a_pi in seq(para1_domain)){
+    print(a_pi)
+    for(b_pi in seq(para2_domain)){
+      print(b_pi)
+      result <- NBIMSVG(spelist = spelist,c_alpha = c_alpha,num_cores =num_cores,eta_sigma_single=para1_domain[a_pi],psi_sigma_single=para2_domain[b_pi])
+      tp=mean(result[[3]][1:500],na.rm=TRUE)
+      fp=mean(result[[3]][501:5000],na.rm=TRUE)
+      result[[5]]=c(tp,fp)
+      print(paste0("a_pi: ",a_pi," b_pi: ",b_pi,"spatial:",k1,"seed:",seed1," tp: ",tp,"fp: ",fp))
+      result_total[[a_pi]][[b_pi]]=result
+    }
+  }
+  save(result_total,file=paste0("/gemini/code/simulation/etapsi_sigma_sensi_result_",k1,"_seed", seed1,".RData"))
+  
+  
+  #cq / dq
+  result_total=replicate(5, replicate(5, list(), simplify = FALSE), simplify = FALSE)
+  para1_domain=c(0.6,0.8,1,1.2,1.4)
+  para2_domain=c(0.6,0.8,1,1.2,1.4)
+  for(a_pi in seq(para1_domain)){
+    print(a_pi)
+    for(b_pi in seq(para2_domain)){
+      print(b_pi)
+      result <- NBIMSVG(spelist = spelist,c_alpha = c_alpha,num_cores =num_cores,cq=para1_domain[a_pi],dq=para2_domain[b_pi])
+      tp=mean(result[[3]][1:500],na.rm=TRUE)
+      fp=mean(result[[3]][501:5000],na.rm=TRUE)
+      result[[5]]=c(tp,fp)
+      print(paste0("a_pi: ",a_pi," b_pi: ",b_pi,"spatial:",k1,"seed:",seed1," tp: ",tp,"fp: ",fp))
+      result_total[[a_pi]][[b_pi]]=result
+    }
+  }
+  save(result_total,file=paste0("/gemini/code/simulation/cdq_sensi_result_",k1,"_seed", seed1,".RData"))
+  
+  
+  #cp / dp
+  result_total=replicate(5, replicate(5, list(), simplify = FALSE), simplify = FALSE)
+  para1_domain=c(0.1,0.15,0.2,0.25,0.3)
+  para2_domain=c(0.9,1.35,1.8,2.25,2.7)
+  for(a_pi in seq(para1_domain)){
+    print(a_pi)
+    for(b_pi in seq(para2_domain)){
+      print(b_pi)
+      result <- NBIMSVG(spelist = spelist,c_alpha = c_alpha,num_cores =num_cores,cp=para1_domain[a_pi],dp=para2_domain[b_pi])
+      tp=mean(result[[3]][1:500],na.rm=TRUE)
+      fp=mean(result[[3]][501:5000],na.rm=TRUE)
+      result[[5]]=c(tp,fp)
+      print(paste0("a_pi: ",a_pi," b_pi: ",b_pi,"spatial:",k1,"seed:",seed1," tp: ",tp,"fp: ",fp))
+      result_total[[a_pi]][[b_pi]]=result
+    }
+  }
+  save(result_total,file=paste0("/gemini/code/simulation/cdp_sensi_result_",k1,"_seed", seed1,".RData"))
+  
+  
+  #gamma1,gamma2
+  result_total=replicate(5, replicate(5, list(), simplify = FALSE), simplify = FALSE)
+  para1_domain=c(sqrt(0.0006),sqrt(0.0008),sqrt(0.001),sqrt(0.0012),sqrt(0.0014))
+  para2_domain=c(0.005,0.0075,0.01,0.0125,0.015)
+  for(a_pi in seq(para1_domain)){
+    print(a_pi)
+    for(b_pi in seq(para2_domain)){
+      print(b_pi)
+      result <- NBIMSVG(spelist = spelist,c_alpha = c_alpha,num_cores =num_cores,gamma1=para1_domain[a_pi],gamma2=para2_domain[b_pi])
+      tp=mean(result[[3]][1:500],na.rm=TRUE)
+      fp=mean(result[[3]][501:5000],na.rm=TRUE)
+      result[[5]]=c(tp,fp)
+      print(paste0("a_pi: ",a_pi," b_pi: ",b_pi,"spatial:",k1,"seed:",seed1," tp: ",tp,"fp: ",fp))
+      result_total[[a_pi]][[b_pi]]=result
+    }
+  }
+  save(result_total,file=paste0("/gemini/code/simulation/gamma12_sensi_result_",k1,"_seed", seed1,".RData"))
+}
+
+
+
+
+
+seeddomain=c(1:3)#运行十次取平均值
+s1=1#只考虑高中中中
+num_cores=22
+inf="inf5"
+
+for(k1 in c("linear","focal","period")){
+  for(seed1 in seeddomain){
+    result_total=replicate(5, replicate(5, list(), simplify = FALSE), simplify = FALSE)
+    load(paste0("/gemini/code/simulation/data_",k1,"_seed", seed1,".RData"))#从最原始的数据里取样
+    loc=expand.grid(y=0:31,x=0:31)[,2:1]
+    rownames(loc)=paste0("spot",1:1024)
+    colnames(loc)=c("x","y")
+    loc <- as.matrix(loc)
+    spelist=list(list(as.matrix(all_results_list[[inf]][[1]][[1]]),loc),list(as.matrix(all_results_list[[inf]][[1]][[2]]),loc)
+                 ,list(as.matrix(all_results_list[[inf]][[1]][[3]]),loc),list(as.matrix(all_results_list[[inf]][[1]][[4]]),loc))
+    c_alpha=list(as.matrix(all_results_list[[inf]][[2]][[1]]),as.matrix(all_results_list[[inf]][[2]][[2]]),
+                 as.matrix(all_results_list[[inf]][[2]][[3]]),as.matrix(all_results_list[[inf]][[2]][[4]]))
+    rownames(c_alpha[[1]])=paste0("spot",c(1:1024))
+    rownames(c_alpha[[2]])=paste0("spot",c(1:1024))
+    rownames(c_alpha[[3]])=paste0("spot",c(1:1024))
+    rownames(c_alpha[[4]])=paste0("spot",c(1:1024))
+    print("success")
+  
+    #ak_domain
+    para_list=list(c(0.06,0.07,0.08,0.09,0.1),c(0.04,0.045,0.05,0.055,0.06)
+                   ,c(0.03,0.035,0.04,0.045,0.05),c(0.02,0.025,0.03,0.035,0.04))
+    for(a_pi in seq(1:4)){
+      ak_domain=c(0.08,0.05,0.04,0.03)
+      para1_domain=para_list[[a_pi]]
+      for(b_pi in seq(para1_domain)){
+        ak_domain[a_pi]=para1_domain[b_pi]
+        result <- NBIMSVG(spelist = spelist,c_alpha = c_alpha,num_cores =num_cores,ak_domain = ak_domain)
+        tp=mean(result[[3]][1:500],na.rm=TRUE)
+        fp=mean(result[[3]][501:5000],na.rm=TRUE)
+        result[[5]]=c(tp,fp)
+        print(paste0("a_pi: ",a_pi," b_pi: ",b_pi,"spatial:",k1,"seed:",seed1," tp: ",tp,"fp: ",fp))
+        result_total[[a_pi]][[b_pi]]=result
+      }
+    }
+    save(result_total,file=paste0("/gemini/code/simulation/akdomain_sensi_result_",k1,"_seed", seed1,".RData"))
+  }
+}
+
+
+for(i in c("cdp","cdq")){
+  sensitive_matrix=matrix(NA,nrow = 5,ncol = 5)
+  load(paste0("C:/Users/zhoum/OneDrive/sensitive_analysis/",i,"_sensi_result_linear_seed1.RData"))
+  for(j in c(1:5)){
+    for(k in c(1:5)){
+      tp=result_total[[j]][[k]][[5]][1]
+      fp=result_total[[j]][[k]][[5]][2]
+      f1=2*tp/(1+9*fp+tp)
+      sensitive_matrix[j,k]=f1
+    }
+  }
+  print(i)
+  print(sensitive_matrix)
+}
+
+#abpi
+# tp <- matrix(c( 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1 ,1,1,1,1,1), 5, 5, byrow=TRUE)
+# 
+# fp <- matrix(c(
+#   0.00133333333333333, 0.000666666666666667, 0.000444444444444444, 0.000666666666666667, 0.000888888888888889,
+#   0.000222222222222222, 0.00133333333333333, 0.000888888888888889, 0.000666666666666667, 0.000666666666666667,
+#   0.000444444444444444, 0.000666666666666667, 0.00133333333333333, 0.000888888888888889, 0.000666666666666667,
+#   0.000222222222222222, 0.000222222222222222, 0.00111111111111111, 0.00133333333333333, 0.00155555555555556,
+#   0.000222617987533393, 0.000444444444444444, 0.000444444444444444, 0.000444444444444444, 0.00133333333333333
+# ), 5, 5, byrow=TRUE)
+# 
+# abpi <- 2*tp / (1 + 9*fp + tp)
+# abpi
+
+
+#ak_domain
+for(i in c("linear","focal","period")){
+  print(i)
+  load(paste0("C:/Users/zhoum/OneDrive/sensitive_analysis/akdomain_sensi_result_",i,"_seed1.RData"))
+  sensitive_matrix=matrix(NA,nrow = 4,ncol = 5)
+
+  for(j in c(1:4)){
+    for(k in c(1:5)){
+      tp=result_total[[j]][[k]][[5]][1]
+      fp=result_total[[j]][[k]][[5]][2]
+      f1=2*tp/(1+9*fp+tp)
+      sensitive_matrix[j,k]=f1
+    }
+  }
+print(sensitive_matrix)
+}
+
+
+library(ggplot2)
+library(reshape2)
+# 模拟一个 5x5 的参数敏感性矩阵
+#"abpi","etapsi_sigma","gamma12","cdp","cdq"
+parasdomain=c("abpi","abphi","etapsi_sigma","gamma12","cdp","cdq")
+pattern_domain=c("linear","focal","period")
+p_total_list=list()
+for(paras in parasdomain){
+  xsize=8
+  if(paras=="gamma12"){
+    xsize=5
+  }
+  p_list=replicate(3,list(), simplify = FALSE)
+  for(pattern in seq(pattern_domain)){
+    load(paste0("C:/Users/zhoum/OneDrive/sensitive_analysis/",paras,"_sensi_result_",pattern_domain[pattern],"_seed1.RData"))
+      sensitive_matrix=matrix(NA,nrow = 5,ncol = 5)
+      for(j in c(1:5)){
+        for(k in c(1:5)){
+          tp=result_total[[j]][[k]][[5]][1]
+          fp=result_total[[j]][[k]][[5]][2]
+          f1=2*tp/(1+9*fp+tp)
+          sensitive_matrix[j,k]=f1
+        }
+      }
+    df <- melt(sensitive_matrix)
+    
+    if(paras=="abpi"){
+    xname=expression(a[pi])
+    yname=expression(b[pi])
+    param_x <- c("0.6", "0.8", "1", "1.2", "1.4")
+    param_y <- c("0.6", "0.8", "1", "1.2", "1.4")
+    }else if(paras=="abphi"){
+      xname <- expression(a["\u03D5"])  # ϕ
+      yname <- expression(b["\u03D5"])
+      param_x <- c("0.0005"," 0.0008","0.001", "0.003", "0.005")
+      param_y <- c("0.0005"," 0.0008","0.001", "0.003", "0.005")
+    }else if(paras=="etapsi_sigma"){
+      xname=expression(sigma[eta])
+      yname=expression(sigma[psi])
+      param_x <- c("0.6", "0.8", "1", "1.2", "1.4")
+      param_y <- c("0.6", "0.8", "1", "1.2", "1.4")
+    }else if(paras=="gamma12"){
+      xname=expression(Gamma[1])
+      yname=expression(Gamma[2])
+      param_x <- c(expression(sqrt(0.0006)), expression(sqrt(0.0008)), expression(sqrt(0.001)),expression(sqrt(0.0012)), expression(sqrt(0.0014)))
+      param_y <- c("0.005", "0.0075", "0.01", "0.0125", "0.015")
+    }else if(paras=="cdq"){
+      xname=expression(c[q])
+      yname=expression(d[q])
+      param_x <- c("0.6", "0.8", "1", "1.2", "1.4")
+      param_y <- c("0.6", "0.8", "1", "1.2", "1.4")
+    }else if(paras=="cdp"){
+      xname=expression(c[p])
+      yname=expression(d[p])
+      param_x <- c("0.1", "0.15", "0.2", "0.25", "0.3")
+      param_y <- c("0.9", "1.35", "1.8", "2.25", "2.7")
+    }
+    
+    colnames(df) <- c( "X_param","Y_param", "Value")
+    
+    df$X_param <- factor(df$X_param, labels = param_x)
+    df$Y_param <- factor(df$Y_param, labels = param_y)
+    
+    p1=ggplot(df, aes(x = X_param, y = Y_param)) +
+      geom_point(aes(fill = Value), shape = 21, size = 12,color="transparent") + 
+      scale_fill_gradient(
+        low = "white", 
+        high = "#e3716e",
+        limits = c(0.5, 1),          # 固定颜色映射范围为0到1
+        name = "F1 Value"          # 图例标题
+      ) +
+      geom_text(aes(label = round(Value, 3)), color = "black", size = 3) + # 可选数值标注
+      theme_minimal() +
+      labs(x =  xname, y =  yname, fill = "F1 Value")+
+      theme(axis.text.x = element_text(size = xsize),legend.position = "none")
+
+    p_list[[pattern]]=p1
+  }
+  p_total_list[[paras]]=p_list
+}
+###akdomain
+
+for(i in seq(pattern_domain)){
+  load(paste0("C:/Users/zhoum/OneDrive/sensitive_analysis/akdomain_sensi_result_",pattern_domain[i],"_seed1.RData"))
+  sensitive_matrix=matrix(NA,nrow = 4,ncol = 5)
+  
+  for(j in c(1:4)){
+    for(k in c(1:5)){
+      tp=result_total[[j]][[k]][[5]][1]
+      fp=result_total[[j]][[k]][[5]][2]
+      f1=2*tp/(1+9*fp+tp)
+      sensitive_matrix[j,k]=f1
+    }
+  }
+  
+  results_matrix <- sensitive_matrix
+  rownames(results_matrix) <- c("Degree1","Degree2","Degree3","Degree4")
+  
+  # 假设每个参数的实际取值不同
+  param_values <- list(
+    Param1 = c(0.06, 0.07, 0.08, 0.09, 0.10),
+    Param2 = c(0.04, 0.045, 0.05, 0.055, 0.06),
+    Param3 = c(0.03, 0.035, 0.04, 0.045, 0.05),
+    Param4 = c(0.02,0.025,0.03,0.035,0.04)
+  )
+  
+  # 转换为长格式
+  df <- data.frame(
+    Parameter = rep(rownames(results_matrix), each = 5),
+    Value = unlist(param_values),       # 展开每个参数的取值
+    Result = as.vector(t(results_matrix))
+  )
+  
+  # 绘制圆形热点图
+  p1=ggplot(df, aes(x = Value, y = Parameter, fill = Result)) +
+    geom_point(aes(fill = Result),shape = 21, size = 11, color = "transparent") +  # 圆形，边框透明
+    scale_fill_gradient(    low = "white", 
+                            high = "#e3716e",
+                            limits = c(0, 1),          
+                            name = "F1 Value",guide = guide_colorbar(
+                              barwidth  = 12,   
+                              barheight = 0.8,    title.position = "left",  
+                              title.vjust = 1            
+                            )  ) +
+    geom_text(aes(label = round(Result, 3)), color = "black", size = 3) +
+    theme_minimal() +
+    labs(x = "Ak", y ="", fill = "F1 Value")+theme(legend.position = "bottom")
+  
+  p_total_list[["akdomain"]][[i]]=p1
+}
+
+
+save(p_total_list,file="C:/Users/zhoum/Desktop/dlp/p_total_list.RData")
+
+i=3
+
+combined_plot <- 
+  (wrap_elements(p_total_list[[1]][[i]] | p_total_list[[2]][[i]] | p_total_list[[3]][[i]]) + 
+     labs(tag = "A") + 
+     theme(
+       plot.tag = element_text(size = 14, face = "bold", margin = margin(0)),
+       plot.tag.position = c(0.01, 1)
+     )) /
+  (wrap_elements(p_total_list[[4]][[i]] | p_total_list[[6]][[i]] | p_total_list[[5]][[i]]) + 
+     labs(tag = "B") + 
+     theme(
+       plot.tag = element_text(size = 14, face = "bold", margin = margin(0)),
+       plot.tag.position = c(0.01, 1)
+     )) /
+  (wrap_elements(p_total_list[[7]][[i]]) + 
+     labs(tag = "C") + 
+     theme(
+       plot.tag = element_text(size = 14, face = "bold", margin = margin(0)),
+       plot.tag.position = c(0.01, 1)
+     )) +
+  plot_layout(
+    heights = c(1, 1, 1.2),
+    guides = "collect"  
+  ) &
+  theme(
+    legend.position = "bottom", 
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5)
+  )
+
+plot(combined_plot)  
+
+ggsave(paste0("C:/Users/zhoum/OneDrive/sensitive_analysis/simulation_sensi_period.png"), plot = combined_plot, width = 10, height = 10, dpi = 300)
+
+
+
+
+
+
+
+
+##真实数据敏感性分析##真实数据敏感性分析##真实数据敏感性分析##真实数据敏感性分析##真实数据敏感性分析##真实数据敏感性分析
+##真实数据敏感性分析##真实数据敏感性分析##真实数据敏感性分析##真实数据敏感性分析##真实数据敏感性分析##真实数据敏感性分析
+###########################################################################################################################
+
+matrix1=as.matrix(read.csv("/gemini/code/dataanalysis/matrix1_count_126.csv",row.names = 1,check.names = FALSE))
+matrix2=as.matrix(read.csv("/gemini/code/dataanalysis/matrix2_count_126.csv",row.names = 1,check.names = FALSE))
+matrix3=as.matrix(read.csv("/gemini/code/dataanalysis/matrix3_count_126.csv",row.names = 1,check.names = FALSE))
+matrix4=as.matrix(read.csv("/gemini/code/dataanalysis/matrix4_count_126.csv",row.names = 1,check.names = FALSE))
+#点位✖️2
+position1=as.matrix(read.csv("/gemini/code/dataanalysis/matrix1_postion_126.csv",row.names = 1))
+position2=as.matrix(read.csv("/gemini/code/dataanalysis/matrix2_postion_126.csv",row.names = 1))
+position3=as.matrix(read.csv("/gemini/code/dataanalysis/matrix3_postion_126.csv",row.names = 1))
+position4=as.matrix(read.csv("/gemini/code/dataanalysis/matrix4_postion_126.csv",row.names = 1))
+#点位✖️7
+calpha1=as.matrix(read.csv("/gemini/code/dataanalysis/matrix1_celltype_126.csv",row.names = 1))
+calpha2=as.matrix(read.csv("/gemini/code/dataanalysis/matrix2_celltype_126.csv",row.names = 1))
+calpha3=as.matrix(read.csv("/gemini/code/dataanalysis/matrix3_celltype_126.csv",row.names = 1))
+calpha4=as.matrix(read.csv("/gemini/code/dataanalysis/matrix4_celltype_126.csv",row.names = 1))
+
+load("/Users/zhoum/Desktop/scc/scc_P9_new.RData")
+load("/gemini/code/dataanalysis/scc_P9_new.RData")
+matrix1=sample_total[[1]][[1]]
+matrix2=sample_total[[2]][[1]]
+matrix3=sample_total[[3]][[1]]
+
+position1=sample_total[[1]][[2]]
+position2=sample_total[[2]][[2]]
+position3=sample_total[[3]][[2]]
+
+calpha1=sample_total[[1]][[3]]
+calpha2=sample_total[[2]][[3]]
+calpha3=sample_total[[3]][[3]]
+
+spelist <- list(list(t(matrix1),position1),list(t(matrix2),position2),list(t(matrix3),position3))
+c_alpha <- list(calpha1,calpha2,calpha3)
+
+spelist <- list(list(t(matrix1),position1),list(t(matrix2),position2),list(t(matrix3),position3),list(t(matrix4),position4))
+c_alpha <- list(calpha1,calpha2,calpha3,calpha4)
+
+
+
+
+num_cores=11
+dataname="scc"
+
+result_total=replicate(5, replicate(5, list(), simplify = FALSE), simplify = FALSE)
+para1_domain=c(0.6,0.8,1,1.2,1.4)
+para2_domain=c(0.6,0.8,1,1.2,1.4)
+for (a_pi in 4:5) {
+  print(a_pi)
+  for (b_pi in seq_along(para2_domain)) {
+    if (b_pi != 3 | a_pi != 3) {
+      print(b_pi)
+      result <- tryCatch(
+        {
+          NBIMSVG(
+            spelist = spelist,
+            c_alpha = c_alpha,
+            num_cores = num_cores,
+            max_iter = 200,
+            a_pi = para1_domain[a_pi],
+            b_pi = para2_domain[b_pi]
+          )
+        },
+        error = function(e) {
+          message(
+            sprintf(
+              "❌ Error at a_pi=%d, b_pi=%d: %s",
+              a_pi, b_pi, e$message
+            )
+          )
+          return(NULL)
+        }
+      )
+      
+      if (!is.null(result)) {
+        result <- list(result[[1]], result[[2]], result[[3]], result[[4]])
+        result_total[[a_pi]][[b_pi]] <- result
+      } else {
+        result_total[[a_pi]][[b_pi]] <- NA
+      }
+    }
+  }
+}
+save(result_total,file=paste0("/gemini/code/simulation/abpi45_sensi_result_",dataname,".RData"))
+
+
+result_total=replicate(5, replicate(5, list(), simplify = FALSE), simplify = FALSE)
+para1_domain=c(0.0001,0.0005,0.001,0.005,0.01)
+para2_domain=c(0.0001,0.0005,0.001,0.005,0.01)
+for (a_pi in c(2:3)) {
+  print(a_pi)
+  for (b_pi in seq_along(para2_domain)) {
+    if (b_pi != 3 | a_pi != 3) {
+      print(b_pi)
+      result <- tryCatch(
+        {
+          NBIMSVG(
+            spelist = spelist,
+            c_alpha = c_alpha,
+            num_cores = num_cores,
+            max_iter = 200,
+            a_phi_single = para1_domain[a_pi],
+            b_phi_single = para2_domain[b_pi]
+          )
+        },
+        error = function(e) {
+          message(
+            sprintf(
+              "❌ Error at a_pi=%d, b_pi=%d: %s",
+              a_pi, b_pi, e$message
+            )
+          )
+          return(NULL)
+        }
+      )
+      if (!is.null(result)) {
+        result <- list(result[[1]], result[[2]], result[[3]], result[[4]])
+        result_total[[a_pi]][[b_pi]] <- result
+      } else {
+        result_total[[a_pi]][[b_pi]] <- NA
+      }
+    }
+  }
+}
+save(result_total,file=paste0("/gemini/code/simulation/abphi23_sensi_result_",dataname,".RData"))
+
+
+#sigma_eta^m / sigma_psi^m 
+result_total=replicate(5, replicate(5, list(), simplify = FALSE), simplify = FALSE)
+para1_domain=c(0.6,0.8,1,1.2,1.4)
+para2_domain=c(0.6,0.8,1,1.2,1.4)
+for(a_pi in seq(para1_domain)){
+  print(a_pi)
+  for(b_pi in seq(para2_domain)){
+    if(b_pi != 3 | a_pi != 3){
+    print(b_pi)
+    result <- NBIMSVG(spelist = spelist,c_alpha = c_alpha,num_cores =num_cores,max_iter=200,eta_sigma_single=para1_domain[a_pi],psi_sigma_single=para2_domain[b_pi],gamma2=0.005)
+    result=list(result[[1]],result[[2]],result[[3]],result[[4]])
+    result_total[[a_pi]][[b_pi]]=result
+    }
+  }
+}
+save(result_total,file=paste0("/gemini/code/simulation/etapsi_sigma_sensi_result_",dataname,".RData"))
+
+
+#cq / dq
+result_total=replicate(5, replicate(5, list(), simplify = FALSE), simplify = FALSE)
+para1_domain=c(0.6,0.8,1,1.2,1.4)
+para2_domain=c(0.6,0.8,1,1.2,1.4)
+for(a_pi in seq(para1_domain)){
+  print(a_pi)
+  for(b_pi in seq(para2_domain)){
+    if(b_pi != 3 | a_pi != 3){
+    print(b_pi)
+    result <- NBIMSVG(spelist = spelist,c_alpha = c_alpha,num_cores =num_cores,max_iter=200,cq=para1_domain[a_pi],dq=para2_domain[b_pi],gamma2=0.005)
+    result=list(result[[1]],result[[2]],result[[3]],result[[4]])
+    result_total[[a_pi]][[b_pi]]=result
+    }
+  }
+}
+save(result_total,file=paste0("/gemini/code/simulation/cdq_sensi_result_",dataname,".RData"))
+
+
+# cp / dp
+result_total <- replicate(5, replicate(5, list(), simplify = FALSE), simplify = FALSE)
+
+para1_domain <- c(0.1, 0.15, 0.2, 0.25, 0.3)
+para2_domain <- c(0.9, 1.35, 1.8, 2.25, 2.7)
+
+for (a_pi in seq_along(para1_domain)) {
+  for (b_pi in seq_along(para2_domain)) {
+    
+    cat("Running cp =", para1_domain[a_pi],
+        ", dp =", para2_domain[b_pi], "\n")
+    
+    result <- tryCatch({
+      
+      fit <- NBIMSVG(
+        spelist   = spelist,
+        c_alpha   = c_alpha,
+        num_cores = num_cores,
+        max_iter  = 200,
+        cp        = para1_domain[a_pi],
+        dp        = para2_domain[b_pi],
+        gamma2   = 0.005
+      )
+      
+      list(fit[[1]], fit[[2]], fit[[3]], fit[[4]])
+      
+    }, error = function(e) {
+      
+      message("❌ Failed at cp = ", para1_domain[a_pi],
+              ", dp = ", para2_domain[b_pi])
+      message("Error: ", e$message)
+      
+      NULL
+    })
+    
+    result_total[[a_pi]][[b_pi]] <- result
+  }
+}
+save(result_total,file = paste0("/gemini/code/simulation/cdp_sensi_result_", dataname, ".RData"))
+
+#gamma1,gamma2
+result_total <- replicate(5, replicate(5, list(), simplify = FALSE), simplify = FALSE)
+para1_domain <- c(sqrt(0.0006), sqrt(0.0008), sqrt(0.001),
+                  sqrt(0.0012), sqrt(0.0014))
+para2_domain <- c(0.004, 0.0045, 0.005, 0.0055, 0.006)
+
+for (a_pi in seq_along(para1_domain)) {
+  for (b_pi in seq_along(para2_domain)) {
+    
+    cat("Running gamma1 =", para1_domain[a_pi],
+        ", gamma2 =", para2_domain[b_pi], "\n")
+    
+    result <- tryCatch({
+      
+      fit <- NBIMSVG(
+        spelist   = spelist,
+        c_alpha   = c_alpha,
+        num_cores = num_cores,
+        gamma1    = para1_domain[a_pi],
+        gamma2    = para2_domain[b_pi]
+      )
+      
+      list(fit[[1]], fit[[2]], fit[[3]], fit[[4]])
+      
+    }, error = function(e) {
+      
+      message("❌ Failed at gamma1 = ", para1_domain[a_pi],
+              ", gamma2 = ", para2_domain[b_pi])
+      message("Error: ", e$message)
+      
+      NULL
+    })
+    
+    result_total[[a_pi]][[b_pi]] <- result
+  }
+}
+
+save(result_total,
+     file = paste0("/gemini/code/simulation/gamma12_sensi_result_", dataname, ".RData"))
+
+
+
+result_total=replicate(5, replicate(5, list(), simplify = FALSE), simplify = FALSE)
+para_list=list(c(0.06,0.07,0.08,0.09,0.1),c(0.04,0.045,0.05,0.055,0.06)
+               ,c(0.03,0.035,0.04,0.045,0.05),c(0.02,0.025,0.03,0.035,0.04))
+for(a_pi in c(3,4)){
+  ak_domain=c(0.08,0.05,0.04,0.03)
+  para1_domain=para_list[[a_pi]]
+  if(a_pi==4){
+    bpidomain=c(1,2,4,5)
+  }else{
+    bpidomain=c(2,4,5)
+  }
+  for(b_pi in bpidomain){
+    ak_domain[a_pi]=para1_domain[b_pi]
+    result <- tryCatch(
+      {
+        NBIMSVG(
+          spelist = spelist,
+          c_alpha = c_alpha,
+          num_cores = num_cores,
+          max_iter = 200,
+          ak_domain = ak_domain
+        )
+      },
+      error = function(e) {
+        message(
+          sprintf(
+            "❌ Error at a_pi=%d, b_pi=%d: %s",
+            a_pi, b_pi, e$message
+          )
+        )
+        return(NULL)
+      }
+    )
+    if (!is.null(result)) {
+      result <- list(result[[1]], result[[2]], result[[3]], result[[4]])
+      result_total[[a_pi]][[b_pi]] <- result
+    } else {
+      result_total[[a_pi]][[b_pi]] <- NA
+    }
+  }
+}
+save(result_total,file=paste0("/gemini/code/simulation/akdomain34_sensi_result_",dataname,".RData"))
+
+
+
+
+
+
+###真是数据集结果展示
+#dlpfc真实数据集
+{
+load("C:/Users/zhoum/OneDrive/数据结果/data_DLFPC_svgene_list_1216.RData")
+parasdomain=c("abpi","abphi","etapsi_sigma","gamma12","cdp","cdq")
+p_list=list()
+compare_gene=data_DLFPC_svgene_list_1216[["Proposed"]]
+sensitive_list_dlpfc=list()
+for(paras in parasdomain){
+  if(paras=="gamma12"){
+    xsize=5
+  }else{
+    xsize=8
+  }
+  if(paras !="akdomain"){
+  load(paste0("C:/Users/zhoum/OneDrive/sensitive_analysis/",paras,"_sensi_result_dlpfc.RData"))
+  sensitive_matrix=matrix(NA,nrow = 5,ncol = 5)
+  for(j in c(1:5)){
+    for(k in c(1:5)){
+      if(j==3&k==3){
+        jaccard=1
+      }else{
+        jaccard <- length(intersect(result_total[[j]][[k]][[4]], compare_gene)) / length(union(result_total[[j]][[k]][[4]], compare_gene))
+      }
+      
+      sensitive_matrix[j,k]=round(jaccard,3)
+    }
+  }
+  print(sensitive_matrix)
+  sensitive_list_dlpfc[[paras]]=sensitive_matrix
+  }else{
+    load(paste0("C:/Users/zhoum/OneDrive/sensitive_analysis/akdomain_sensi_result_dlpfc.RData"))
+    sensitive_matrix=matrix(NA,nrow = 4,ncol = 5)
+    for(j in c(1:4)){
+      for(k in c(1:5)){
+        if(k==3){
+          jaccard=1
+        }else{
+          jaccard <- length(intersect(result_total[[j]][[k]][[4]], compare_gene)) / length(union(result_total[[j]][[k]][[4]], compare_gene))
+        }
+        sensitive_matrix[j,k]=round(jaccard,3)
+      }
+    }
+    sensitive_list_dlpfc[["akdomain"]]=sensitive_matrix
+    
+  }
+}
+
+
+p_list=list()
+for(paras in c("abpi","abphi","etapsi_sigma","gamma12","cdq","cdp","akdomain")){
+    xsize=8
+    if(paras=="gamma12"){
+      xsize=6
+    }
+    if(paras !="akdomain"){
+    df <- melt(sensitive_list_dlpfc[[paras]])
+    
+    if(paras=="abpi"){
+      xname=expression(a[pi])
+      yname=expression(b[pi])
+      param_x <- c("0.6", "0.8", "1", "1.2", "1.4")
+      param_y <- c("0.6", "0.8", "1", "1.2", "1.4")
+    }else if(paras=="abphi"){
+      xname <- expression(a["\u03D5"])  # ϕ
+      yname <- expression(b["\u03D5"])
+      param_x <- c("0.0005"," 0.0008","0.001", "0.003", "0.005")
+      param_y <- c("0.0005"," 0.0008","0.001", "0.003", "0.005")
+    }else if(paras=="etapsi_sigma"){
+      xname=expression(sigma[eta])
+      yname=expression(sigma[psi])
+      param_x <- c("0.6", "0.8", "1", "1.2", "1.4")
+      param_y <- c("0.6", "0.8", "1", "1.2", "1.4")
+    }else if(paras=="gamma12"){
+      xname=expression(Gamma[1])
+      yname=expression(Gamma[2])
+      param_x <- c(expression(sqrt(0.0006)), expression(sqrt(0.0008)), expression(sqrt(0.001)),expression(sqrt(0.0012)), expression(sqrt(0.0014)))
+      param_y <- c("0.005", "0.0075", "0.01", "0.0125", "0.015")
+    }else if(paras=="cdp"){
+      xname=expression(c[p])
+      yname=expression(d[p])
+      param_x <- c("0.1", "0.15", "0.2", "0.25", "0.3")
+      param_y <- c("0.9", "1.35", "1.8", "2.25", "2.7")
+    }else if(paras=="cdq"){
+      xname=expression(c[q])
+      yname=expression(d[q])
+      param_x <- c("0.6", "0.8", "1", "1.2", "1.4")
+      param_y <- c("0.6", "0.8", "1", "1.2", "1.4")
+    }
+    
+    colnames(df) <- c( "X_param","Y_param", "Value")
+    
+    df$X_param <- factor(df$X_param, labels = param_x)
+    df$Y_param <- factor(df$Y_param, labels = param_y)
+    
+    p1=ggplot(df, aes(x = X_param, y = Y_param)) +
+      geom_point(aes(fill = Value), shape = 21, size = 12,color="transparent") + 
+      scale_fill_gradient(
+        low = "white", 
+        high = "#e3716e",
+        limits = c(0, 1),          # 固定颜色映射范围为0到1
+        name = "Jaccard"          # 图例标题
+      ) +
+      geom_text(aes(label = round(Value, 3)), color = "black", size = 3) + # 可选数值标注
+      theme_minimal() +
+      labs(x =  xname, y =  yname, fill = "Jaccard")+
+      theme(axis.text.x = element_text(size = xsize),legend.position = "none")
+    
+    p_list[[paras]]=p1
+    }else{
+      results_matrix <- sensitive_list_dlpfc[["akdomain"]]
+      rownames(results_matrix) <- c("Degree1","Degree2","Degree3","Degree4")
+      
+      param_values <- list(
+        Param1 = c(0.06, 0.07, 0.08, 0.09, 0.10),
+        Param2 = c(0.04, 0.045, 0.05, 0.055, 0.06),
+        Param3 = c(0.03, 0.035, 0.04, 0.045, 0.05),
+        Param4 = c(0.02,0.025,0.03,0.035,0.04)
+      )
+      
+      # 转换为长格式
+      df <- data.frame(
+        Parameter = rep(rownames(results_matrix), each = 5),
+        Value = unlist(param_values),       # 展开每个参数的取值
+        Result = as.vector(t(results_matrix))
+      )
+      
+      # 绘制圆形热点图
+      p1=ggplot(df, aes(x = Value, y = Parameter, fill = Result)) +
+        geom_point(aes(fill = Result),shape = 21, size = 11, color = "transparent") +  # 圆形，边框透明
+        scale_fill_gradient(    low = "white", 
+                                high = "#e3716e",
+                                limits = c(0, 1),          
+                                name = "Jaccard",guide = guide_colorbar(
+                                  barwidth  = 12,   
+                                  barheight = 0.8,    title.position = "left",  
+                                  title.vjust = 1            
+                                )  ) +
+        geom_text(aes(label = round(Result, 3)), color = "black", size = 3) +
+        theme_minimal() +
+        labs(x = "Ak",y="", fill = "Metric")+
+        theme(legend.position = "bottom")
+      
+      p_list[[paras]]=p1
+    }
+}
+
+
+
+combined_plot <- 
+  (wrap_elements(p_list[[1]] | p_list[[2]] | p_list[[3]]) + 
+     labs(tag = "A") + 
+     theme(
+       plot.tag = element_text(size = 14, face = "bold", margin = margin(0)),
+       plot.tag.position = c(0.01, 1)
+     )) /
+  (wrap_elements(p_list[[4]] | p_list[[5]] | p_list[[6]]) + 
+     labs(tag = "B") + 
+     theme(
+       plot.tag = element_text(size = 14, face = "bold", margin = margin(0)),
+       plot.tag.position = c(0.01, 1)
+     )) /
+  (wrap_elements(p_list[[7]]) + 
+     labs(tag = "C") + 
+     theme(
+       plot.tag = element_text(size = 14, face = "bold", margin = margin(0)),
+       plot.tag.position = c(0.01, 1)
+     )) +
+  plot_layout(
+    heights = c(1, 1, 1.2),
+    guides = "collect"  
+  ) &
+  theme(
+    legend.position = "bottom", 
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5)
+  )
+   
+plot(combined_plot)  
+
+ggsave(paste0("C:/Users/zhoum/OneDrive/sensitive_analysis/sensitive_dlpfc.png"), plot = combined_plot, width = 10, height = 10, dpi = 300)
+}
+
+
+#dlfpc34711
+{
+  load("C:/Users/zhoum/OneDrive/数据结果/data_dlpfc_34711_svgene_list_0119.RData")
+  parasdomain=c("abpi","abphi","etapsi_sigma","gamma12","cdp","cdq")
+  p_list=list()
+  compare_gene=data_dlpfc_34711_svgene_list[["proposed"]]
+  sensitive_list_dlpfc34711=list()
+  for(paras in parasdomain){
+    print(paras)
+    if(paras=="gamma12"){
+      xsize=5
+    }else{
+      xsize=8
+    }
+    if(paras !="akdomain"){
+      load(paste0("C:/Users/zhoum/OneDrive/sensitive_analysis/",paras,"_sensi_result_dlpfc34711.RData"))
+      sensitive_matrix=matrix(NA,nrow = 5,ncol = 5)
+      for(j in c(1:5)){
+        for(k in c(1:5)){
+          if(j==3&k==3){
+            jaccard=1
+          }else{
+            if (length(result_total[[j]][[k]]) == 1 &&
+                is.na(result_total[[j]][[k]])) {
+              jaccard <- 0
+            } else {
+              jaccard <- length(
+                intersect(result_total[[j]][[k]][[4]], compare_gene)
+              ) / length(
+                union(result_total[[j]][[k]][[4]], compare_gene)
+              )
+            }
+          }
+          
+          sensitive_matrix[j,k]=round(jaccard,3)
+        }
+      }
+      print(sensitive_matrix)
+      sensitive_list_dlpfc34711[[paras]]=sensitive_matrix
+    }else{
+      load(paste0("C:/Users/zhoum/OneDrive/sensitive_analysis/akdomain_sensi_result_dlpfc34711.RData"))
+      sensitive_matrix=matrix(NA,nrow = 4,ncol = 5)
+      for(j in c(1:4)){
+        for(k in c(1:5)){
+          if(k==3){
+            jaccard=1
+          }else{
+            jaccard <- length(intersect(result_total[[j]][[k]][[4]], compare_gene)) / length(union(result_total[[j]][[k]][[4]], compare_gene))
+          }
+          sensitive_matrix[j,k]=round(jaccard,3)
+        }
+      }
+      sensitive_list_dlpfc34711[["akdomain"]]=sensitive_matrix
+      
+    }
+  }
+  
+  
+  #save(sensitive_list_dlpfc34711,file="C:/Users/zhoum/OneDrive/sensitive_analysis/sensitive_list_dlpfc34711_num.RData")
+  load("C:/Users/zhoum/OneDrive/sensitive_analysis/sensitive_list_dlpfc34711_num.RData")
+  
+  p_list=list()
+  for(paras in c("abpi","abphi","etapsi_sigma","gamma12","cdq","cdp","akdomain")){
+    xsize=8
+    if(paras=="gamma12"){
+      xsize=6
+    }
+    if(paras !="akdomain"){
+      df <- melt(sensitive_list_dlpfc34711[[paras]])
+      
+      if(paras=="abpi"){
+        xname=expression(a[pi])
+        yname=expression(b[pi])
+        param_x <- c("0.6", "0.8", "1", "1.2", "1.4")
+        param_y <- c("0.6", "0.8", "1", "1.2", "1.4")
+      }else if(paras=="abphi"){
+        xname <- expression(a["\u03D5"])  # ϕ
+        yname <- expression(b["\u03D5"])
+        param_x <- c("0.0005"," 0.0008","0.001", "0.003", "0.005")
+        param_y <- c("0.0005"," 0.0008","0.001", "0.003", "0.005")
+      }else if(paras=="etapsi_sigma"){
+        xname=expression(sigma[eta])
+        yname=expression(sigma[psi])
+        param_x <- c("0.6", "0.8", "1", "1.2", "1.4")
+        param_y <- c("0.6", "0.8", "1", "1.2", "1.4")
+      }else if(paras=="gamma12"){
+        xname=expression(Gamma[1])
+        yname=expression(Gamma[2])
+        param_x <- c(expression(sqrt(0.0006)), expression(sqrt(0.0008)), expression(sqrt(0.001)),expression(sqrt(0.0012)), expression(sqrt(0.0014)))
+        param_y <- c("0.004", "0.005", "0.006", "0.007", "0.008")
+      }else if(paras=="cdp"){
+        xname=expression(c[p])
+        yname=expression(d[p])
+        param_x <- c("0.1", "0.15", "0.2", "0.25", "0.3")
+        param_y <- c("0.9", "1.35", "1.8", "2.25", "2.7")
+      }else if(paras=="cdq"){
+        xname=expression(c[q])
+        yname=expression(d[q])
+        param_x <- c("0.6", "0.8", "1", "1.2", "1.4")
+        param_y <- c("0.6", "0.8", "1", "1.2", "1.4")
+      }
+      
+      colnames(df) <- c( "X_param","Y_param", "Value")
+      
+      df$X_param <- factor(df$X_param, labels = param_x)
+      df$Y_param <- factor(df$Y_param, labels = param_y)
+      
+      p1=ggplot(df, aes(x = X_param, y = Y_param)) +
+        geom_point(aes(fill = Value), shape = 21, size = 12,color="transparent") + 
+        scale_fill_gradient(
+          low = "white", 
+          high = "#e3716e",
+          limits = c(0, 1),          # 固定颜色映射范围为0到1
+          name = "Jaccard"          # 图例标题
+        ) +
+        geom_text(aes(label = round(Value, 3)), color = "black", size = 3) + # 可选数值标注
+        theme_minimal() +
+        labs(x =  xname, y =  yname, fill = "Jaccard")+
+        theme(axis.text.x = element_text(size = xsize),legend.position = "none")
+      
+      p_list[[paras]]=p1
+    }else{
+      results_matrix <- sensitive_list_dlpfc34711[["akdomain"]]
+      rownames(results_matrix) <- c("Degree1","Degree2","Degree3","Degree4")
+      
+      param_values <- list(
+        Param1 = c(0.06, 0.07, 0.08, 0.09, 0.10),
+        Param2 = c(0.04, 0.045, 0.05, 0.055, 0.06),
+        Param3 = c(0.03, 0.035, 0.04, 0.045, 0.05),
+        Param4 = c(0.02,0.025,0.03,0.035,0.04)
+      )
+      
+      # 转换为长格式
+      df <- data.frame(
+        Parameter = rep(rownames(results_matrix), each = 5),
+        Value = unlist(param_values),       # 展开每个参数的取值
+        Result = as.vector(t(results_matrix))
+      )
+      
+      # 绘制圆形热点图
+      p1=ggplot(df, aes(x = Value, y = Parameter, fill = Result)) +
+        geom_point(aes(fill = Result),shape = 21, size = 11, color = "transparent") +  # 圆形，边框透明
+        scale_fill_gradient(    low = "white", 
+                                high = "#e3716e",
+                                limits = c(0, 1),          
+                                name = "Jaccard",guide = guide_colorbar(
+                                  barwidth  = 12,   
+                                  barheight = 0.8,    title.position = "left",  
+                                  title.vjust = 1            
+                                )  ) +
+        geom_text(aes(label = round(Result, 3)), color = "black", size = 3) +
+        theme_minimal() +
+        labs(x = "Ak",y="", fill = "Metric")+
+        theme(legend.position = "bottom")
+      
+      p_list[[paras]]=p1
+    }
+  }
+  
+  
+  
+  combined_plot <- 
+    (wrap_elements(p_list[[1]] | p_list[[2]] | p_list[[3]]) + 
+       labs(tag = "A") + 
+       theme(
+         plot.tag = element_text(size = 14, face = "bold", margin = margin(0)),
+         plot.tag.position = c(0.01, 1)
+       )) /
+    (wrap_elements(p_list[[4]] | p_list[[5]] | p_list[[6]]) + 
+       labs(tag = "B") + 
+       theme(
+         plot.tag = element_text(size = 14, face = "bold", margin = margin(0)),
+         plot.tag.position = c(0.01, 1)
+       )) /
+    (wrap_elements(p_list[[7]]) + 
+       labs(tag = "C") + 
+       theme(
+         plot.tag = element_text(size = 14, face = "bold", margin = margin(0)),
+         plot.tag.position = c(0.01, 1)
+       )) +
+    plot_layout(
+      heights = c(1, 1, 1.2),
+      guides = "collect"  
+    ) &
+    theme(
+      legend.position = "bottom", 
+      plot.title = element_text(size = 20, face = "bold", hjust = 0.5)
+    )
+  
+  plot(combined_plot)  
+  
+  ggsave(paste0("C:/Users/zhoum/OneDrive/sensitive_analysis/sensitive_dlpfc34711.png"), plot = combined_plot, width = 10, height = 10, dpi = 300)
+  
+}
+
+#scc真实数据集
+{
+  load("C:/Users/zhoum/OneDrive/数据结果/data_scc_svgene_list_0130.RData")
+  parasdomain=c("abpi","abphi","etapsi_sigma","gamma12","cdp","cdq")
+  p_list=list()
+  compare_gene=data_scc_svgene_list_0130[["proposed"]]
+  sensitive_list_scc=list()
+  for(paras in parasdomain){
+    if(paras=="gamma12"){
+      xsize=5
+    }else{
+      xsize=8
+    }
+    if(paras !="akdomain"){
+      load(paste0("C:/Users/zhoum/OneDrive/sensitive_analysis/",paras,"_sensi_result_scc.RData"))
+      sensitive_matrix=matrix(NA,nrow = 5,ncol = 5)
+      for(j in c(1:5)){
+        for(k in c(1:5)){
+          if(j==3&k==3){
+            jaccard=1
+          }else{
+            jaccard <- length(intersect(result_total[[j]][[k]][[4]], compare_gene)) / length(union(result_total[[j]][[k]][[4]], compare_gene))
+          }
+          
+          sensitive_matrix[j,k]=round(jaccard,3)
+        }
+      }
+      print(sensitive_matrix)
+      sensitive_list_scc[[paras]]=sensitive_matrix
+    }else{
+      load(paste0("C:/Users/zhoum/OneDrive/sensitive_analysis/akdomain_sensi_result_scc.RData"))
+      sensitive_matrix=matrix(NA,nrow = 4,ncol = 5)
+      for(j in c(1:4)){
+        for(k in c(1:5)){
+          if(k==3){
+            jaccard=1
+          }else{
+            jaccard <- length(intersect(result_total[[j]][[k]][[4]], compare_gene)) / length(union(result_total[[j]][[k]][[4]], compare_gene))
+          }
+          sensitive_matrix[j,k]=round(jaccard,3)
+        }
+      }
+      sensitive_list_scc[["akdomain"]]=sensitive_matrix
+    }
+  }
+  #save(sensitive_list_scc,file="C:/Users/zhoum/OneDrive/sensitive_analysis/sensitive_list_scc_num.RData")
+  load("C:/Users/zhoum/OneDrive/sensitive_analysis/sensitive_list_scc_num.RData")
+  
+  p_list=list()
+  for(paras in c("abpi","abphi","etapsi_sigma","gamma12","cdq","cdp","akdomain")){
+    xsize=8
+    if(paras=="gamma12"){
+      xsize=6
+    }
+    if(paras !="akdomain"){
+      df <- melt(sensitive_list_scc[[paras]])
+      
+      if(paras=="abpi"){
+        xname=expression(a[pi])
+        yname=expression(b[pi])
+        param_x <- c("0.6", "0.8", "1", "1.2", "1.4")
+        param_y <- c("0.6", "0.8", "1", "1.2", "1.4")
+      }else if(paras=="abphi"){
+        xname <- expression(a["\u03D5"])  # ϕ
+        yname <- expression(b["\u03D5"])
+        param_x <- c("0.0005"," 0.0008","0.001", "0.003", "0.005")
+        param_y <- c("0.0005"," 0.0008","0.001", "0.003", "0.005")
+      }else if(paras=="etapsi_sigma"){
+        xname=expression(sigma[eta])
+        yname=expression(sigma[psi])
+        param_x <- c("0.6", "0.8", "1", "1.2", "1.4")
+        param_y <- c("0.6", "0.8", "1", "1.2", "1.4")
+      }else if(paras=="gamma12"){
+        xname=expression(Gamma[1])
+        yname=expression(Gamma[2])
+        param_x <- c(expression(sqrt(0.0006)), expression(sqrt(0.0008)), expression(sqrt(0.001)),expression(sqrt(0.0012)), expression(sqrt(0.0014)))
+        param_y <- c("0.004", "0.0045", "0.005", "0.0055", "0.006")
+      }else if(paras=="cdp"){
+        xname=expression(c[p])
+        yname=expression(d[p])
+        param_x <- c("0.1", "0.15", "0.2", "0.25", "0.3")
+        param_y <- c("0.9", "1.35", "1.8", "2.25", "2.7")
+      }else if(paras=="cdq"){
+        xname=expression(c[q])
+        yname=expression(d[q])
+        param_x <- c("0.6", "0.8", "1", "1.2", "1.4")
+        param_y <- c("0.6", "0.8", "1", "1.2", "1.4")
+      }
+      
+      colnames(df) <- c( "X_param","Y_param", "Value")
+      
+      df$X_param <- factor(df$X_param, labels = param_x)
+      df$Y_param <- factor(df$Y_param, labels = param_y)
+      
+      p1=ggplot(df, aes(x = X_param, y = Y_param)) +
+        geom_point(aes(fill = Value), shape = 21, size = 12,color="transparent") + 
+        scale_fill_gradient(
+          low = "white", 
+          high = "#e3716e",
+          limits = c(0, 1),          # 固定颜色映射范围为0到1
+          name = "Jaccard"          # 图例标题
+        ) +
+        geom_text(aes(label = round(Value, 3)), color = "black", size = 3) + # 可选数值标注
+        theme_minimal() +
+        labs(x =  xname, y =  yname, fill = "Jaccard")+
+        theme(axis.text.x = element_text(size = xsize),legend.position = "none")
+      
+      p_list[[paras]]=p1
+    }else{
+      results_matrix <- sensitive_list_scc[["akdomain"]]
+      rownames(results_matrix) <- c("Degree1","Degree2","Degree3","Degree4")
+      
+      param_values <- list(
+        Param1 = c(0.06, 0.07, 0.08, 0.09, 0.10),
+        Param2 = c(0.04, 0.045, 0.05, 0.055, 0.06),
+        Param3 = c(0.03, 0.035, 0.04, 0.045, 0.05),
+        Param4 = c(0.02,0.025,0.03,0.035,0.04)
+      )
+      
+      # 转换为长格式
+      df <- data.frame(
+        Parameter = rep(rownames(results_matrix), each = 5),
+        Value = unlist(param_values),       # 展开每个参数的取值
+        Result = as.vector(t(results_matrix))
+      )
+      
+      # 绘制圆形热点图
+      p1=ggplot(df, aes(x = Value, y = Parameter, fill = Result)) +
+        geom_point(aes(fill = Result),shape = 21, size = 11, color = "transparent") +  # 圆形，边框透明
+        scale_fill_gradient(    low = "white", 
+                                high = "#e3716e",
+                                limits = c(0, 1),          
+                                name = "Jaccard",guide = guide_colorbar(
+                                  barwidth  = 12,   
+                                  barheight = 0.8,    title.position = "left",  
+                                  title.vjust = 1            
+                                )  ) +
+        geom_text(aes(label = round(Result, 3)), color = "black", size = 3) +
+        theme_minimal() +
+        labs(x = "Ak",y="", fill = "Metric")+
+        theme(legend.position = "bottom")
+      
+      p_list[[paras]]=p1
+    }
+  }
+  
+  
+  
+  combined_plot <- 
+    (wrap_elements(p_list[[1]] | p_list[[2]] | p_list[[3]]) + 
+       labs(tag = "A") + 
+       theme(
+         plot.tag = element_text(size = 14, face = "bold", margin = margin(0)),
+         plot.tag.position = c(0.01, 1)
+       )) /
+    (wrap_elements(p_list[[4]] | p_list[[5]] | p_list[[6]]) + 
+       labs(tag = "B") + 
+       theme(
+         plot.tag = element_text(size = 14, face = "bold", margin = margin(0)),
+         plot.tag.position = c(0.01, 1)
+       )) /
+    (wrap_elements(p_list[[7]]) + 
+       labs(tag = "C") + 
+       theme(
+         plot.tag = element_text(size = 14, face = "bold", margin = margin(0)),
+         plot.tag.position = c(0.01, 1)
+       )) +
+    plot_layout(
+      heights = c(1, 1, 1.2),
+      guides = "collect"  
+    ) &
+    theme(
+      legend.position = "bottom", 
+      plot.title = element_text(size = 20, face = "bold", hjust = 0.5)
+    )
+  
+  plot(combined_plot)  
+  
+  ggsave(paste0("C:/Users/zhoum/OneDrive/sensitive_analysis/sensitive_scc.png"), plot = combined_plot, width = 10, height = 10, dpi = 300)
+  
+  
+}
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,1487 @@
+special_gene=c("MOBP","SNAP25","PCP4","HBB","IGKC","NPY") 
+
+pattern_plot2 <- function(pltdat, igene, xy = TRUE, main = FALSE, titlesize = 2, 
+                          pointsize = 3, xpand = 0, ypand = 1, title = NULL, legend = TRUE) {
+  if (!xy) {
+    xy <- matrix(as.numeric(do.call(rbind, strsplit(as.character(pltdat[, 1]), split = "x")), ncol = 2))
+    rownames(xy) <- as.character(pltdat[, 1])
+    colnames(xy) <- c("x", "y")
+    pd <- cbind.data.frame(xy, pltdat[, 2:ncol(pltdat)])
+  } else {
+    pd <- pltdat
+  }
+  
+  # 提取目标列数据并计算相对百分比（0%~100%）
+  target_col <- pd[, igene + 2]
+  min_val <- min(target_col, na.rm = TRUE)
+  max_val <- max(target_col, na.rm = TRUE)
+  pd$rel_value <- (target_col - min_val) / (max_val - min_val) * 100  # 转换为百分比
+  
+  # 定义颜色渐变（固定范围为0~100）
+  pal <- colorRampPalette(c("mediumseagreen", "lightyellow2", "deeppink"))
+  gpt <- ggplot(pd, aes(x = x, y = y, color = rel_value)) + 
+    geom_point(size = pointsize) + 
+    scale_color_gradientn(
+      colours = pal(5),
+      limits = c(0, 100),  # 固定颜色范围为0%~100%
+      labels = scales::percent_format(scale = 1)  # 标签显示为百分比（如50%）
+    ) +
+    scale_x_discrete(expand = c(xpand, ypand)) + 
+    scale_y_discrete(expand = c(xpand, ypand)) + 
+    coord_equal() + 
+    theme_bw() + 
+    labs(color = "Relative Expression Level ")  # 修改图例标题
+  
+  # 调整图例位置和样式
+  if (legend) {
+    gpt <- gpt + 
+      theme(legend.position = "bottom",
+            legend.justification = "center",
+            legend.text = element_text(
+              size = 8,
+              margin = margin(t = 0, b = 0, unit = "cm"),  # 文字左移3mm
+              hjust = 0,                                             # 文字左对齐
+              vjust = 0.5                                            # 保持垂直居中
+            )) +  # 确保图例居中
+      guides(color = guide_colorbar(
+        direction = "horizontal",
+        barwidth = unit(5, "cm"),
+        barheight = unit(0.3, "cm"),
+        title.position = "left",
+        label.position = "bottom"
+      ))
+  } else {
+    gpt <- gpt + theme(legend.position = "none")
+  }
+  
+  if (main) {
+    out <- gpt + labs(title = title %||% colnames(pd)[igene + 2], x = NULL, y = NULL) + 
+      theme(plot.title = element_text(hjust = 0.5, size = rel(titlesize)))
+  } else {
+    out <- gpt + labs(title = NULL, x = NULL, y = NULL)
+  }
+  
+  return(out)
+}
+
+
+
+combined_list=list()
+for(genenum in c(1:6)){
+  p1 <- pattern_plot2(meta1, genenum, xpand = 0.01, ypand = 0.01, main = FALSE, pointsize = 1,legend = FALSE)
+  p2 <- pattern_plot2(meta2, genenum, xpand = 0.01, ypand = 0.01, main = FALSE, pointsize = 1,legend = FALSE)
+  p3 <- pattern_plot2(meta3, genenum, xpand = 0.01, ypand = 0.01, main = FALSE, pointsize = 1,legend = FALSE)
+  p4 <- pattern_plot2(meta4, genenum, xpand = 0.01, ypand = 0.01, main = FALSE, pointsize = 1,legend = FALSE)
+  
+  combined_list[[genenum]] <- wrap_elements((p1 | p2) / (p3 | p4)) + 
+    labs(title = special_gene[genenum]) + 
+    theme(
+      plot.title = element_text(size = 20, face = "bold", hjust = 0.5, vjust = 0),
+    )
+}
+
+combined_plot <- 
+  (wrap_elements(combined_list[[1]]|combined_list[[2]]|combined_list[[3]]) + 
+     labs(tag = "A") + 
+     theme(plot.tag = element_text(size = 20, face = "bold", margin = margin(0)),
+           plot.tag.position = c(0.01, 1))) /
+  (wrap_elements(combined_list[[4]]|combined_list[[5]]|combined_list[[6]]) + 
+     labs(tag = "B") + 
+     theme(plot.tag = element_text(size = 20, face = "bold", margin = margin(0)),
+           plot.tag.position = c(0.01, 1)))  +
+  plot_layout(heights = c(1.2, 1.2,0.2)) 
+
+print(combined_plot)
+
+ggsave(paste0("/Users/zhoum/Desktop/dlp/maynard_highlight_gene.png"), plot = combined_plot, width = 15, height = 12, dpi = 300)
+
+
+
+
+
+###第一个图，指标表达
+{
+  custom_colors <- c(
+    "Proposed" = "red",             # Red
+    "DESpace" = "#FFEB5E", 
+    "spVC-AVE" = "black", 
+    "spVC-Union" = "#2A2A2A",       
+    "spVC-Inter" = "#555555",       
+    "spVC-Cauchy" = "#808080",
+    "spVC-HMP" = "#AAAAAA",  
+    "spVC-PASTE" = "#D3D3D3",   
+    "nnSVG-AVE" = "#F27400",            # Orange (Adjusted)
+    "nnSVG-Union" = "#F68719",      # Slightly lighter orange
+    "nnSVG-Inter" = "#F99B33",            # Orange (Adjusted)
+    "nnSVG-Cauchy" = "#FCAE4C",      # Slightly lighter orange
+    "nnSVG-HMP" = "#FDBF63",      # Slightly lighter orange
+    "nnSVG-PASTE" = "#FFC775",      # Slightly lighter orange
+    "SPARK-AVE" = "#0D47A1",            # Light blue
+    "SPARK-Union" = "#2C64B3",      # Greyish blue
+    "SPARK-Inter" = "#4C82C5",            # Light blue
+    "SPARK-Cauchy" = "#6BAFD9",      # Greyish blue
+    "SPARK-HMP" = "#8ACCF0",      # Greyish blue
+    "SPARK-PASTE" = "#96CDF8",      # Greyish blue
+    "SPARKX-AVE" = "#1B5E20",           # Light Green
+    "SPARKX-Union" = "#3F8146",     # Slightly lighter green
+    "SPARKX-Inter" = "#64A46D",           # Light Green
+    "SPARKX-Cauchy" = "#88C793",     # Slightly lighter green
+    "SPARKX-HMP" = "#AADDB0",     # Slightly lighter green
+    "SPARKX-PASTE" = "#B3DDB6",     # Slightly lighter green
+    "HEARTSVG-AVE" = "#4B0082",          # Purple
+    "HEARTSVG-Union" = "#6A3296",    # Light purple
+    "HEARTSVG-Inter" = "#8964AB",          # Purple
+    "HEARTSVG-Cauchy" = "#A897BF",    # Light purple
+    "HEARTSVG-HMP" = "#C0AFE1",    # Light purple
+    "HEARTSVG-PASTE" = "#C4B6ED",    # Light purple
+    "GASTON-AVE" = "#B22222",
+    "GASTON-Union" = "#CC4C4C",
+    "GASTON-Inter" = "#E06666",
+    "GASTON-PASTE" = "#FF9999",
+    "StarTrail-AVE" = "#00008B",
+    "StarTrail-Union" = "#1F1FAF",
+    "StarTrail-Inter" = "#4B4BCF",
+    "StarTrail-PASTE" = "#87CEFA"
+  )
+  
+  
+  methods <- names(custom_colors)
+  
+
+  indices <- paste0("index", 1:6)
+  datas<-paste0("data",1:3)
+  set.seed(123)  # 保证可重复
+  total_index <- expand.grid(
+    method = methods,
+    index = indices,
+    data=datas
+  )
+  total_index$value <- runif(nrow(total_index), min = 0.05, max = 1)
+  
+  
+
+plot_total_index_point <- function(data,legend_position="none",select_index,title = "",x_title = "",y_title = "Value") {
+  
+  ggplot(
+    data %>%
+      filter(index == select_index) %>%
+      mutate(
+        method = factor(
+          method,
+          levels = c(
+            "Proposed","DESpace",
+            "SPARK-AVE","SPARKX-AVE","HEARTSVG-AVE","nnSVG-AVE","spVC-AVE",
+            "SPARK-Union","SPARKX-Union","HEARTSVG-Union","nnSVG-Union","spVC-Union",
+            "SPARK-Inter","SPARKX-Inter","HEARTSVG-Inter","nnSVG-Inter","spVC-Inter",
+            "SPARK-Cauchy","SPARKX-Cauchy","HEARTSVG-Cauchy","nnSVG-Cauchy","spVC-Cauchy",
+            "SPARK-HMP","SPARKX-HMP","HEARTSVG-HMP","nnSVG-HMP","spVC-HMP",
+            "SPARK-PASTE","SPARKX-PASTE","HEARTSVG-PASTE","nnSVG-PASTE","spVC-PASTE",
+            "GASTON-AVE","GASTON-Union","GASTON-Inter","GASTON-PASTE",
+            "StarTrail-AVE","StarTrail-Union","StarTrail-Inter","StarTrail-PASTE"
+          )
+        ),
+        method_group = case_when(
+          method %in% c("Proposed", "DESpace") ~ "Multi",
+          grepl("AVE", method) ~ "AVE",
+          grepl("Union", method) ~ "Union",
+          grepl("Inter", method) ~ "Inter",
+          grepl("Cauchy", method) ~ "Cauchy",
+          grepl("HMP", method) ~ "HMP",
+          grepl("PASTE", method) ~ "PASTE",
+          TRUE ~ "Other"
+        ),
+        method_group = factor(
+          method_group,
+          levels = c("Multi","AVE","Union","Inter","Cauchy","HMP","PASTE")
+        )
+      ),
+    aes(
+      x = method_group,
+      y = value,
+      color = method
+    )
+  ) +
+    facet_grid(. ~ data, scales = "free_x", space = "free_x") +
+    geom_point(
+      position = position_jitter(width = 0.25),
+      size = 1,
+      alpha = 0.9
+    ) +
+    labs(
+      title = title,
+      x = x_title,
+      y = y_title
+    ) +
+    theme_minimal() +
+    theme(
+      plot.margin = margin(0.2, 0.2, 0.2, 0.2),
+      plot.title = element_text(size = 10, face = "bold"),
+      axis.text.y = element_text(size = 8),
+      axis.title.y = element_text(size = 8),
+      axis.text.x = element_text(size = 8),
+      axis.ticks.x = element_line(),
+      legend.position = legend_position,
+      legend.title = element_blank(),
+      legend.text = element_text(size = 8),
+      strip.text = element_text(size = 8),
+      panel.spacing = unit(0.5, "lines")
+    )+ guides(
+      color = guide_legend(
+        override.aes = list(
+          shape = 15,   # 方块
+          size  = 4,    # legend 里块状大小
+          alpha = 1
+        )
+      )
+    )+
+    scale_color_manual(values = custom_colors)
+  
+}
+
+
+p1=plot_total_index_point(total_index,select_index = "index1",y_title = "Index 1",legend_position="right")
+p2=plot_total_index_point(total_index,select_index = "index2",y_title = "Index 2")
+p3=plot_total_index_point(total_index,select_index = "index3",y_title = "Index 3")
+p4=plot_total_index_point(total_index,select_index = "index4",y_title = "Index 4")
+p5=plot_total_index_point(total_index,select_index = "index5",y_title = "Index 5")
+p6=plot_total_index_point(total_index,select_index = "index6",y_title = "Index 6")
+
+  
+  combined_plot <- (p1/p2/p3/p4/p5/p6) +
+    plot_layout(guides = "collect") + 
+    plot_annotation(
+      title = NULL,
+      subtitle = NULL,
+      caption = NULL,
+      tag_levels = 'A',  
+      tag_prefix = "",  
+      tag_sep = "",  
+      theme = theme(plot.tag = element_text(size = 80, face = "bold"))  
+    ) &
+    theme(legend.position = "right") &  
+    guides(fill = guide_legend(ncol = 1))
+  
+  print(combined_plot)
+  
+  ggsave("/Users/zhoum/Desktop/combined_index.png", plot = combined_plot, width = 11, height = 10, dpi = 300)
+  
+}
+
+
+
+###基因聚类表达拼凑
+{
+load("/Users/zhoum/Desktop/dlp/same_donor/genecluster/gene_clusters.RData")
+
+position1=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix1_postion_126.csv",row.names = 1))
+count1=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix1_count_126.csv",row.names = 1))
+position2=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix2_postion_126.csv",row.names = 1))
+count2=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix2_count_126.csv",row.names = 1))
+position3=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix3_postion_126.csv",row.names = 1))
+count3=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix3_count_126.csv",row.names = 1))
+position4=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix4_postion_126.csv",row.names = 1))
+count4=as.matrix(read.csv("/Users/zhoum/Desktop/dlpfc_data/matrix4_count_126.csv",row.names = 1))
+
+count1=count1[data_DLFPC_svgene_list_1216[[6]],]
+count2=count2[data_DLFPC_svgene_list_1216[[6]],]
+count3=count3[data_DLFPC_svgene_list_1216[[6]],]
+count4=count4[data_DLFPC_svgene_list_1216[[6]],]
+count_list=list(count1,count2,count3,count4)
+position_list=list(position1,position2,position3,position4)
+
+meta_process =function(position1,count1){
+  meta=cbind(position1,t(count1))
+  colnames(meta)[c(1:2)] = c('x','y')
+  meta=as.data.frame(meta)
+  meta$x <- (meta$x - min(meta$x))/(max(meta$x) - min(meta$x))
+  meta$y <- (meta$y - min(meta$y))/(max(meta$y) - min(meta$y))
+  return(meta)
+}
+
+pattern_plot2 <- function(pltdat, igene, xy = T, main = F, titlesize = 2, 
+                          pointsize = 3, xpand = 0, ypand = 1, title = NULL,hjust=0.5,legend.position = "none") {
+  if (!xy) {
+    xy <- matrix(as.numeric(do.call(rbind, strsplit(as.character(pltdat[, 
+                                                                        1]), split = "x"))), ncol = 2)
+    rownames(xy) <- as.character(pltdat[, 1])
+    colnames(xy) <- c("x", "y")
+    pd <- cbind.data.frame(xy, pltdat[, 2:ncol(pltdat)])
+  } else {
+    pd <- pltdat
+  }
+  
+  # pal <- colorRampPalette(c('seagreen1','orangered')) pal <-
+  # colorRampPalette(c('#00274c','#ffcb05')) pal <-
+  # colorRampPalette(c('deepskyblue','goldenrod1')) pal <-
+  # colorRampPalette(c('deepskyblue','deeppink'))
+  pal <- colorRampPalette(c("mediumseagreen", "lightyellow2", "deeppink"))
+  gpt <- ggplot(pd, aes(x = x, y = y, color = pd[, igene + 2])) + geom_point(size = pointsize) + 
+    # scale_color_gradientn(colours=pal(5))+
+    scale_color_gradientn(colours = pal(5)) + scale_x_discrete(expand = c(xpand, 
+                                                                          ypand)) + scale_y_discrete(expand = c(xpand, ypand)) + coord_equal() + 
+    # labs(title = colnames(pd)[igene+2], x = NULL, y = NULL)+
+    theme_bw()
+  if (main) {
+    if (is.null(title)) {
+      title = colnames(pd)[igene + 2]
+    }
+    out = gpt + labs(title = title, x = NULL, y = NULL) + theme(legend.position = legend.position, 
+                                                                plot.title = element_text(hjust = hjust,face="bold",size = rel(titlesize)))
+  } else {
+    out = gpt + labs(title = NULL, x = NULL, y = NULL) + theme(legend.position = legend.position)
+  }
+  return(out)
+}
+
+f_genecluster=function(result_gene_cluster_list,count_list,position_list,secnum=1,cluster_num=1,main=F,title = NULL,titlesize = 2,hjust=0.5,legend.position = "none"){
+  expre_mat=t(count_list[[secnum]])
+  position_mat=position_list[[secnum]]
+  gene_clusters=result_gene_cluster_list[[secnum]]
+  genes_in_cluster <- gene_clusters$gene[gene_clusters$cluster == cluster_num]
+  
+  mean_expression <- rowMeans(expre_mat[, genes_in_cluster, drop = FALSE], na.rm = TRUE)
+  meta=meta_process(position_mat,t(mean_expression))
+  plot=pattern_plot2(meta,1,xpand=0.01,ypand = 0.01,pointsize = 2,main=main,title = title,titlesize = titlesize,hjust=hjust,legend.position = legend.position)
+  return(plot)
+}
+p1=f_genecluster(secnum=1,cluster=1,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 1",titlesize = 0.8,hjust=0.5)
+p2=f_genecluster(secnum=2,cluster=1,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 1",titlesize = 0.8,hjust=0.5)
+p3=f_genecluster(secnum=3,cluster=1,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 1",titlesize = 0.8,hjust=0.5)
+p4=f_genecluster(secnum=4,cluster=1,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 1",titlesize = 0.8,hjust=0.5)
+p5=f_genecluster(secnum=1,cluster=2,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 2",titlesize = 0.8,hjust=0.5)
+p6=f_genecluster(secnum=2,cluster=2,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 2",titlesize = 0.8,hjust=0.5)
+p7=f_genecluster(secnum=3,cluster=2,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 2",titlesize = 0.8,hjust=0.5)
+p8=f_genecluster(secnum=4,cluster=2,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 2",titlesize = 0.8,hjust=0.5)
+p9=f_genecluster(secnum=1,cluster=4,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 3",titlesize = 0.8,hjust=0.5)
+p10=f_genecluster(secnum=2,cluster=4,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 3",titlesize = 0.8,hjust=0.5)
+p11=f_genecluster(secnum=3,cluster=4,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 3",titlesize = 0.8,hjust=0.5)
+p12=f_genecluster(secnum=4,cluster=4,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 3",titlesize = 0.8,hjust=0.5)
+p13=f_genecluster(secnum=1,cluster=3,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 4",titlesize = 0.8,hjust=0.5)
+p14=f_genecluster(secnum=2,cluster=3,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 4",titlesize = 0.8,hjust=0.5)
+p15=f_genecluster(secnum=3,cluster=3,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 4",titlesize = 0.8,hjust=0.5)
+p16=f_genecluster(secnum=4,cluster=3,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 4",titlesize = 0.8,hjust=0.5)
+
+
+
+load("/Users/zhoum/Desktop/dlp/genecluster/gene_clusters_34711.RData")
+
+position1=as.matrix(read.csv("C:/Users/zhoum/Desktop/dlpfc_data/matrix1_postion_34711.csv",row.names = 1))
+count1=as.matrix(read.csv("C:/Users/zhoum/Desktop/dlpfc_data/matrix1_count_34711.csv",row.names = 1))
+position2=as.matrix(read.csv("C:/Users/zhoum/Desktop/dlpfc_data/matrix2_postion_34711.csv",row.names = 1))
+count2=as.matrix(read.csv("C:/Users/zhoum/Desktop/dlpfc_data/matrix2_count_34711.csv",row.names = 1))
+position3=as.matrix(read.csv("C:/Users/zhoum/Desktop/dlpfc_data/matrix3_postion_34711.csv",row.names = 1))
+count3=as.matrix(read.csv("C:/Users/zhoum/Desktop/dlpfc_data/matrix3_count_34711.csv",row.names = 1))
+position4=as.matrix(read.csv("C:/Users/zhoum/Desktop/dlpfc_data/matrix4_postion_34711.csv",row.names = 1))
+count4=as.matrix(read.csv("C:/Users/zhoum/Desktop/dlpfc_data/matrix4_count_34711.csv",row.names = 1))
+
+
+count1=count1[data_dlpfc_34711_svgene_list[[6]],]
+count2=count2[data_dlpfc_34711_svgene_list[[6]],]
+count3=count3[data_dlpfc_34711_svgene_list[[6]],]
+count4=count4[data_dlpfc_34711_svgene_list[[6]],]
+count_list=list(count1,count2,count3,count4)
+position_list=list(position1,position2,position3,position4)
+
+p1=f_genecluster(secnum=1,cluster=1,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 1",titlesize = 0.8,hjust=0.5)
+p2=f_genecluster(secnum=2,cluster=1,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 1",titlesize = 0.8,hjust=0.5)
+p3=f_genecluster(secnum=3,cluster=1,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 1",titlesize = 0.8,hjust=0.5)
+p4=f_genecluster(secnum=4,cluster=1,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 1",titlesize = 0.8,hjust=0.5)
+p5=f_genecluster(secnum=1,cluster=2,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 2",titlesize = 0.8,hjust=0.5)
+p6=f_genecluster(secnum=2,cluster=2,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 2",titlesize = 0.8,hjust=0.5)
+p7=f_genecluster(secnum=3,cluster=2,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 2",titlesize = 0.8,hjust=0.5)
+p8=f_genecluster(secnum=4,cluster=2,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 2",titlesize = 0.8,hjust=0.5)
+p9=f_genecluster(secnum=1,cluster=3,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 3",titlesize = 0.8,hjust=0.5)
+p10=f_genecluster(secnum=2,cluster=3,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 3",titlesize = 0.8,hjust=0.5)
+p11=f_genecluster(secnum=3,cluster=3,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 3",titlesize = 0.8,hjust=0.5)
+p12=f_genecluster(secnum=4,cluster=3,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 3",titlesize = 0.8,hjust=0.5)
+
+load("/Users/zhoum/Desktop/scc/scc_P9_new.RData")
+count1=sample_total[[1]][[1]]#基因✖️点位1143
+count2=sample_total[[2]][[1]]#1070
+count3=sample_total[[3]][[1]]#1108
+
+position1=sample_total[[1]][[2]]
+position2=sample_total[[2]][[2]]
+position3=sample_total[[3]][[2]]
+
+load("C:/Users/zhoum/OneDrive/数据结果/data_scc_svgene_list_0130.RData")
+load("/Users/zhoum/Desktop/scc/genecluster/gene_clusters1230.RData")
+
+count1=count1[data_scc_svgene_list_0130[[6]],]
+count2=count2[data_scc_svgene_list_0130[[6]],]
+count3=count3[data_scc_svgene_list_0130[[6]],]
+count_list=list(count1,count2,count3)
+position_list=list(position1,position2,position3)
+
+p1=f_genecluster(secnum=1,cluster=1,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 1",titlesize = 0.8,hjust=0.5)
+p2=f_genecluster(secnum=2,cluster=1,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 1",titlesize = 0.8,hjust=0.5)
+p3=f_genecluster(secnum=3,cluster=1,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 1",titlesize = 0.8,hjust=0.5)
+p4=f_genecluster(secnum=1,cluster=2,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 2",titlesize = 0.8,hjust=0.5)
+p5=f_genecluster(secnum=2,cluster=2,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 2",titlesize = 0.8,hjust=0.5)
+p6=f_genecluster(secnum=3,cluster=2,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 2",titlesize = 0.8,hjust=0.5)
+p7=f_genecluster(secnum=1,cluster=3,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 3",titlesize = 0.8,hjust=0.5)
+p8=f_genecluster(secnum=2,cluster=3,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 3",titlesize = 0.8,hjust=0.5)
+p9=f_genecluster(secnum=3,cluster=3,result_gene_cluster_list=result_gene_cluster_list,count_list=count_list,position_list=position_list,main=TRUE,title ="Cluster 3",titlesize = 0.8,hjust=0.5)
+
+
+new_order <- c(
+1,4,7,2,5,8,3,6,9
+
+)
+
+scc_pic_list_new <- scc_pic_list[new_order]
+
+
+dlpfc_1234_pic_list=list(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16)
+dlpfc_34711_pic_list=list(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12)
+scc_pic_list=list(p1,p2,p3,p4,p5,p6,p7,p8,p9)
+
+
+dlpfc_1234_grid <- wrap_plots(dlpfc_1234_pic_list_new, ncol = 8)
+dlpfc_34711_grid <- wrap_plots(dlpfc_34711_pic_list_new, ncol = 6)
+scc_grid <- wrap_plots(scc_pic_list_new, ncol = 6)
+
+save(dlpfc_1234_pic_list_new,file="C:/Users/zhoum/Desktop/dlp/genecluster_picture_dlpfc1234.RData")
+save(dlpfc_34711_pic_list_new,file="C:/Users/zhoum/Desktop/dlp/genecluster_picture_dlpfc34711.RData")
+save(scc_pic_list_new,file="C:/Users/zhoum/Desktop/dlp/genecluster_picture_scc.RData")
+
+blank_plot <- plot_spacer()
+combined_plot <- 
+  ((wrap_elements(dlpfc_1234_pic_list_new[[1]] | dlpfc_1234_pic_list_new[[2]] | dlpfc_1234_pic_list_new[[3]] | dlpfc_1234_pic_list_new[[4]]) + 
+      labs(tag = "A") + 
+      theme(plot.tag = element_text(size = 16, face = "bold", margin = margin(0)),
+            plot.tag.position = c(0.01, 1))) |
+     (wrap_elements(dlpfc_1234_pic_list_new[[5]] |dlpfc_1234_pic_list_new[[6]] |  dlpfc_1234_pic_list_new[[7]] | dlpfc_1234_pic_list_new[[8]]) )) /
+  ((wrap_elements(dlpfc_1234_pic_list_new[[9]] | dlpfc_1234_pic_list_new[[10]] |dlpfc_1234_pic_list_new[[11]] | dlpfc_1234_pic_list_new[[12]]) ) |
+     (wrap_elements(dlpfc_1234_pic_list_new[[13]] | dlpfc_1234_pic_list_new[[14]] | dlpfc_1234_pic_list_new[[15]] | dlpfc_1234_pic_list_new[[16]]) ))/
+  ((wrap_elements(dlpfc_34711_pic_list_new[[1]] | dlpfc_34711_pic_list_new[[2]]| dlpfc_34711_pic_list_new[[3]] ) + 
+      labs(tag = "B") + 
+      theme(plot.tag = element_text(size = 16, face = "bold", margin = margin(0)),
+            plot.tag.position = c(0.01, 1))) |
+     (wrap_elements(dlpfc_34711_pic_list_new[[4]] |dlpfc_34711_pic_list_new[[5]] |  dlpfc_34711_pic_list_new[[6]] ))) /
+  ((wrap_elements(dlpfc_34711_pic_list_new[[7]] | dlpfc_34711_pic_list_new[[8]] |dlpfc_34711_pic_list_new[[9]] )) |
+     (wrap_elements(dlpfc_34711_pic_list_new[[10]] | dlpfc_34711_pic_list_new[[11]] | dlpfc_34711_pic_list_new[[12]] ))) /
+  ((wrap_elements(scc_pic_list_new[[1]] | scc_pic_list_new[[2]]| scc_pic_list_new[[3]] ) + 
+      labs(tag = "C") + 
+      theme(plot.tag = element_text(size = 16, face = "bold", margin = margin(0)),
+            plot.tag.position = c(0.01, 1))) |
+     (wrap_elements(scc_pic_list_new[[4]] |scc_pic_list_new[[5]] |  scc_pic_list_new[[6]] ) )) /
+  (wrap_elements(scc_pic_list_new[[7]] | scc_pic_list_new[[8]] |scc_pic_list_new[[9]] )|blank_plot)+plot_layout(heights = c(1,1,1,1,1,1,0.3)) 
+
+ggsave("/Users/zhoum/Desktop/combined_plot2.png", combined_plot, width = 16, height =16, units = "in")
+
+
+
+
+}
+
+
+##画细胞点类的图
+{
+#当前的结果
+{
+  
+plot_total_list=list()
+
+plot_total_list[["dlpfc1234"]]=plot_list
+
+
+#处理dlpfc数据集
+load("C:/Users/zhoum/Desktop/bass测试/proposed_bass_cluster_34711dlpfc.RData")
+layer_barcode=result_total
+plot_list=list()
+for(datanum in c(1:4)){
+  position1=as.matrix(read.csv(paste0("/Users/zhoum/Desktop/dlpfc_data/matrix",datanum,"_postion_34711.csv"),row.names = 1))
+  coordinates=as.data.frame(position1)
+  coordinates$cluster <- layer_barcode[[datanum]]
+  custom_colors <- c("#54beaa" ,"#fccccb","#eca680","#bdb5e1","#b0d992","#99b9e9","#f9d580","#e3716e","#7ac7e2","#f3deb7")
+  plot <- ggplot(coordinates, aes(x = x, y = y, color = as.factor(cluster))) +
+    geom_point(size = 2) +
+    scale_color_manual(values = custom_colors, name = "Estimated") +
+    guides(color = guide_legend(override.aes = list(size = 5),nrow = 1)) +  # 增大图例点的大小
+    theme(
+      axis.title = element_blank(),
+      legend.position="bottom",
+      axis.text = element_blank(),
+      axis.ticks = element_blank(),
+      panel.grid = element_blank(),
+      panel.background = element_blank(),
+      legend.background = element_blank(),
+      legend.key.size = unit(1.5, "cm"),  
+      legend.key.height = unit(1, "cm"),  # 调整图例项的高度
+      legend.key.width = unit(0.8, "cm"),   # 调整图例项的宽度
+      legend.text = element_text(size = 18),  
+      legend.title = element_text(size = 20),
+      plot.tag = element_text(size = 22, face = "bold")
+    )
+  plot_list[[datanum]]=plot
+  
+}
+plot_total_list[["dlpfc34711"]]=plot_list
+
+
+##处理scc数据集
+load("C:/Users/zhoum/Desktop/scc/cluster_scc.RData")
+plot_list=list()
+datanum=3
+position1=as.matrix(read.csv(paste0("C:/Users/zhoum/Desktop/scc/scc_position",datanum,".csv"),row.names = 1))
+coordinates=as.data.frame(position1)
+coordinates$cluster <- cluster_scc[[datanum]][[6]][[1]]
+#custom_colors <- c("#99b9e9","#bdb5e1" ,"#54beaa" ,"#f9d580","#eca680","#fccccb","#e3716e","#b0d992","#7ac7e2","#f3deb7")#第一张
+#custom_colors <- c("#99b9e9","#bdb5e1" ,"#54beaa" ,"#f9d580","#eca680","#e3716e","#b0d992","#fccccb","#7ac7e2","#f3deb7")#第二张
+custom_colors <- c("#99b9e9","#f9d580","#fccccb","#54beaa" ,"#bdb5e1","#eca680","#e3716e","#b0d992","#7ac7e2","#f3deb7")#第三张
+plot <- ggplot(coordinates, aes(x = row, y = col, color = as.factor(cluster))) +
+  geom_point(size = 2) +
+  scale_color_manual(values = custom_colors, name = "Estimated") +
+  guides(color = guide_legend(override.aes = list(size = 5),nrow = 1)) +  # 增大图例点的大小
+  theme(
+    axis.title = element_blank(),
+    legend.position="bottom",
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    panel.background = element_blank(),
+    legend.background = element_blank(),
+    legend.key.size = unit(1.5, "cm"),  
+    legend.key.height = unit(1, "cm"),  # 调整图例项的高度
+    legend.key.width = unit(0.8, "cm"),   # 调整图例项的宽度
+    legend.text = element_text(size = 18),  
+    legend.title = element_text(size = 20),
+    plot.tag = element_text(size = 22, face = "bold")
+  )
+plot_list[[datanum]]=plot
+
+combined_plot <- (plot_list[[1]] | plot_list[[2]] |plot_list[[3]])
+print(combined_plot)
+
+plot_total_list[["scc"]]=plot_list
+}
+
+#真实的聚类结果
+{
+plot_total_list_real=list()
+
+#
+load("/Users/zhoum/OneDrive/数据结果/layer_barcode_1218.RData")
+plot_list=list()
+for(datanum in c(1:4)){
+  position1=as.matrix(read.csv(paste0("/Users/zhoum/Desktop/dlpfc_data/matrix",datanum,"_postion_126.csv"),row.names = 1))
+  coordinates=as.data.frame(position1)
+  coordinates$cluster <- layer_barcode[[datanum]]
+  custom_colors <- c("#54beaa", "#b0d992","#eca680",  "#f9d580", "#bdb5e1", "#fccccb","#e3716e","#99b9e9","#7ac7e2","#f3deb7")
+  plot <- ggplot(coordinates, aes(x = x, y = y, color = as.factor(cluster))) +
+    geom_point(size = 2) +
+    scale_color_manual(values = custom_colors, name = "Cluster") +
+    guides(color = guide_legend(override.aes = list(size = 5),nrow = 1)) +  # 增大图例点的大小
+    theme(
+      axis.title = element_blank(),
+      legend.position="bottom",
+      axis.text = element_blank(),
+      axis.ticks = element_blank(),
+      panel.grid = element_blank(),
+      panel.background = element_blank(),
+      legend.background = element_blank(),
+      legend.key.size = unit(1.5, "cm"),  
+      legend.key.height = unit(1, "cm"),  # 调整图例项的高度
+      legend.key.width = unit(0.8, "cm"),   # 调整图例项的宽度
+      legend.text = element_text(size = 18),  
+      legend.title = element_text(size = 20),
+      plot.tag = element_text(size = 22, face = "bold")
+    )
+  plot_list[[datanum]]=plot
+  
+}
+plot_total_list_real[["dlpfc1234"]]=plot_list
+
+##34711
+load("/Users/zhoum/OneDrive/数据结果/layer_barcode_34711_dlpfc.RData")
+for(i in c(1:4)){
+  layer_barcode[[i]][layer_barcode[[i]] == "L7"] <- "others"
+}
+
+plot_list=list()
+for(datanum in c(1:4)){
+  position1=as.matrix(read.csv(paste0("/Users/zhoum/Desktop/dlpfc_data/matrix",datanum,"_postion_34711.csv"),row.names = 1))
+  coordinates=as.data.frame(position1)
+  coordinates$cluster <- layer_barcode[[datanum]]
+  custom_colors <- c("#54beaa", "#b0d992","#eca680",  "#f9d580", "#bdb5e1", "#fccccb","#e3716e","#99b9e9","#7ac7e2","#f3deb7")
+  plot <- ggplot(coordinates, aes(x = x, y = y, color = as.factor(cluster))) +
+    geom_point(size = 2) +
+    scale_color_manual(values = custom_colors, name = "Real") +
+    guides(color = guide_legend(override.aes = list(size = 5),nrow = 1)) +  # 增大图例点的大小
+    theme(
+      axis.title = element_blank(),
+      legend.position="bottom",
+      axis.text = element_blank(),
+      axis.ticks = element_blank(),
+      panel.grid = element_blank(),
+      panel.background = element_blank(),
+      legend.background = element_blank(),
+      legend.key.size = unit(1.5, "cm"),  
+      legend.key.height = unit(1, "cm"),  # 调整图例项的高度
+      legend.key.width = unit(0.8, "cm"),   # 调整图例项的宽度
+      legend.text = element_text(size = 18),  
+      legend.title = element_text(size = 20),
+      plot.tag = element_text(size = 22, face = "bold")
+    )
+  plot_list[[datanum]]=plot
+  
+}
+plot_total_list_real[["dlpfc34711"]]=plot_list
+
+
+
+##scc
+library(jpeg)
+library(png)
+library(cowplot)
+plot_list=list()
+for(datanum in c(1:3)){
+  img <- readPNG(paste0("C:/Users/zhoum/Desktop/scc/rep",datanum,"_scc.png"))
+  img_plot <- ggdraw() +draw_image(img)
+  plot_list[[datanum]]=img_plot
+}
+plot_total_list_real[["scc"]]=plot_list
+}
+
+# combined_plot=(plot_list[[1]]|plot_list[[2]]|plot_list[[3]])
+# ggsave(paste0("/Users/zhoum/Desktop/aaa.png"), plot = combined_plot, width = 10, height = 3, dpi = 300)
+
+save(plot_total_list,file="C:/Users/zhoum/OneDrive/plot_proposed_spotcluster.RData")
+save(plot_total_list_real,file="C:/Users/zhoum/OneDrive/plot_real_spotcluster.RData")
+
+
+##原来的图
+{
+plot1 <- plot_total_list[["dlpfc1234"]][[1]] + theme(legend.position = "none")
+plot2 <- plot_total_list[["dlpfc1234"]][[2]]
+plot3 <- plot_total_list[["dlpfc1234"]][[3]] + theme(legend.position = "none")
+plot4 <- plot_total_list[["dlpfc1234"]][[4]] + theme(legend.position = "none")
+plot5 <- plot_total_list[["dlpfc34711"]][[1]] + theme(legend.position = "none")
+plot6 <- plot_total_list[["dlpfc34711"]][[2]]
+plot7 <- plot_total_list[["dlpfc34711"]][[3]] + theme(legend.position = "none")
+plot8 <- plot_total_list[["dlpfc34711"]][[4]] + theme(legend.position = "none")
+plot9 <- plot_total_list[["scc"]][[1]] + theme(legend.position = "none")
+plot10 <- plot_total_list[["scc"]][[2]]
+plot11<- plot_total_list[["scc"]][[3]] + theme(legend.position = "none")
+
+
+legend_A <- get_legend(plot2 +  theme(
+      legend.position = "bottom",
+      legend.title = element_text(size = 12),  # ⭐标题
+      legend.text  = element_text(size = 10)   # ⭐刻度 / 标签
+    ))
+legend_B <- get_legend(plot6 +     theme(
+  legend.position = "bottom",
+  legend.title = element_text(size = 12),  # ⭐标题
+  legend.text  = element_text(size = 10)   # ⭐刻度 / 标签
+))
+legend_C <- get_legend(plot10 +     theme(
+  legend.position = "bottom",
+  legend.title = element_text(size = 12),  # ⭐标题
+  legend.text  = element_text(size = 10)   # ⭐刻度 / 标签
+))
+
+plot2  <- plot2  + theme(legend.position = "none")
+plot6  <- plot6  + theme(legend.position = "none")
+plot10 <- plot10 + theme(legend.position = "none")
+
+rowA <- 
+  (plot1 | plot2 | plot3 | plot4) /
+  wrap_elements(legend_A) +
+  plot_layout(heights = c(1, 0.12))
+
+rowB <- 
+  (plot5 | plot6 | plot7 | plot8) /
+  wrap_elements(legend_B) +
+  plot_layout(heights = c(1, 0.12))
+rowC <- 
+  (plot9 | plot10 | plot11) /
+  wrap_elements(legend_C) +
+  plot_layout(heights = c(1, 0.12))
+
+
+combined_plot <-
+  (wrap_elements(rowA) +
+     labs(tag = "A") +
+     theme(
+       plot.tag = element_text(size = 16, face = "bold"),
+       plot.tag.position = c(0.01, 1)
+     )) /
+  (wrap_elements(rowB) +
+     labs(tag = "B") +
+     theme(
+       plot.tag = element_text(size = 16, face = "bold"),
+       plot.tag.position = c(0.01, 1)
+     )) /
+  (wrap_elements(rowC) +
+     labs(tag = "C") +
+     theme(
+       plot.tag = element_text(size = 16, face = "bold"),
+       plot.tag.position = c(0.01, 1)
+     )) +
+  plot_layout(heights = c(1, 1, 1.1))
+
+
+ggsave(paste0("/Users/zhoum/Desktop/dlp/spotcluster_alldataset.png"), plot = combined_plot, width = 10, height = 10, dpi = 300)
+}
+
+  load("C:/Users/zhoum/OneDrive/plot_proposed_spotcluster.RData")
+  load("C:/Users/zhoum/OneDrive/plot_real_spotcluster.RData")
+  
+  plot1 <- plot_total_list[["dlpfc1234"]][[1]] + theme(legend.position = "none")
+  plot2 <- plot_total_list[["dlpfc1234"]][[2]] + theme(legend.position = "none")
+  plot3 <- plot_total_list[["dlpfc1234"]][[3]] + theme(legend.position = "none")
+  plot4 <- plot_total_list[["dlpfc1234"]][[4]] + theme(legend.position = "none")
+  plot5 <- plot_total_list[["dlpfc34711"]][[1]] + theme(legend.position = "none")
+  plot6 <- plot_total_list[["dlpfc34711"]][[2]] + theme(legend.position = "none")
+  plot7 <- plot_total_list[["dlpfc34711"]][[3]] + theme(legend.position = "none")
+  plot8 <- plot_total_list[["dlpfc34711"]][[4]] + theme(legend.position = "none")
+  plot9 <- plot_total_list[["scc"]][[1]] + theme(legend.position = "none")
+  plot10 <- plot_total_list[["scc"]][[2]]+ theme(legend.position = "none")
+  plot11 <- plot_total_list[["scc"]][[3]] + theme(legend.position = "none")
+  
+  plot12 <- plot_total_list_real[["dlpfc1234"]][[1]] + theme(legend.position = "none")
+  plot13 <- plot_total_list_real[["dlpfc1234"]][[2]]+ theme(legend.position = "none")
+  plot14 <- plot_total_list_real[["dlpfc1234"]][[3]] + theme(legend.position = "none")
+  plot15 <- plot_total_list_real[["dlpfc1234"]][[4]] + theme(legend.position = "none")
+  plot16 <- plot_total_list_real[["dlpfc34711"]][[1]] + theme(legend.position = "none")
+  plot17 <- plot_total_list_real[["dlpfc34711"]][[2]] + theme(legend.position = "none")
+  plot18 <- plot_total_list_real[["dlpfc34711"]][[3]] + theme(legend.position = "none")
+  plot19 <- plot_total_list_real[["dlpfc34711"]][[4]] + theme(legend.position = "none")
+  plot20=plot_total_list_real[["scc"]][[1]]
+  plot21=plot_total_list_real[["scc"]][[2]]
+  plot22=plot_total_list_real[["scc"]][[3]]
+  
+  legend_A <- get_legend(plot_total_list_real[["dlpfc34711"]][[1]] + 
+    theme(
+    legend.position = "bottom",
+    legend.title = element_text(size = 15),  # ⭐标题
+    legend.text  = element_text(size = 15)   # ⭐刻度 / 标签
+  ))
+  legend_B <- get_legend(plot_total_list[["scc"]][[1]] +     theme(
+    legend.position = "bottom",
+    legend.title = element_text(size = 15),  # ⭐标题
+    legend.text  = element_text(size = 15)   # ⭐刻度 / 标签
+  ))
+  legend_C <- get_legend(plot_total_list[["dlpfc34711"]][[2]] +     theme(
+    legend.position = "bottom",
+    legend.title = element_text(size = 15),  # ⭐标题
+    legend.text  = element_text(size = 15)   # ⭐刻度 / 标签
+  ))
+  
+
+#labs(title =title,
+  
+combined_plot <- 
+((wrap_elements((plot12 | plot13 |plot14 |plot15)) + 
+    labs(tag = "A",title="Real") + 
+    theme(plot.tag = element_text(size = 18, face = "bold", margin = margin(0)),
+          plot.tag.position = c(0.01, 1), plot.title = element_text(hjust = 0.02,
+            size = 14,
+            face = "bold",
+            margin = margin(t = 20)   
+          ))) |
+(wrap_elements((plot16 | plot17 |plot18 |plot19)) + 
+      labs(tag = "B",title="Real") + 
+      theme(plot.tag = element_text(size = 18, face = "bold", margin = margin(0)),
+            plot.tag.position = c(0.01, 1), plot.title = element_text(hjust = 0.02,
+            size = 14,face = "bold", margin = margin(t = 20)))))/
+((wrap_elements((plot1 |plot2|plot3|plot4)) + 
+      labs(title="Estimated") + 
+      theme(plot.title = element_text(hjust = 0.02,size = 14,face = "bold",margin = margin(t = 20)   # 👈 关键：往下推
+            ))) |
+(wrap_elements((plot5 |plot6|plot7|plot8)) + 
+        labs(title="Estimated") + 
+        theme(plot.title = element_text(hjust = 0.02,size = 14,face = "bold",margin = margin(t = 20)))))/
+  legend_A/legend_C/
+((wrap_elements(plot20 | plot21| plot22) + 
+     labs(tag = "C",title="Real") + 
+   theme(plot.tag = element_text(size = 18, face = "bold", margin = margin(0)),
+         plot.tag.position = c(0.01, 1),plot.title = element_text(hjust = 0.02,size = 14,face = "bold",margin = margin(t = 20))))|
+  (wrap_elements(plot9|plot10| plot11) + 
+     labs(title="Estimated") + 
+     theme(plot.title = element_text(hjust = 0.02,size = 14,face = "bold",margin = margin(t = 20)))))/legend_B+plot_layout(heights = c(1,1,0.12,0.12,1,0.12))
+
+ggsave(paste0("/Users/zhoum/Desktop/dlp/spotcluster_alldataset_0211.png"), plot = combined_plot, width = 16, height = 10, dpi = 300)
+
+
+
+  
+  
+}
+
+#画一个benchmark的图
+{
+  library(dplyr)
+  library(tidyr)
+  
+#获取结果
+
+  calc_metrics <- function(predicted, benchmark, universe) {
+    TP <- length(intersect(predicted, benchmark))
+    FP <- length(setdiff(predicted, benchmark))
+    FN <- length(setdiff(benchmark, predicted))
+    TN <- length(setdiff(universe, union(predicted, benchmark)))
+    
+    recall <- TP / length(benchmark)
+    precision <- TP / length(predicted)
+    F1 <- ifelse((precision + recall) > 0,
+                 2 * precision * recall / (precision + recall),
+                 0)
+    
+    TPR <- recall
+    FPR <- FP / (FP + TN)
+    
+    c(
+      Recall = round(recall, 3),
+      Precision = round(precision, 3),
+      F1 = round(F1, 3),
+      TPR = round(TPR, 3),
+      FPR = round(FPR, 3)
+    )
+  }
+  
+  count=as.matrix(read.csv("C:/Users/zhoum/Desktop/dlpfc_data/matrix1_count_34711.csv",row.names = 1,check.names = FALSE))
+  total_gene_name=rownames(count)
+    
+  svgenelist=data_dlpfc_34711_svgene_list
+  # 获取方法名称（外层列表名）
+  method_names <- names(svgenelist)
+  if (is.null(method_names)) method_names <- paste0("Method_", seq_along(svgenelist))
+  
+  # 获取场景数量
+  n_scenarios <- length(svgenelist[[1]])
+  scenario_names <- paste0("Scenario_", seq_len(n_scenarios))
+  
+  # 创建结果存放列表
+  result_list <- list()
+  
+  # 循环计算每种方法 x 每种情形下的指标
+  for (m in c(1:5)) {
+    method <- method_names[m]
+    for (s in seq_len(n_scenarios)) {
+      predicted <- svgenelist[[m]][[s]]
+      metrics <- calc_metrics(predicted, select_benchmark,total_gene_name)
+      
+      result_list[[length(result_list) + 1]] <- data.frame(
+        Method = method,
+        Scenario = scenario_names[s],
+        TPR = metrics["TPR"],
+        FPR = metrics["FPR"],
+        F1 = metrics["F1"]
+      )
+    }
+  }
+  for (m in c(8:9)) {
+    method <- method_names[m]
+    for (s in seq_len(7)) {
+      predicted <- svgenelist[[m]][[s]]
+      metrics <- calc_metrics(predicted, select_benchmark,total_gene_name)
+      
+      result_list[[length(result_list) + 1]] <- data.frame(
+        Method = method,
+        Scenario = scenario_names[s],
+        TPR = metrics["TPR"],
+        FPR = metrics["FPR"],
+        F1 = metrics["F1"]
+      )
+    }
+  }
+  result_df <- do.call(rbind, result_list)
+  rownames(result_df)=NULL
+  
+  result_df_summary <- result_df %>%
+    mutate(Scenario = case_when(
+      Scenario %in% paste0("Scenario_", 1:4) ~ "AVE",
+      Scenario == "Scenario_5" ~ "Union",
+      Scenario == "Scenario_6" ~ "Inter",
+      Scenario == "Scenario_7" ~ "PASTE",
+      Scenario == "Scenario_8" ~ "Cauchy",
+      Scenario == "Scenario_9" ~ "HMP",
+      TRUE ~ Scenario
+    )) %>%
+    group_by(Method, Scenario) %>%
+    summarise(
+      TPR = round(mean(TPR, na.rm = TRUE),3),
+      FPR =round( mean(FPR, na.rm = TRUE),3),
+      F1 = round(mean(F1, na.rm = TRUE),3),
+      .groups = "drop"
+    ) %>%
+    arrange(Method, factor(Scenario, levels = c("AVE", "Union", "Inter", "PASTE", "Cauchy", "HMP")))
+  
+  result_df_summary=as.data.frame(result_df_summary)
+  
+  result_df_summary <- rbind(result_df_summary, c("Proposed","multi",calc_metrics(svgenelist[[6]], select_benchmark,total_gene_name)))
+  result_df_summary <- rbind(result_df_summary, c("DEspace","multi",calc_metrics(svgenelist[[7]], select_benchmark,total_gene_name)))
+  
+  print(result_df_summary)
+  
+  
+  benchmark_result_list=list()
+  benchmark_result_list[[1]]=result_df_summary
+  benchmark_result_list[[2]]=result_df_summary
+  
+  
+  df1 <- benchmark_result_list[[1]] %>%
+    mutate(
+      method = paste(Method, Scenario, sep = "-"),
+      dataset = "same donor"
+    ) %>%
+    select(method, dataset,TPR, FPR, F1) %>%
+    pivot_longer(
+      cols = c(TPR, FPR, F1),
+      names_to = "index",
+      values_to = "value"
+    )
+  
+  df2 <- benchmark_result_list[[2]] %>%
+    mutate(
+      method = paste(Method, Scenario, sep = "-"),
+      dataset = "across donors"
+    ) %>%
+    select(method, dataset, TPR, FPR, F1) %>%
+    pivot_longer(
+      cols = c(TPR, FPR, F1),
+      names_to = "index",
+      values_to = "value"
+    )
+  
+  benchmark_result=rbind(df1,df2)
+  benchmark_result$method[benchmark_result$method == "Proposed-multi"] <- "Proposed"
+  benchmark_result$method[benchmark_result$method == "DEspace-multi"] <- "DESpace"
+  save(benchmark_result,file="C:/Users/zhoum/OneDrive/benchmark_result.RData")
+  
+  
+
+
+  
+}
+
+#重新绘制模拟数据集
+{
+  load("C:/Users/zhoum/OneDrive/result_basicsimu.RData")
+  total_F1$method <- gsub("Cauthy", "Cauchy", total_F1$method)
+  scenario_sets <- list(
+    c(1:4),  # scenario 1
+    c(1,2,5,6),  # scenario 2
+    c(3:6),  # scenario 3
+    c(2,5,7,8)  # scenario 4
+  )
+  standard_gene=paste0("gene",c(1:5000))
+  
+  results_list=list()
+  row_index=1
+  for(seed1 in c(1:10)){
+    for(pattern in c("linear","focal","period")){
+      for(inf in c("inf1","inf3","inf5")){
+        for(scenario in c(1:4)){
+
+          intevalue=paste("scenario",scenario)
+          measure=matrix(0,ncol=5000,nrow=4)
+          scenario_domain=scenario_sets[[scenario]]
+          for(choose_data in seq(scenario_domain)){
+            gene_gaston <- scan(paste0("C:/Users/zhoum/OneDrive/gaston/GASTON_SVG_list_simu_",scenario_domain[choose_data],"_",pattern,"_",inf,"_seed",seed1,".txt"), what = "character")
+            index=match(gene_gaston,standard_gene)
+            measure[choose_data,index]=1
+          }
+          result_mean=apply(measure,2,mean)
+          result_uni <- apply(measure, 2, max)
+          result_inter <- apply(measure, 2, min)
+          mean_tpvalue <- mean(result_mean[1:500], na.rm = TRUE)
+          mean_fpvalue <- mean(result_mean[501:5000], na.rm = TRUE)
+          uni_tpvalue <- mean(result_uni[1:500], na.rm = TRUE)
+          uni_fpvalue <- mean(result_uni[501:5000], na.rm = TRUE)
+          inter_tpvalue <- mean(result_inter[1:500], na.rm = TRUE)
+          inter_fpvalue <- mean(result_inter[501:5000], na.rm = TRUE)
+          #处理paste的结果
+          gene_gaston <- scan(paste0("C:/Users/zhoum/OneDrive/gaston/GASTON_SVG_list_simu_",(8+scenario),"_",pattern,"_",inf,"_seed",seed1,".txt"), what = "character")
+          index_paste=match(gene_gaston,standard_gene)
+          tp_paste=sum(index<=500,na.rm=TRUE)/500
+          fp_paste=sum(index>500,na.rm=TRUE)/4500
+          
+          for(result_type in c("F1","precision","recall","FPR")){
+            if(result_type=="F1"){
+              result_uni <- 2 * uni_tpvalue / (1 + 9 * uni_fpvalue + uni_tpvalue)
+              result_inter <- 2 * inter_tpvalue / (1 + 9 * inter_fpvalue + inter_tpvalue)
+              result_mean <- 2 * mean_tpvalue / (1 + 9 * mean_fpvalue + mean_tpvalue)
+              result_paste <- 2 * tp_paste / (1 + 9 * fp_paste + tp_paste)
+
+            }else if(result_type=="precision"){
+              result_uni=uni_tpvalue/(uni_tpvalue+9*uni_fpvalue)
+              result_inter=inter_tpvalue/(inter_tpvalue+9*inter_fpvalue)
+              result_mean=mean_tpvalue/(mean_tpvalue+9*mean_fpvalue)
+              result_paste=tp_paste/(tp_paste+9*fp_paste)
+            }else if(result_type=="recall"){
+              result_uni=uni_tpvalue
+              result_inter=inter_tpvalue
+              result_mean=mean_tpvalue
+              result_paste=tp_paste
+            }else if(result_type=="FPR"){
+              result_uni=uni_fpvalue
+              result_inter=inter_fpvalue
+              result_mean=mean_fpvalue
+              result_paste=fp_paste
+            }
+            
+            results_list[[row_index]] <- data.frame(method = paste0("GASTON", "-PASTE"), set = result_type, value = result_paste, inf = inf, inte_situ = intevalue, pattern = pattern)
+            results_list[[row_index + 1]] <- data.frame(method = paste0("GASTON", "-AVE"), set = result_type, value = result_mean, inf = inf, inte_situ = intevalue, pattern = pattern)
+            results_list[[row_index + 2]] <- data.frame(method = paste0("GASTON", "-Union"), set = result_type, value = result_uni, inf = inf, inte_situ = intevalue, pattern = pattern)
+            results_list[[row_index + 3]] <- data.frame(method = paste0("GASTON", "-Inter"), set = result_type, value = result_inter, inf = inf, inte_situ = intevalue, pattern = pattern)
+            
+            row_index <- row_index + 4
+          }
+        }
+      }
+    }
+  }
+
+  result_gaston <- do.call(rbind, results_list)
+  
+  total_F1=rbind(result_gaston,total_F1)
+  
+  save(total_F1,file="C:/Users/zhoum/OneDrive/result_basicsimu.RData")
+  
+  load("C:/Users/zhoum/OneDrive/result_basicsimu.RData")
+custom_colors <- c(
+  "IBaySVG" = "red",             # Red
+    "DESpace" = "#FFEB5E", 
+    "spVC-AVE" = "black", 
+    "spVC-Union" = "#2A2A2A",       
+    "spVC-Inter" = "#555555",       
+    "spVC-Cauchy" = "#808080",
+    "spVC-HMP" = "#AAAAAA",  
+    "spVC-PASTE" = "#D3D3D3",   
+    "nnSVG-AVE" = "#F27400",            # Orange (Adjusted)
+    "nnSVG-Union" = "#F68719",      # Slightly lighter orange
+    "nnSVG-Inter" = "#F99B33",            # Orange (Adjusted)
+    "nnSVG-Cauchy" = "#FCAE4C",      # Slightly lighter orange
+    "nnSVG-HMP" = "#FDBF63",      # Slightly lighter orange
+    "nnSVG-PASTE" = "#FFC775",      # Slightly lighter orange
+    "SPARK-AVE" = "#0D47A1",            # Light blue
+    "SPARK-Union" = "#2C64B3",      # Greyish blue
+    "SPARK-Inter" = "#4C82C5",            # Light blue
+    "SPARK-Cauchy" = "#6BAFD9",      # Greyish blue
+    "SPARK-HMP" = "#8ACCF0",      # Greyish blue
+    "SPARK-PASTE" = "#96CDF8",      # Greyish blue
+    "SPARKX-AVE" = "#1B5E20",           # Light Green
+    "SPARKX-Union" = "#3F8146",     # Slightly lighter green
+    "SPARKX-Inter" = "#64A46D",           # Light Green
+    "SPARKX-Cauchy" = "#88C793",     # Slightly lighter green
+    "SPARKX-HMP" = "#AADDB0",     # Slightly lighter green
+    "SPARKX-PASTE" = "#B3DDB6",     # Slightly lighter green
+    "HEARTSVG-AVE" = "#4B0082",          # Purple
+    "HEARTSVG-Union" = "#6A3296",    # Light purple
+    "HEARTSVG-Inter" = "#8964AB",          # Purple
+    "HEARTSVG-Cauchy" = "#A897BF",    # Light purple
+    "HEARTSVG-HMP" = "#C0AFE1",    # Light purple
+    "HEARTSVG-PASTE" = "#C4B6ED",    # Light purple
+    "GASTON-AVE" = "#B22222",
+    "GASTON-Union" = "#CC4C4C",
+    "GASTON-Inter" = "#E06666",
+    "GASTON-PASTE" = "#FF9999"
+)
+  
+  
+total_F1=total_F1[total_F1$value <= 1, ]
+total_F1 <- total_F1[total_F1$value <= 1&!is.na(total_F1$value) & total_F1$value != Inf& total_F1$value != -Inf, ]  
+total_F1$method <- gsub("Cauthy", "Cauchy", total_F1$method) 
+total_F1$method <- gsub("Proposed", "IBaySVG", total_F1$method)
+  
+plot_uni_inter_single2 <- function(data, cluster_type,inf_type,result_type,legend_position="none",title="linear",x_title="",y_title="F1 Value") {
+    ggplot(data %>% filter(inte_situ == cluster_type)%>%filter(inf== inf_type)%>%filter(set== result_type)%>%
+             mutate(method = factor(method, levels = c("IBaySVG","DESpace",
+                                                       "SPARK-AVE","SPARKX-AVE","HEARTSVG-AVE","nnSVG-AVE","spVC-AVE","GASTON-AVE",
+                                                       "SPARK-Union","SPARKX-Union","HEARTSVG-Union","nnSVG-Union","spVC-Union","GASTON-Union",
+                                                       "SPARK-Inter","SPARKX-Inter","HEARTSVG-Inter","nnSVG-Inter", "spVC-Inter","GASTON-Inter",
+                                                       "SPARK-Cauchy","SPARKX-Cauchy",
+                                                       "HEARTSVG-Cauchy"
+                                                       ,"nnSVG-Cauchy"
+                                                       ,"spVC-Cauchy","SPARK-HMP","SPARKX-HMP",
+                                                       "HEARTSVG-HMP"
+                                                       ,"nnSVG-HMP"
+                                                       ,"spVC-HMP","SPARK-PASTE","SPARKX-PASTE",
+                                                       "HEARTSVG-PASTE"
+                                                       ,"nnSVG-PASTE"
+                                                       ,"spVC-PASTE","GASTON-PASTE")),
+                    method_group = case_when(
+                      method %in% c("IBaySVG", "DESpace") ~ "Multi",
+                      grepl("AVE", method) ~ "AVE",
+                      grepl("Union", method) ~ "Union",
+                      grepl("Inter", method) ~ "Inter",
+                      grepl("Cauchy", method) ~ "Cauchy",
+                      grepl("HMP", method) ~ "HMP",
+                      grepl("PASTE", method) ~ "PASTE",
+                      TRUE ~ "Other"
+                    ),
+                    method_group = factor(method_group, levels = c("Multi", "AVE", "Union", "Inter", "Cauchy","HMP","PASTE")),
+                    pattern = factor(str_to_title(pattern), levels = c("Linear", "Focal", "Period"))),
+           aes(y = value,x=method_group, fill = method, color = method)) +
+      facet_grid(cols = vars(pattern),space = "free_x", scales = "free_x") +
+      geom_boxplot(position = position_dodge2(preserve = "single", padding = 0.4), 
+                   width = 0.9, outlier.size = 0.5, outlier.shape = NA) +
+      labs(title =title,
+           x = x_title,
+           y = y_title) +
+      theme_minimal() +
+      theme(
+        plot.margin = margin(0.2,0.2,0.2,0.2),
+        plot.title = element_text(size = 12,face = "bold"),
+        axis.text.y = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        axis.ticks.x = element_line(),  # 让x轴显示刻度
+        axis.text.x = element_text(size = 9),
+        legend.position = legend_position,
+        legend.title = element_blank(),
+        legend.text = element_text(size = 12),
+        strip.text = element_text(size = 12),
+        panel.spacing.x = unit(0.5, "lines"),
+        plot.tag = element_text(size = 15, face = "bold")
+      ) +
+      scale_fill_manual(values = custom_colors) +
+      scale_color_manual(values = custom_colors)
+  }
+  
+
+  infsize="inf1"
+  result_type="FPR"
+  y_title="FPR"
+  plot_total1=plot_uni_inter_single2(total_F1, "scenario 1",infsize,title="Setting 1",legend_position="right",result_type=result_type,y_title=y_title)
+  plot_total2=plot_uni_inter_single2(total_F1, "scenario 2",infsize,title="Setting 2",result_type=result_type,y_title=y_title)
+  plot_total3=plot_uni_inter_single2(total_F1, "scenario 3",infsize,title="Setting 3",result_type=result_type,y_title=y_title)
+  plot_total4=plot_uni_inter_single2(total_F1, "scenario 4",infsize,title="Setting 4",result_type=result_type,y_title=y_title)
+  
+  combined_plot <- ((plot_total1)/(plot_total2)/(plot_total3)/(plot_total4)) +
+    plot_layout(guides = "collect", heights = c(1.2, 1.2, 1.2, 1.2)) + 
+    plot_annotation(
+      title = NULL,
+      subtitle = NULL,
+      caption = NULL,
+      tag_levels = 'A',  
+      tag_prefix = "",  
+      tag_sep = "",  
+      theme = theme(plot.tag = element_text(size = 12, face = "bold"))  
+    ) &
+    theme(legend.position = "right") &  
+    guides(fill = guide_legend(ncol = 1))
+  
+  #print(combined_plot)
+  
+  ggsave("/Users/zhoum/Desktop/simu_FPR_inf1.png", plot = combined_plot, width = 12, height = 12, dpi = 300)
+  
+  
+}
+
+#重新绘制no_cov数据集
+{
+  scenario_sets <- list(
+    c(1:4),  # scenario 1
+    c(1,2,5,6),  # scenario 2
+    c(3:6),  # scenario 3
+    c(2,5,7,8)  # scenario 4
+  )
+  standard_gene=paste0("gene",c(1:5000))
+  
+  results_list=list()
+  row_index=1
+  for(seed1 in c(1:10)){
+    for(pattern in c("linear","focal","period")){
+      for(inf in c("inf3")){
+        for(scenario in c(1:4)){
+          
+          intevalue=paste("scenario",scenario)
+          measure=matrix(0,ncol=5000,nrow=4)
+          scenario_domain=scenario_sets[[scenario]]
+          for(choose_data in seq(scenario_domain)){
+            gene_gaston <- scan(paste0("C:/Users/zhoum/OneDrive/gaston_nocov/GASTON_SVG_list_simu_nocov_",scenario_domain[choose_data],"_",pattern,"_",inf,"_seed",seed1,".txt"), what = "character")
+            index=match(gene_gaston,standard_gene)
+            measure[choose_data,index]=1
+          }
+          result_mean=apply(measure,2,mean)
+          result_uni <- apply(measure, 2, max)
+          result_inter <- apply(measure, 2, min)
+          mean_tpvalue <- mean(result_mean[1:500], na.rm = TRUE)
+          mean_fpvalue <- mean(result_mean[501:5000], na.rm = TRUE)
+          uni_tpvalue <- mean(result_uni[1:500], na.rm = TRUE)
+          uni_fpvalue <- mean(result_uni[501:5000], na.rm = TRUE)
+          inter_tpvalue <- mean(result_inter[1:500], na.rm = TRUE)
+          inter_fpvalue <- mean(result_inter[501:5000], na.rm = TRUE)
+          #处理paste的结果
+          gene_gaston <- scan(paste0("C:/Users/zhoum/OneDrive/gaston_nocov/GASTON_SVG_list_simu_nocov_",(8+scenario),"_",pattern,"_",inf,"_seed",seed1,".txt"), what = "character")
+          index_paste=match(gene_gaston,standard_gene)
+          tp_paste=sum(index<=500,na.rm=TRUE)/500
+          fp_paste=sum(index>500,na.rm=TRUE)/4500
+          
+          for(result_type in c("F1","precision","recall","FPR")){
+            if(result_type=="F1"){
+              result_uni <- 2 * uni_tpvalue / (1 + 9 * uni_fpvalue + uni_tpvalue)
+              result_inter <- 2 * inter_tpvalue / (1 + 9 * inter_fpvalue + inter_tpvalue)
+              result_mean <- 2 * mean_tpvalue / (1 + 9 * mean_fpvalue + mean_tpvalue)
+              result_paste <- 2 * tp_paste / (1 + 9 * fp_paste + tp_paste)
+              
+            }else if(result_type=="precision"){
+              result_uni=uni_tpvalue/(uni_tpvalue+9*uni_fpvalue)
+              result_inter=inter_tpvalue/(inter_tpvalue+9*inter_fpvalue)
+              result_mean=mean_tpvalue/(mean_tpvalue+9*mean_fpvalue)
+              result_paste=tp_paste/(tp_paste+9*fp_paste)
+            }else if(result_type=="recall"){
+              result_uni=uni_tpvalue
+              result_inter=inter_tpvalue
+              result_mean=mean_tpvalue
+              result_paste=tp_paste
+            }else if(result_type=="FPR"){
+              result_uni=uni_fpvalue
+              result_inter=inter_fpvalue
+              result_mean=mean_fpvalue
+              result_paste=fp_paste
+            }
+            
+            results_list[[row_index]] <- data.frame(method = paste0("GASTON", "-PASTE"), set = result_type, value = result_paste, inf = inf, inte_situ = intevalue, pattern = pattern)
+            results_list[[row_index + 1]] <- data.frame(method = paste0("GASTON", "-AVE"), set = result_type, value = result_mean, inf = inf, inte_situ = intevalue, pattern = pattern)
+            results_list[[row_index + 2]] <- data.frame(method = paste0("GASTON", "-Union"), set = result_type, value = result_uni, inf = inf, inte_situ = intevalue, pattern = pattern)
+            results_list[[row_index + 3]] <- data.frame(method = paste0("GASTON", "-Inter"), set = result_type, value = result_inter, inf = inf, inte_situ = intevalue, pattern = pattern)
+            
+            row_index <- row_index + 4
+          }
+        }
+      }
+    }
+  }
+  
+  result_gaston <- do.call(rbind, results_list)
+  
+  total_F1=rbind(result_gaston,total_F1)
+  
+  save(total_F1,file="C:/Users/zhoum/OneDrive/result_basicsimu_nocov.RData")
+  
+  load("C:/Users/zhoum/OneDrive/result_basicsimu_nocov.RData")
+  total_F1$method <- gsub("Proposed", "IBaySVG", total_F1$method) 
+  
+  infsize="inf3"
+  result_type="FPR"
+  y_title="FPR"
+  plot_total1=plot_uni_inter_single2(total_F1, "scenario 1",infsize,title="Setting 1",legend_position="right",result_type=result_type,y_title=y_title)
+  plot_total2=plot_uni_inter_single2(total_F1, "scenario 2",infsize,title="Setting 2",result_type=result_type,y_title=y_title)
+  plot_total3=plot_uni_inter_single2(total_F1, "scenario 3",infsize,title="Setting 3",result_type=result_type,y_title=y_title)
+  plot_total4=plot_uni_inter_single2(total_F1, "scenario 4",infsize,title="Setting 4",result_type=result_type,y_title=y_title)
+  
+  combined_plot <- ((plot_total1)/(plot_total2)/(plot_total3)/(plot_total4)) +
+    plot_layout(guides = "collect", heights = c(1.2, 1.2, 1.2, 1.2)) + 
+    plot_annotation(
+      title = NULL,
+      subtitle = NULL,
+      caption = NULL,
+      tag_levels = 'A',  
+      tag_prefix = "",  
+      tag_sep = "",  
+      theme = theme(plot.tag = element_text(size = 12, face = "bold"))  
+    ) &
+    theme(legend.position = "right") &  
+    guides(fill = guide_legend(ncol = 1))
+  
+  #print(combined_plot)
+  
+  ggsave("/Users/zhoum/Desktop/simu_FPR_no_cov_inf3.png", plot = combined_plot, width = 12, height = 12, dpi = 300)
+  
+
+}
+
+##重新绘制supp数据集
+{
+  load("C:/Users/zhoum/OneDrive/result_supplesimu.RData")
+
+  standard_gene=paste0("gene",c(1:5000))
+  results_list=list()
+  row_index=1
+  datadomain=c("polynomialpolynomial","polynomial1polynomial1","polynomial4polynomial4","polynomial6polynomial6",
+               "sigmoidsigmoid","linearfocal","linearperiod","focalperiod","norm")
+  intevalue_domain=c("Polynomial1","Polynomial2","Polynomial3","Polynomial4","Sigmoid","Linear-Focal","Linear-Period","Focal-Period","ZINNGP")
+  for(seed1 in c(1:10)){
+    for(pattern in seq(datadomain)){
+      for(inf in c("inf5")){
+          intevalue=intevalue_domain[pattern]
+          measure=matrix(0,ncol=5000,nrow=4)
+          scenario_domain=c(1:4)
+          for(choose_data in seq(scenario_domain)){
+            gene_gaston <- scan(paste0("C:/Users/zhoum/OneDrive/gaston_supple/GASTON_SVG_list_supple_",scenario_domain[choose_data],"_",datadomain[pattern],"_seed",seed1,".txt"), what = "character")
+            index=match(gene_gaston,standard_gene)
+            measure[choose_data,index]=1
+          }
+          result_mean=apply(measure,2,mean)
+          result_uni <- apply(measure, 2, max)
+          result_inter <- apply(measure, 2, min)
+          mean_tpvalue <- mean(result_mean[1:500], na.rm = TRUE)
+          mean_fpvalue <- mean(result_mean[501:5000], na.rm = TRUE)
+          uni_tpvalue <- mean(result_uni[1:500], na.rm = TRUE)
+          uni_fpvalue <- mean(result_uni[501:5000], na.rm = TRUE)
+          inter_tpvalue <- mean(result_inter[1:500], na.rm = TRUE)
+          inter_fpvalue <- mean(result_inter[501:5000], na.rm = TRUE)
+          #处理paste的结果
+          gene_gaston <- scan(paste0("C:/Users/zhoum/OneDrive/gaston_supple/GASTON_SVG_list_supple_paste_",datadomain[pattern],"_seed",seed1,".txt"), what = "character")
+          index_paste=match(gene_gaston,standard_gene)
+          tp_paste=sum(index<=500,na.rm=TRUE)/500
+          fp_paste=sum(index>500,na.rm=TRUE)/4500
+          
+          for(result_type in c("F1","precision","recall","FPR")){
+            if(result_type=="F1"){
+              result_uni <- 2 * uni_tpvalue / (1 + 9 * uni_fpvalue + uni_tpvalue)
+              result_inter <- 2 * inter_tpvalue / (1 + 9 * inter_fpvalue + inter_tpvalue)
+              result_mean <- 2 * mean_tpvalue / (1 + 9 * mean_fpvalue + mean_tpvalue)
+              result_paste <- 2 * tp_paste / (1 + 9 * fp_paste + tp_paste)
+              
+            }else if(result_type=="precision"){
+              result_uni=uni_tpvalue/(uni_tpvalue+9*uni_fpvalue)
+              result_inter=inter_tpvalue/(inter_tpvalue+9*inter_fpvalue)
+              result_mean=mean_tpvalue/(mean_tpvalue+9*mean_fpvalue)
+              result_paste=tp_paste/(tp_paste+9*fp_paste)
+            }else if(result_type=="recall"){
+              result_uni=uni_tpvalue
+              result_inter=inter_tpvalue
+              result_mean=mean_tpvalue
+              result_paste=tp_paste
+            }else if(result_type=="FPR"){
+              result_uni=uni_fpvalue
+              result_inter=inter_fpvalue
+              result_mean=mean_fpvalue
+              result_paste=fp_paste
+            }
+            
+            results_list[[row_index]] <- data.frame(method = paste0("GASTON", "-PASTE"), set = result_type, value = result_paste, inf = inf, inte_situ = intevalue, pattern = "linear")
+            results_list[[row_index + 1]] <- data.frame(method = paste0("GASTON", "-AVE"), set = result_type, value = result_mean, inf = inf, inte_situ = intevalue, pattern = "linear")
+            results_list[[row_index + 2]] <- data.frame(method = paste0("GASTON", "-Union"), set = result_type, value = result_uni, inf = inf, inte_situ = intevalue, pattern = "linear")
+            results_list[[row_index + 3]] <- data.frame(method = paste0("GASTON", "-Inter"), set = result_type, value = result_inter, inf = inf, inte_situ = intevalue, pattern = "linear")
+            
+            row_index <- row_index + 4
+          }
+        
+      }
+    }
+  }
+  
+  result_gaston <- do.call(rbind, results_list)
+  supple_result=rbind(result_gaston,supple_result)
+  supple_result$method <- gsub("Cauthy", "Cauchy", supple_result$method)
+  save(supple_result,file="C:/Users/zhoum/OneDrive/result_supplesimu.RData")
+  
+  load("C:/Users/zhoum/OneDrive/result_supplesimu.RData")
+  supple_result$method <- gsub("Proposed", "IBaySVG", supple_result$method) 
+  
+  plot_uni_inter_single3 <- function(data, cluster_type,inf_type,result_type,legend_position="none",title="linear",x_title="",y_title="F1 Value",levels1=c("IBaySVG","DESpace",
+"SPARK-AVE","SPARKX-AVE","HEARTSVG-AVE","nnSVG-AVE","spVC-AVE","GASTON-AVE","SPARK-Union","SPARKX-Union","HEARTSVG-Union","nnSVG-Union","spVC-Union","GASTON-Union",
+"SPARK-Inter","SPARKX-Inter","HEARTSVG-Inter","nnSVG-Inter", "spVC-Inter","GASTON-Inter","SPARK-Cauchy","SPARKX-Cauchy","HEARTSVG-Cauchy","nnSVG-Cauchy"
+,"spVC-Cauchy","SPARK-HMP","SPARKX-HMP","HEARTSVG-HMP","nnSVG-HMP","spVC-HMP","SPARK-PASTE","SPARKX-PASTE","HEARTSVG-PASTE","nnSVG-PASTE"
+,"spVC-PASTE","GASTON-PASTE"),levels2=c("Linear", "Focal", "Period")) {
+    ggplot(data %>% filter(inf== inf_type)%>%filter(set== result_type)%>%filter(inte_situ%in%levels2)%>%
+             mutate(method = factor(method, levels = levels1),
+                    method_group = case_when(
+                      method %in% c("IBaySVG", "DESpace") ~ "Multi",
+                      grepl("AVE", method) ~ "AVE",
+                      grepl("Union", method) ~ "Union",
+                      grepl("Inter", method) ~ "Inter",
+                      grepl("PASTE", method) ~ "PASTE",
+                      grepl("Cauchy", method) ~ "Cauchy",
+                      grepl("HMP", method) ~ "HMP",
+                      TRUE ~ "Other"
+                    ),
+                    method_group = factor(method_group, levels = c("Multi", "AVE", "Union", "Inter","Cauchy","HMP","PASTE")),
+                    pattern = factor(inte_situ, levels = levels2)),
+           aes(y = value,x=method_group, fill = method, color = method)) +
+      facet_grid(cols = vars(pattern),space = "free_x", scales = "free_x") +
+      geom_boxplot(position = position_dodge2(preserve = "single", padding = 0.4), 
+                   width = 0.9, outlier.size = 0.5, outlier.shape = NA) +
+      labs(title =title,
+           x = x_title,
+           y = y_title) +
+      theme_minimal() +
+      theme(
+        plot.margin = margin(0.2,0.2,0.2,0.2),
+        plot.title = element_text(size = 12,face = "bold"),
+        axis.text.y = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        axis.ticks.x = element_line(),  # 让x轴显示刻度
+        axis.text.x = element_text(size = 9),
+        legend.position = legend_position,
+        legend.title = element_blank(),
+        legend.text = element_text(size = 12),
+        strip.text = element_text(size = 12),
+        panel.spacing.x = unit(0.5, "lines"),
+        plot.tag = element_text(size = 15, face = "bold")
+        
+      ) +
+      scale_fill_manual(values = custom_colors) +
+      scale_color_manual(values = custom_colors)
+  }
+  
+  infsize="inf5"
+  
+  result_type="F1"
+  y_title="F1 value"
+  
+  result_type="recall"
+  y_title="TPR"
+  
+  result_type="precision"
+  y_title="Precision"
+  
+  result_type="FPR"
+  y_title="FPR"
+  
+  plot_total1=plot_uni_inter_single3(supple_result, inf_type=infsize,title="",legend_position="right",result_type=result_type,y_title=y_title,levels2=c("ZINNGP","Linear-Focal","Linear-Period"))
+  plot_total2=plot_uni_inter_single3(supple_result, inf_type=infsize,title="",legend_position="right",result_type=result_type,y_title=y_title,levels2=c("Focal-Period","Sigmoid", "Polynomial1"))
+  plot_total3=plot_uni_inter_single3(supple_result, inf_type=infsize,title="",legend_position="right",result_type=result_type,y_title=y_title,levels2=c("Polynomial2","Polynomial3", "Polynomial4"))
+  
+  
+  combined_plot <- ((plot_total1)/(plot_total2)/(plot_total3)) +
+    plot_layout(guides = "collect", heights = c(1.2, 1.2, 1.2)) + 
+    plot_annotation(
+      title = NULL,
+      subtitle = NULL,
+      caption = NULL,
+      tag_levels = 'A',  
+      tag_prefix = "",  
+      tag_sep = "",  
+      theme = theme(plot.tag = element_text(size = 8, face = "bold"))  
+    ) &
+    theme(legend.position = "right") &  
+    guides(fill = guide_legend(ncol = 1))
+  
+  #print(combined_plot)
+  
+  ggsave("/Users/zhoum/Desktop/simu_F1_supple.png", plot = combined_plot, width = 12, height = 12, dpi = 300)
+  
+  
+  
+  
+  
+  
+  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

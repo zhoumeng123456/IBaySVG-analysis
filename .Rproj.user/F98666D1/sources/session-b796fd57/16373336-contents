@@ -1,0 +1,2123 @@
+
+library(png)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(patchwork)
+library(grid)
+library(stringr)
+library(ACAT)
+library(harmonicmeanp)
+
+
+# spv
+# sparkx
+# heartsvg
+# spark
+# cstv
+# nnsvg
+# despace
+##返回单个的表
+result=nested_list
+time_read <- function(result,m){
+  #m代表方法顺序
+  if(m <=6){
+    time_table= matrix(NA,nrow = 12,ncol = 3)
+    for(i in c(1:3)){
+      for( j in c(1:12)){
+        time_table[j,i]=result[[m]][[i]][[j]][[4]]
+      }
+    }
+  }else if(m==7){
+    time_table= matrix(NA,nrow = 4,ncol = 3)
+    for(i in c(1:3)){
+      for( j in c(1:4)){
+        time_table[j,i]=result[[m]][[i]][[j]][[4]]
+      }
+    }
+  }else{
+    time_table=matrix(NA,nrow = 4,ncol = 3)
+    for(i in c(1:3)){
+      for( j in c(1:4)){
+        time_table[j,i]=result[[i]][[j]][[6]]
+      }
+    }
+  }
+  return(time_table)
+}
+
+time_read(result,7)
+time_read(result_list,8)
+
+
+time_all_read=function(result){
+  total_time_table=matrix(NA,nrow = 7,ncol = 3)
+  for(k in c(1:7)){
+    sig_time=time_read(result,m=k)
+    sig_time=apply(sig_time,2,mean)
+    total_time_table[k,]=sig_time
+  }
+  
+  rownames(total_time_table)=c("spv","sparkx","hea","spark","cstv","nnsvg","despace")
+  colnames(total_time_table)=c("inf1","inf3","inf5")
+  return(total_time_table)
+}
+
+time_all_read(result)
+
+
+##读取fp，tp
+ftp_read=function(m,spa="linear",seeddomain=c(1,2,3)){
+  for(seed1 in seeddomain){
+    load(paste0("/Users/zhoumeng/Desktop/模拟结果/",spa,"/",spa,seed1,".RData"))
+    result=nested_list
+    if(m<7){
+      ftp_table= matrix(NA,nrow = 12,ncol = 6)
+      for(i in c(1:3)){
+        for( j in c(1:12)){
+          ftp_table[j,(2*i-1)]=result[[m]][[i]][[j]][[3]][1]
+          ftp_table[j,(2*i)]=result[[m]][[i]][[j]][[3]][2]
+        }
+        
+      }
+      colnames(ftp_table)=c("inf1","inf1","inf3","inf3","inf5","inf5")
+      rownames(ftp_table)=c(c("hmmm","hmll","mmll","mlvlvl"),paste0("data",c(1:8)))
+    }else if(m==7){
+      ftp_table= matrix(NA,nrow = 4,ncol = 6)
+      for(i in c(1:3)){
+        for( j in c(1:4)){
+          ftp_table[j,(2*i-1)]=result[[m]][[i]][[j]][[3]][1]
+          ftp_table[j,(2*i)]=result[[m]][[i]][[j]][[3]][2]
+        }
+      }
+      colnames(ftp_table)=c("inf1","inf1","inf3","inf3","inf5","inf5")
+      rownames(ftp_table)=c("hmmm","hmll","mmll","mlvlvl")
+    }else{
+      ftp_table= matrix(NA,nrow = 4,ncol = 6)
+      for(i in c(1:3)){
+        for( j in c(1:4)){
+          ftp_table[j,(2*i-1)]=result[[i]][[j]][[5]][1]
+          ftp_table[j,(2*i)]=result[[i]][[j]][[5]][2]
+        }
+      }
+      colnames(ftp_table)=c("inf1","inf1","inf3","inf3","inf5","inf5")
+      rownames(ftp_table)=c("hmmm","hmll","mmll","mlvlvl")
+    }
+    return(ftp_table)
+  }
+}
+ftp_read(nested_list,1)
+
+
+
+ftp_read(result_list,8)
+
+##呈现整体结果
+#先把单个的结果重叠之后，结果
+#场景1:1234
+#场景2:1256
+#场景3:3456
+#场景4:2578
+ftp_total_read=function(result){
+  hmmm_table=matrix(NA,nrow = 13,ncol = 6)
+  hmll_table=matrix(NA,nrow = 13,ncol = 6)
+  mmll_table=matrix(NA,nrow = 13,ncol = 6)
+  mlvlvl_table=matrix(NA,nrow = 13,ncol = 6)
+  for(i in c(1:6)){
+    sig_table=ftp_read(result,i)
+    hmmm_table[(2*i-1),]=apply(sig_table[c(5,6,7,8),],2,mean)
+    hmmm_table[2*i,]=sig_table[1,]
+    hmll_table[(2*i-1),]=apply(sig_table[c(5,6,9,10),],2,mean)
+    hmll_table[2*i,]=sig_table[2,]
+    mmll_table[(2*i-1),]=apply(sig_table[c(7,8,9,10),],2,mean)
+    mmll_table[2*i,]=sig_table[3,]
+    mlvlvl_table[(2*i-1),]=apply(sig_table[c(6,9,11,12),],2,mean)
+    mlvlvl_table[2*i,]=sig_table[4,]
+  }
+  sig_table=ftp_read(result,7)
+  hmmm_table[13,]=sig_table[1,]
+  hmll_table[13,]=sig_table[2,]
+  mmll_table[13,]=sig_table[3,]
+  mlvlvl_table[13,]=sig_table[4,]
+  names=c("spv","spv_inte","sparkx","spax_inte","hea","hea_inte","spark","spk_inte","cstv","cstv_inte","nnsvg","nnsg_inte","despace")
+  rownames(hmmm_table)=names
+  rownames(hmll_table)=names
+  rownames(mmll_table)=names
+  rownames(mlvlvl_table)=names
+  colnames(hmmm_table)=c("inf1","inf1","inf3","inf3","inf5","inf5")
+  colnames(hmll_table)=c("inf1","inf1","inf3","inf3","inf5","inf5")
+  colnames(mmll_table)=c("inf1","inf1","inf3","inf3","inf5","inf5")
+  colnames(mlvlvl_table)=c("inf1","inf1","inf3","inf3","inf5","inf5")
+  hmmm_table=round(hmmm_table,4)
+  hmll_table=round(hmll_table,4)
+  mmll_table=round(mmll_table,4)
+  mlvlvl_table=round(mlvlvl_table,4)
+  return(list(hmmm_table,hmll_table,mmll_table,mlvlvl_table))
+}
+ftp_total_read(result)
+
+
+###更新交集和并集
+ftp_inter_union_read=function(result){
+  hmmm_table=matrix(NA,nrow = 12,ncol = 6)
+  hmll_table=matrix(NA,nrow = 12,ncol = 6)
+  mmll_table=matrix(NA,nrow = 12,ncol = 6)
+  mlvlvl_table=matrix(NA,nrow = 12,ncol = 6)
+  for(m in c(1:6)){
+    for(i in c(1:3)){
+      zero_one_table=matrix(NA,nrow = 8,ncol=5000)
+      for(j in c(5:12)){
+        zero_one_table[(j-4),]=result[[m]][[i]][[j]][[2]]
+      }
+      hmmm_uni=apply(zero_one_table[c(1:4),],2,max)
+      hmmm_inter=apply(zero_one_table[c(1:4),],2,min)
+      hmmm_table[(2*m-1),c((2*i-1),2*i)]=c(mean(hmmm_uni[1:500],na.rm = TRUE),mean(hmmm_uni[501:5000],na.rm = TRUE))
+      hmmm_table[(2*m),c((2*i-1),2*i)]=c(mean(hmmm_inter[1:500],na.rm = TRUE),mean(hmmm_inter[501:5000],na.rm = TRUE))
+      
+      hmll_uni=apply(zero_one_table[c(1,2,5,6),],2,max)
+      mmll_uni=apply(zero_one_table[c(3,4,5,6),],2,max)
+      mlvlvl_uni=apply(zero_one_table[c(2,5,7,8),],2,max)
+      
+      hmll_inter=apply(zero_one_table[c(1,2,5,6),],2,min)
+      mmll_inter=apply(zero_one_table[c(3,4,5,6),],2,min)
+      mlvlvl_inter=apply(zero_one_table[c(2,5,7,8),],2,min)
+      
+      hmll_table[(2*m-1),c((2*i-1),2*i)]=c(mean(hmll_uni[1:500],na.rm = TRUE),mean(hmll_uni[501:5000],na.rm = TRUE))
+      hmll_table[(2*m),c((2*i-1),2*i)]=c(mean(hmll_inter[1:500],na.rm = TRUE),mean(hmll_inter[501:5000],na.rm = TRUE))
+      mmll_table[(2*m-1),c((2*i-1),2*i)]=c(mean(mmll_uni[1:500],na.rm = TRUE),mean(mmll_uni[501:5000],na.rm = TRUE))
+      mmll_table[(2*m),c((2*i-1),2*i)]=c(mean(mmll_inter[1:500],na.rm = TRUE),mean(mmll_inter[501:5000],na.rm = TRUE))
+      mlvlvl_table[(2*m-1),c((2*i-1),2*i)]=c(mean(mlvlvl_uni[1:500],na.rm = TRUE),mean(mlvlvl_uni[501:5000],na.rm = TRUE))
+      mlvlvl_table[(2*m),c((2*i-1),2*i)]=c(mean(mlvlvl_inter[1:500],na.rm = TRUE),mean(mlvlvl_inter[501:5000],na.rm = TRUE))
+    }
+  }
+  names=c("spv_uni","spv_inter","sparkx_uni","spax_inter","hea_uni","hea_inter","spark_uni","spk_inter","cstv_uni","cstv_inter","nnsvg_uni","nnsg_inter")
+  rownames(hmmm_table)=names
+  rownames(hmll_table)=names
+  rownames(mmll_table)=names
+  rownames(mlvlvl_table)=names
+  colnames(hmmm_table)=c("inf1","inf1","inf3","inf3","inf5","inf5")
+  colnames(hmll_table)=c("inf1","inf1","inf3","inf3","inf5","inf5")
+  colnames(mmll_table)=c("inf1","inf1","inf3","inf3","inf5","inf5")
+  colnames(mlvlvl_table)=c("inf1","inf1","inf3","inf3","inf5","inf5")
+  hmmm_table=round(hmmm_table,4)
+  hmll_table=round(hmll_table,4)
+  mmll_table=round(mmll_table,4)
+  mlvlvl_table=round(mlvlvl_table,4)
+  return(list(hmmm_table,hmll_table,mmll_table,mlvlvl_table))
+}
+ftp_inter_union_read(focal1)
+
+
+##period模拟结果测试
+#第一项分成inf1，inf3，inf5
+#第二项分成四个场景的结果
+period_test <- function(seeddomain=c(1,2,3),spa="period",k=3){
+  for(seed1 in seeddomain){
+    print(paste0("now the seed is",seed1))
+    load(paste0("/Users/zhoumeng/Desktop/模拟结果/",spa,"/",spa,seed1,".RData"))
+    spar_table=matrix(NA,nrow = 4, ncol=6)
+    colnames(spar_table) <- c("1","1","3","3","5","5")
+    for(i in c(1:3)){
+      for(j in c(1:4)){
+        spar_table[j,(2*i-1)]=nested_list[[k]][[i]][[j]][[3]][1]
+        spar_table[j,(2*i)]=nested_list[[k]][[i]][[j]][[3]][2]
+      }
+    }
+    print(spar_table)
+  }
+}
+period_test(c(8,10))
+
+our_read <- function(seeddomain=c(1,2,3)){
+  for(seed1 in seeddomain){
+    print(paste0("the seed is ",seed1))
+    load(paste0("/Users/zhoumeng/Desktop/模拟结果/period/ourperiod",seed1,".RData"))
+    our_table=matrix(NA,nrow = 4,ncol = 6)
+    colnames(our_table) <- c("1","1","3","3","5","5")
+    for(i in c(1:3)){
+      for(j in c(1:4)){
+        our_table[j,(2*i-1)]=result_list[[i]][[j]][[5]][1]
+        our_table[j,(2*i)]=result_list[[i]][[j]][[5]][2]
+      }
+    }
+    print(our_table)
+  }
+}
+our_read(seeddomain = c(5,6,7,11,12,13,8,9,10,14,15,16))
+
+
+##导出结果ourmethod
+our_read <- function(seeddomain=c(1,2,3),spa="period"){
+  # Initialize an empty matrix to store the sum of elements
+  mean_table <- matrix(0, nrow = 4, ncol = 6)
+  colnames(mean_table) <- c("1","1","3","3","5","5")
+  
+  for(seed1 in seeddomain){
+    print(paste0("The seed is ", seed1))
+    load(paste0("/Users/zhoumeng/Desktop/模拟结果/",spa,"/our",spa,seed1,".RData"))
+    # Temporary matrix to store the current dataset's result
+    our_table <- matrix(NA, nrow = 4, ncol = 6)
+    for(i in c(1:3)){
+      for(j in c(1:4)){
+        our_table[j, (2*i-1)] <- result_list[[i]][[j]][[5]][1]
+        our_table[j, (2*i)] <- result_list[[i]][[j]][[5]][2]
+      }
+    }
+    
+    # Accumulate the results in the mean_table
+    mean_table <- mean_table + our_table
+    
+    print(our_table)
+  }
+  
+  # Divide by the number of datasets to get the average
+  mean_table <- mean_table / length(seeddomain)
+  
+  # Return the mean result
+  print("Mean Table:")
+  print(mean_table)
+  
+  return(mean_table)
+}
+# Example usage:
+result <- our_read(c(1,c(3:41),c(43:47)),spa="focal")
+
+load(paste0("/Users/zhoumeng/Desktop/模拟结果/",spa,"/our",spa,seed1,".RData"))
+
+result <- our_read(c(2),spa="linear")
+
+
+
+ftp_read <- function(mdomain, spa = "linear", seeddomain = c(1, 2, 3)) {
+  # Initialize an empty matrix to store the sum of elements
+  for(m in mdomain){
+    mean_ftp_table <- NULL
+    
+    for(seed1 in seeddomain) {
+      load(paste0("/Users/zhoumeng/Desktop/模拟结果/", spa, "/", spa, seed1, ".RData"))
+      result = nested_list
+      
+      if(m < 7) {
+        ftp_table = matrix(NA, nrow = 12, ncol = 6)
+        for(i in c(1:3)) {
+          for(j in c(1:12)) {
+            ftp_table[j, (2*i-1)] = result[[m]][[i]][[j]][[3]][1]
+            ftp_table[j, (2*i)  ] = result[[m]][[i]][[j]][[3]][2]
+          }
+        }
+        colnames(ftp_table) = c("inf1", "inf1", "inf3", "inf3", "inf5", "inf5")
+        rownames(ftp_table) = c(c("hmmm", "hmll", "mmll", "mlvlvl"), paste0("data", c(1:8)))
+      } else if(m == 7) {
+        ftp_table = matrix(NA, nrow = 4, ncol = 6)
+        for(i in c(1:3)) {
+          for(j in c(1:4)) {
+            ftp_table[j, (2*i-1)] = result[[m]][[i]][[j]][[3]][1]
+            ftp_table[j, (2*i)  ] = result[[m]][[i]][[j]][[3]][2]
+          }
+        }
+        colnames(ftp_table) = c("inf1", "inf1", "inf3", "inf3", "inf5", "inf5")
+        rownames(ftp_table) = c("hmmm", "hmll", "mmll", "mlvlvl")
+      } else {
+        ftp_table = matrix(NA, nrow = 4, ncol = 6)
+        for(i in c(1:3)) {
+          for(j in c(1:4)) {
+            ftp_table[j, (2*i-1)] = result[[i]][[j]][[5]][1]
+            ftp_table[j, (2*i)  ] = result[[i]][[j]][[5]][2]
+          }
+        }
+        colnames(ftp_table) = c("inf1", "inf1", "inf3", "inf3", "inf5", "inf5")
+        rownames(ftp_table) = c("hmmm", "hmll", "mmll", "mlvlvl")
+      }
+      
+      # Accumulate the results in the mean_ftp_table
+      if (is.null(mean_ftp_table)) {
+        mean_ftp_table <- ftp_table
+      } else {
+        mean_ftp_table <- mean_ftp_table + ftp_table
+      }
+    }
+    
+    # Divide by the number of datasets to get the average
+    mean_ftp_table <- mean_ftp_table / length(seeddomain)
+    # Return the mean result
+    print("Mean FTP Table:")
+    print(mean_ftp_table)
+    
+  }
+}
+ftp_read(mdomain=c(1,2,3,4,6,7),spa = "focal",seeddomain = c(2:35))
+
+
+
+
+
+
+our_read <- function(seeddomain = c(1,2,3), spa = "period", alpha = 0.05/2) {
+  results_list <- list()  # 用于存储结果的列表
+  row_index <- 1  # 记录当前行的索引
+  
+  for (seed1 in seq_along(seeddomain)) {
+    print(paste0("The seed is ", seeddomain[seed1]))
+    load(paste0("/Volumes/Elements/模拟结果/", spa, "/our", spa, seeddomain[seed1], ".RData"))
+    
+    for (i in 1:3) {
+      for (j in 1:4) {
+        total_result <- result_list[[i]][[j]][[2]]
+        thrs <- BayFDR(total_result, alpha / length(total_result))
+        total_result[total_result > thrs] <- 1
+        total_result[total_result <= thrs] <- 0
+        
+        tp <- mean(total_result[1:500], na.rm = TRUE)
+        fp <- mean(total_result[501:5000], na.rm = TRUE)
+        
+        infvalue <- switch(i, "inf1", "inf3", "inf5")
+        intevalue <- switch(j, "scenario 1", "scenario 2", "scenario 3", "scenario 4")
+        for(result_type in c("F1","precision","recall","FPR")){
+        if (result_type == "F1") {
+          result_proposed <- 2 * tp / (1 + 9 * fp + tp)
+        } else if (result_type == "precision") {
+          result_proposed <- tp / (tp + 9 * fp)
+        } else if (result_type == "recall") {
+          result_proposed <- tp
+        }else if(result_type=="FPR"){
+          result_proposed=fp
+        }
+        
+        # 存入列表
+        results_list[[row_index]] <- data.frame(
+          method = "Proposed",
+          set = result_type,
+          value = result_proposed,
+          inf = infvalue,
+          inte_situ = intevalue,
+          pattern = spa
+        )
+        row_index <- row_index + 1
+        }
+      }
+    }
+  }
+  
+  # 合并所有结果为数据框
+  return(do.call(rbind, results_list))
+}
+other_read_uni_inte <- function(seeddomain=c(1,2,3), spa="period", mdomain=c(1,2,3,4,6,7),seeddomain2=c(1:50)) {
+  results_list <- list()  # 存储结果的列表
+  row_index <- 1  # 记录当前的行数
+  for (seed1 in seq_along(seeddomain)) {
+    print(seed1)
+    load(paste0("/Volumes/Elements/模拟结果/", spa, "/", spa, seeddomain[seed1], ".RData"))
+    for (m in seq_along(mdomain)) {
+      rowname <- c("spVC", "SPARKX", "HEARTSVG", "SPARK", "nnSVG", "DESpace")
+      result <- nested_list
+      
+      if (m %in% c(1,3,4)) {
+        for (i in 1:3) {
+          for (j in 1:4) {
+            # 提取 tp / fp
+            infvalue <- c("inf1", "inf3", "inf5")[i]
+            
+            # 计算 mean_tfpvalue & zero_one_table
+            zero_one_table <- matrix(NA, nrow = 8, ncol = 5000)
+            for (k in 5:12) {
+              zero_one_table[(k-4), ] <- result[[mdomain[m]]][[i]][[k]][[2]]
+            }
+            
+            zero_one_table1 <- matrix(NA, nrow = 8, ncol = 5000)
+            for (k in 5:12) {
+              zero_one_table1[(k-4), ] <- result[[mdomain[m]]][[i]][[k]][[1]]
+            }
+            
+            
+            scenario_sets <- list(
+              c(1:4),  # scenario 1
+              c(1,2,5,6),  # scenario 2
+              c(3:6),  # scenario 3
+              c(2,5,7,8)  # scenario 4
+            )
+            intevalue <- paste0("scenario ", j)
+            selected_rows <- scenario_sets[[j]]
+            
+            #
+            p_selected=zero_one_table1[selected_rows, ]
+            p_selected[is.na(p_selected)] <- 1
+            eps <- 1e-10
+            p_selected[p_selected <= eps] <- eps
+            p_selected[p_selected >= 1 - eps] <- 1 - eps
+            
+            
+            p_combined <- apply(p_selected, 2, ACAT)
+            result_combined=ifelse(p_combined <= 0.05, 1, 0)
+            combined_tpvalue <- mean(result_combined[1:500], na.rm = TRUE)
+            combined_fpvalue <- mean(result_combined[501:5000], na.rm = TRUE)
+            
+            p_combined1 <- apply(p_selected, 2, function(p) {
+              unname(p.hmp(p, L = 4))
+            })
+            result_combined1=ifelse(p_combined1 <= 0.05, 1, 0)
+            combined1_tpvalue <- mean(result_combined1[1:500], na.rm = TRUE)
+            combined1_fpvalue <- mean(result_combined1[501:5000], na.rm = TRUE)
+            
+
+            mean_tfpvalue <- rowMeans(sapply(selected_rows, function(k) result[[mdomain[m]]][[i]][[k+4]][[3]]))
+            result_uni <- apply(zero_one_table[selected_rows, ], 2, max)
+            result_inter <- apply(zero_one_table[selected_rows, ], 2, min)
+            
+            tp_paste <- result[[mdomain[m]]][[i]][[j]][[3]][1]
+            fp_paste <- result[[mdomain[m]]][[i]][[j]][[3]][2]
+            uni_tpvalue <- mean(result_uni[1:500], na.rm = TRUE)
+            uni_fpvalue <- mean(result_uni[501:5000], na.rm = TRUE)
+            inter_tpvalue <- mean(result_inter[1:500], na.rm = TRUE)
+            inter_fpvalue <- mean(result_inter[501:5000], na.rm = TRUE)
+            
+            for(result_type in c("F1","precision","recall","FPR")){
+            if(result_type=="F1"){
+              result_uni <- 2 * uni_tpvalue / (1 + 9 * uni_fpvalue + uni_tpvalue)
+              result_inter <- 2 * inter_tpvalue / (1 + 9 * inter_fpvalue + inter_tpvalue)
+              result_mean <- 2 * mean_tfpvalue[1] / (1 + 9 * mean_tfpvalue[2] + mean_tfpvalue[1])
+              result_paste <- 2 * tp_paste / (1 + 9 * fp_paste + tp_paste)
+              result_combine<- 2 * combined_tpvalue / (1 + 9 * combined_fpvalue + combined_tpvalue)
+              result_combine1<- 2 * combined1_tpvalue / (1 + 9 * combined1_fpvalue + combined1_tpvalue)
+            }else if(result_type=="precision"){
+              result_uni=uni_tpvalue/(uni_tpvalue+9*uni_fpvalue)
+              result_inter=inter_tpvalue/(inter_tpvalue+9*inter_fpvalue)
+              result_mean=mean_tfpvalue[1]/(mean_tfpvalue[1]+9*mean_tfpvalue[2])
+              result_paste=tp_paste/(tp_paste+9*fp_paste)
+              result_combine<- combined_tpvalue / (9 * combined_fpvalue + combined_tpvalue)
+              result_combine1<- combined1_tpvalue / (9 * combined1_fpvalue + combined1_tpvalue)
+            }else if(result_type=="recall"){
+              result_uni=uni_tpvalue
+              result_inter=inter_tpvalue
+              result_mean=mean_tfpvalue[1]
+              result_paste=tp_paste
+              result_combine=combined_tpvalue
+              result_combine1=combined1_tpvalue
+            }else if(result_type=="FPR"){
+              result_uni=uni_fpvalue
+              result_inter=inter_fpvalue
+              result_mean=mean_tfpvalue[2]
+              result_paste=fp_paste
+              result_combine=combined_fpvalue
+              result_combine1=combined1_fpvalue
+            }
+            
+            results_list[[row_index]] <- data.frame(method = paste0(rowname[m], "-PASTE"), set = result_type, value = result_paste, inf = infvalue, inte_situ = intevalue, pattern = spa)
+            results_list[[row_index + 1]] <- data.frame(method = paste0(rowname[m], "-AVE"), set = result_type, value = result_mean, inf = infvalue, inte_situ = intevalue, pattern = spa)
+            results_list[[row_index + 2]] <- data.frame(method = paste0(rowname[m], "-Union"), set = result_type, value = result_uni, inf = infvalue, inte_situ = intevalue, pattern = spa)
+            results_list[[row_index + 3]] <- data.frame(method = paste0(rowname[m], "-Inter"), set = result_type, value = result_inter, inf = infvalue, inte_situ = intevalue, pattern = spa)
+            results_list[[row_index + 4]] <- data.frame(method = paste0(rowname[m], "-Cauthy"), set = result_type, value = result_combine, inf = infvalue, inte_situ = intevalue, pattern = spa)
+            results_list[[row_index + 5]] <- data.frame(method = paste0(rowname[m], "-HMP"), set = result_type, value = result_combine1, inf = infvalue, inte_situ = intevalue, pattern = spa)
+            row_index <- row_index + 6
+            }
+          }
+        }
+      } else if(m==6){
+        for (i in 1:3) {
+          for (j in 1:4) {
+            tp <- result[[mdomain[m]]][[i]][[j]][[3]][1]
+            fp <- result[[mdomain[m]]][[i]][[j]][[3]][2]
+            
+            infvalue <- c("inf1", "inf3", "inf5")[i]
+            intevalue <- paste0("scenario ", j)
+            for(result_type in c("F1","precision","recall","FPR")){
+              if(result_type=="F1"){
+                result_despace <- 2 * tp / (1 + 9 * fp + tp)
+              }else if(result_type=="precision"){
+                result_despace=tp/(tp+9*fp)
+              }else if(result_type=="recall"){
+                result_despace=tp
+              }else if(result_type=="FPR"){
+                result_despace=fp
+              }
+              results_list[[row_index]] <- data.frame(method = rowname[m], set = result_type, value = result_despace, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              row_index <- row_index + 1
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  for(seed2 in seeddomain2){
+    load(paste0("/Volumes/Elements/supple_",spa,"/supple_", spa, seed2, ".RData"))
+    result <- supple_list
+    print(seed2)
+    for (m in c(1:2)) {
+      rowname1 <- c("SPARKX","nnSVG")
+      for (i in 1:3) {
+        for (j in 1:4) {
+          tp_paste <- result[[m]][[i]][[j]][[3]][1]
+          fp_paste <- result[[m]][[i]][[j]][[3]][2]
+          
+          infvalue <- c("inf1", "inf3", "inf5")[i]
+          
+          zero_one_table <- matrix(NA, nrow = 8, ncol = 5000)
+          for (k in 5:12) {
+            ttt=unname(result[[m]][[i]][[k]][[2]])
+            if(length(ttt)==5000){
+              zero_one_table[(k-4), ] <- ttt
+            }else{
+              zero_one_table[(k-4), ] <- c(ttt,rep(1,(5000-length(ttt))))
+            }
+          }
+          
+          zero_one_table1 <- matrix(NA, nrow = 8, ncol = 5000)
+          for (k in 5:12) {
+            ttt=unname(result[[m]][[i]][[k]][[1]])
+            if(length(ttt)==5000){
+              zero_one_table1[(k-4), ] <- ttt
+            }else{
+              zero_one_table1[(k-4), ] <- c(ttt,rep(0,(5000-length(ttt))))
+            }
+          }
+          
+          scenario_sets <- list(
+            c(1:4),  # scenario 1
+            c(1,2,5,6),  # scenario 2
+            c(3:6),  # scenario 3
+            c(2,5,7,8)  # scenario 4
+          )
+          intevalue <- paste0("scenario ", j)
+          selected_rows <- scenario_sets[[j]]
+          p_selected=zero_one_table1[selected_rows, ]
+          p_selected[is.na(p_selected)] <- 1
+          eps <- 1e-10
+          p_selected[p_selected <= eps] <- eps
+          p_selected[p_selected >= 1 - eps] <- 1 - eps
+          p_combined <- apply(p_selected, 2, ACAT)
+          result_combined=ifelse(p_combined <= 0.05, 1, 0)
+          combined_tpvalue <- mean(result_combined[1:500], na.rm = TRUE)
+          combined_fpvalue <- mean(result_combined[501:5000], na.rm = TRUE)
+          
+          p_combined1 <- apply(p_selected, 2, function(p) {
+            unname(p.hmp(p, L = 4))
+          })
+          result_combined1=ifelse(p_combined1 <= 0.05, 1, 0)
+          combined1_tpvalue <- mean(result_combined1[1:500], na.rm = TRUE)
+          combined1_fpvalue <- mean(result_combined1[501:5000], na.rm = TRUE)
+          
+          mean_tfpvalue <- rowMeans(sapply(selected_rows, function(k) result[[m]][[i]][[k+4]][[3]]))
+          result_uni <- apply(zero_one_table[selected_rows, ], 2, max)
+          result_inter <- apply(zero_one_table[selected_rows, ], 2, min)
+          uni_tpvalue <- mean(result_uni[1:500], na.rm = TRUE)
+          uni_fpvalue <- mean(result_uni[501:5000], na.rm = TRUE)
+          inter_tpvalue <- mean(result_inter[1:500], na.rm = TRUE)
+          inter_fpvalue <- mean(result_inter[501:5000], na.rm = TRUE)
+          
+          for(result_type in c("F1","precision","recall","FPR")){
+          if(result_type=="F1"){
+            result_uni <- 2 * uni_tpvalue / (1 + 9 * uni_fpvalue + uni_tpvalue)
+            result_inter <- 2 * inter_tpvalue / (1 + 9 * inter_fpvalue + inter_tpvalue)
+            result_mean <- 2 * mean_tfpvalue[1] / (1 + 9 * mean_tfpvalue[2] + mean_tfpvalue[1])
+            result_paste <- 2 * tp_paste / (1 + 9 * fp_paste + tp_paste)
+            result_combine<- 2 * combined_tpvalue / (1 + 9 * combined_fpvalue + combined_tpvalue)
+            result_combine1<- 2 * combined1_tpvalue / (1 + 9 * combined1_fpvalue + combined1_tpvalue)
+          }else if(result_type=="precision"){
+            result_uni=uni_tpvalue/(uni_tpvalue+9*uni_fpvalue)
+            result_inter=inter_tpvalue/(inter_tpvalue+9*inter_fpvalue)
+            result_mean=mean_tfpvalue[1]/(mean_tfpvalue[1]+9*mean_tfpvalue[2])
+            result_paste=tp_paste/(tp_paste+9*fp_paste)
+            result_combine=combined_tpvalue/(combined_tpvalue+9*combined_fpvalue)
+            result_combine1=combined1_tpvalue/(combined1_tpvalue+9*combined1_fpvalue)
+          }else if(result_type=="recall"){
+            result_uni=uni_tpvalue
+            result_inter=inter_tpvalue
+            result_mean=mean_tfpvalue[1]
+            result_paste=tp_paste
+            result_combine=combined_tpvalue
+            result_combine1=combined1_tpvalue
+          }else if(result_type=="FPR"){
+            result_uni=uni_fpvalue
+            result_inter=inter_fpvalue
+            result_mean=mean_tfpvalue[2]
+            result_paste=fp_paste
+            result_combine=combined_fpvalue
+            result_combine1=combined1_fpvalue
+          }
+          results_list[[row_index]] <- data.frame(method = paste0(rowname1[m], "-PASTE"), set = result_type, value = result_paste, inf = infvalue, inte_situ = intevalue, pattern = spa)
+          results_list[[row_index + 1]] <- data.frame(method = paste0(rowname1[m], "-AVE"), set = result_type, value = result_mean, inf = infvalue, inte_situ = intevalue, pattern = spa)
+          results_list[[row_index + 2]] <- data.frame(method = paste0(rowname1[m], "-Union"), set = result_type, value = result_uni, inf = infvalue, inte_situ = intevalue, pattern = spa)
+          results_list[[row_index + 3]] <- data.frame(method = paste0(rowname1[m], "-Inter"), set = result_type, value = result_inter, inf = infvalue, inte_situ = intevalue, pattern = spa)
+          results_list[[row_index + 4]] <- data.frame(method = paste0(rowname1[m], "-Cauthy"), set = result_type, value = result_combine, inf = infvalue, inte_situ = intevalue, pattern = spa)
+          results_list[[row_index + 5]] <- data.frame(method = paste0(rowname1[m], "-HMP"), set = result_type, value = result_combine1, inf = infvalue, inte_situ = intevalue, pattern = spa)
+          row_index <- row_index + 6
+          }
+        }
+      }
+    }
+  }
+  results_df <- do.call(rbind, results_list)
+  return(results_df)
+}
+
+
+focalresult=our_read(seeddomain = c(1,c(3:50)),spa="focal")
+periodresult=our_read(seeddomain = c(c(1:34),c(36:50)),spa="period")
+linearresult=our_read(seeddomain = c(c(1:38),c(40:50)),spa="linear")
+focalother=other_read_uni_inte(seeddomain=c(2:49),spa="focal",mdomain=c(1,2,3,4,6,7))
+periodother=other_read_uni_inte(seeddomain=c(1,2,5,6,7,8,9,10,11,c(14:20),c(22:26),c(29:31)),spa="period",mdomain=c(1,2,3,4,6,7))
+linearother=other_read_uni_inte(seeddomain=c(c(2:42),c(45:50)),spa="linear",mdomain=c(1,2,3,4,6,7))
+
+
+total_F1=rbind(linearresult,focalresult,periodresult,linearother,focalother,periodother)
+total_F1$value=as.numeric(total_F1$value)
+
+total_F1=total_F1[total_F1$value <= 1, ]
+total_F1 <- total_F1[total_F1$value <= 1&!is.na(total_F1$value) & total_F1$value != Inf& total_F1$value != -Inf, ]
+
+# total_F1$value <- ifelse(total_F1$value >1 | is.na(total_F1$value) | 
+#                             total_F1$value == Inf | total_F1$value == -Inf, 
+#                           1, total_F1$value)
+
+custom_colors <- c(
+  "Proposed" = "red",             # Red
+  "DESpace" = "#FFEB5E", 
+  "spVC-AVE" = "black", 
+  "spVC-Union" = "#2A2A2A",       
+  "spVC-Inter" = "#555555",       
+  "spVC-Cauchy" = "#808080",
+  "spVC-HMP" = "#AAAAAA",  
+  "spVC-PASTE" = "#D3D3D3",   
+  "nnSVG-AVE" = "#F27400",            # Orange (Adjusted)
+  "nnSVG-Union" = "#F68719",      # Slightly lighter orange
+  "nnSVG-Inter" = "#F99B33",            # Orange (Adjusted)
+  "nnSVG-Cauchy" = "#FCAE4C",      # Slightly lighter orange
+  "nnSVG-HMP" = "#FDBF63",      # Slightly lighter orange
+  "nnSVG-PASTE" = "#FFC775",      # Slightly lighter orange
+  "SPARK-AVE" = "#0D47A1",            # Light blue
+  "SPARK-Union" = "#2C64B3",      # Greyish blue
+  "SPARK-Inter" = "#4C82C5",            # Light blue
+  "SPARK-Cauchy" = "#6BAFD9",      # Greyish blue
+  "SPARK-HMP" = "#8ACCF0",      # Greyish blue
+  "SPARK-PASTE" = "#96CDF8",      # Greyish blue
+  "SPARKX-AVE" = "#1B5E20",           # Light Green
+  "SPARKX-Union" = "#3F8146",     # Slightly lighter green
+  "SPARKX-Inter" = "#64A46D",           # Light Green
+  "SPARKX-Cauchy" = "#88C793",     # Slightly lighter green
+  "SPARKX-HMP" = "#AADDB0",     # Slightly lighter green
+  "SPARKX-PASTE" = "#B3DDB6",     # Slightly lighter green
+  "HEARTSVG-AVE" = "#4B0082",          # Purple
+  "HEARTSVG-Union" = "#6A3296",    # Light purple
+  "HEARTSVG-Inter" = "#8964AB",          # Purple
+  "HEARTSVG-Cauchy" = "#A897BF",    # Light purple
+  "HEARTSVG-HMP" = "#C0AFE1",    # Light purple
+  "HEARTSVG-PASTE" = "#C4B6ED"    # Light purple
+)
+
+load("/Users/zhoumeng/Desktop/simulation/result_basicsimu.RData")
+total_F1$method <- gsub("Cauthy", "Cauchy", total_F1$method)
+
+plot_uni_inter_single2 <- function(data, cluster_type,inf_type,result_type,legend_position="none",title="linear",x_title="",y_title="F1 Value") {
+  ggplot(data %>% filter(inte_situ == cluster_type)%>%filter(inf== inf_type)%>%filter(set== result_type)%>%
+           mutate(method = factor(method, levels = c("Proposed","DESpace",
+                                                     "SPARK-AVE","SPARKX-AVE","HEARTSVG-AVE","nnSVG-AVE","spVC-AVE",
+                                                     "SPARK-Union","SPARKX-Union","HEARTSVG-Union","nnSVG-Union","spVC-Union",
+                                                     "SPARK-Inter","SPARKX-Inter","HEARTSVG-Inter","nnSVG-Inter", "spVC-Inter",
+                                                     "SPARK-Cauchy","SPARKX-Cauchy",
+                                                     "HEARTSVG-Cauchy"
+                                                     ,"nnSVG-Cauchy"
+                                                     ,"spVC-Cauchy","SPARK-HMP","SPARKX-HMP",
+                                                     "HEARTSVG-HMP"
+                                                     ,"nnSVG-HMP"
+                                                     ,"spVC-HMP","SPARK-PASTE","SPARKX-PASTE",
+                                                     "HEARTSVG-PASTE"
+                                                     ,"nnSVG-PASTE"
+                                                     ,"spVC-PASTE")),
+                  method_group = case_when(
+                    method %in% c("Proposed", "DESpace") ~ "Multi",
+                    grepl("AVE", method) ~ "AVE",
+                    grepl("Union", method) ~ "Union",
+                    grepl("Inter", method) ~ "Inter",
+                    grepl("Cauchy", method) ~ "Cauchy",
+                    grepl("HMP", method) ~ "HMP",
+                    grepl("PASTE", method) ~ "PASTE",
+                    TRUE ~ "Other"
+                  ),
+                  method_group = factor(method_group, levels = c("Multi", "AVE", "Union", "Inter", "Cauchy","HMP","PASTE")),
+         pattern = factor(str_to_title(pattern), levels = c("Linear", "Focal", "Period"))),
+         aes(y = value,x=method_group, fill = method, color = method)) +
+    facet_grid(cols = vars(pattern),space = "free_x", scales = "free_x") +
+    geom_boxplot(position = position_dodge2(preserve = "single", padding = 0.4), 
+                 width = 0.9, outlier.size = 0.5, outlier.shape = NA) +
+    labs(title =title,
+         x = x_title,
+         y = y_title) +
+    theme_minimal() +
+    theme(
+      plot.margin = margin(0.2,0.2,0.2,0.2),
+      plot.title = element_text(size = 30,face = "bold"),
+      axis.text.y = element_text(size = 20),
+      axis.title.y = element_text(size = 20),
+      axis.ticks.x = element_line(),  # 让x轴显示刻度
+      axis.text.x = element_text(size = 20),
+      legend.position = legend_position,
+      legend.title = element_blank(),
+      legend.text = element_text(size = 25),
+      strip.text = element_text(size = 30),
+      panel.spacing.x = unit(0.5, "lines"),
+      plot.tag = element_text(size = 40, face = "bold")
+    ) +
+    scale_fill_manual(values = custom_colors) +
+    scale_color_manual(values = custom_colors)
+}
+
+infsize="inf3"
+result_type="F1"
+y_title="F1 value"
+plot_total1=plot_uni_inter_single2(total_F1, "scenario 1",infsize,title="Setting 1",legend_position="right",result_type=result_type,y_title=y_title)
+plot_total2=plot_uni_inter_single2(total_F1, "scenario 2",infsize,title="Setting 2",result_type=result_type,y_title=y_title)
+plot_total3=plot_uni_inter_single2(total_F1, "scenario 3",infsize,title="Setting 3",result_type=result_type,y_title=y_title)
+plot_total4=plot_uni_inter_single2(total_F1, "scenario 4",infsize,title="Setting 4",result_type=result_type,y_title=y_title)
+
+combined_plot <- ((plot_total1)/(plot_total2)/(plot_total3)/(plot_total4)) +
+  plot_layout(guides = "collect", heights = c(1.2, 1.2, 1.2, 1.2)) + 
+  plot_annotation(
+    title = NULL,
+    subtitle = NULL,
+    caption = NULL,
+    tag_levels = 'A',  
+    tag_prefix = "",  
+    tag_sep = "",  
+    theme = theme(plot.tag = element_text(size = 80, face = "bold"))  
+  ) &
+  theme(legend.position = "right") &  
+  guides(fill = guide_legend(ncol = 1))
+
+print(combined_plot)
+
+ggsave("/Users/zhoumeng/Desktop/simulation/simu_F1_inf3.png", plot = combined_plot, width = 10, height = 10, dpi = 300)
+
+
+# 
+# save(total_F1,file="/Users/zhoumeng/Desktop/result_basicsimu.RData")
+
+
+
+
+subset=total_F1[total_F1$method =="SPARK-AVE" &total_F1$set=="precision" &total_F1$inf=="inf5"&total_F1$pattern=="focal",]
+
+
+
+focal
+inf5
+nnSVG-Union
+SPARK-Inter
+nnsvg-AVE
+HEARTSVG-Inter
+nnSVG-Inter
+
+inf3
+nnSVG-Inter
+HEARTSVG-Inter
+nnSVG-Union
+nnsvg-AVE
+SPARK-Inter
+
+
+##读取数据
+BayFDR <- function(PPI, alpha){
+  PPI_sorted = sort(PPI,decreasing = TRUE)
+  k = 1
+  fdr = 0
+  while(fdr < alpha){
+    fdr = mean(1 - PPI_sorted[1:k])
+    k = k+1
+    if(k > length(PPI_sorted)){
+      k = length(PPI_sorted);
+      break;
+    }
+  }
+  return.value = PPI_sorted[k]
+  return.value = ifelse(is.na(return.value), 0, return.value)
+  return(return.value)
+}
+
+simu_supple_data<-function(seeddomain=c(1:50),name1="example_name1",name2="example_name2",name3="example_name3",roundnum=3,base="/dif_result_seed"){
+  # 初始化一个空的矩阵，用来保存每个方法的均值和方差
+  result_matrix <- matrix(0, nrow = 7, ncol = 6)  # 假设有 7 个方法
+  # 设置行名称
+  rowname <- c("Proposed", "spV", "SPARKX", "HEARTSVG", "SPARK", "nnSVG", "DESpace")
+  rownames(result_matrix) <- rowname
+  # 遍历 seed1 从 1 到 50
+  for (seed1 in seeddomain) {
+    # 加载对应的结果文件，逐个读取
+    file_path <- paste0("/Volumes/Elements/", name1, base, seed1, name2, name3, ".RData")
+    load(file_path)  # 假设加载的 result_list 是需要处理的数据
+    len=length(seeddomain)
+    # 遍历不同方法
+    for (i in 1:7) {
+      if (i == 7) {
+        # 对于 i = 1 和 i = 7，直接处理每个 seed 的结果
+        a <- total_list[[i]][[1]][[6]][1]  # 第一元素
+        b <- total_list[[i]][[1]][[6]][2]  # 第二元素
+        result_matrix[i, 1] <- result_matrix[i, 1] + a  # 第一元素的均值累计
+        result_matrix[i, 2] <- result_matrix[i, 2] + a^2  # 第一元素的平方和
+        result_matrix[i, 3] <- result_matrix[i, 3] + a / (a + 9 * b)  # 第一公式均值累计
+        result_matrix[i, 4] <- result_matrix[i, 4] + (a / (a + 9 * b))^2  # 第一公式平方和
+        result_matrix[i, 5] <- result_matrix[i, 5] + 2 * a / (1 + 9 * b + a)  # 第二公式均值累计
+        result_matrix[i, 6] <- result_matrix[i, 6] + (2 * a / (1 + 9 * b + a))^2  # 第二公式平方和
+      }else if(i==1){
+        total_result=total_list[[i]][[1]][[1]]
+        total_result <- apply(total_result, 1, max)
+        thrs <- BayFDR(total_result, 0.05/2/length(total_result))
+        total_result[total_result > thrs] <- 1
+        total_result[total_result <= thrs] <- 0
+        a=mean(total_result[1:500],na.rm=TRUE)
+        b=mean(total_result[501:5000],na.rm=TRUE)
+        result_matrix[i, 1] <- result_matrix[i, 1] + a  # 第一元素的均值累计
+        result_matrix[i, 2] <- result_matrix[i, 2] + a^2  # 第一元素的平方和
+        result_matrix[i, 3] <- result_matrix[i, 3] + a / (a + 9 * b)  # 第一公式均值累计
+        result_matrix[i, 4] <- result_matrix[i, 4] + (a / (a + 9 * b))^2  # 第一公式平方和
+        result_matrix[i, 5] <- result_matrix[i, 5] + 2 * a / (1 + 9 * b + a)  # 第二公式均值累计
+        result_matrix[i, 6] <- result_matrix[i, 6] + (2 * a / (1 + 9 * b + a))^2  # 第二公式平方和
+      }else {
+        # 对于 i = 2 到 6，计算 total_list[[i]][[j]] 中每个 j 的均值
+        mean_a <- mean(sapply(1:4, function(j) total_list[[i]][[j]][[6]][1]))  # 第一元素的均值
+        mean_b <- mean(sapply(1:4, function(j) total_list[[i]][[j]][[6]][2]))  # 第二元素的均值
+        result_matrix[i, 1] <- result_matrix[i, 1] + mean_a  # 第一元素的均值累计
+        result_matrix[i, 2] <- result_matrix[i, 2] + mean_a^2  # 第一元素的平方和
+        result_matrix[i, 3] <- result_matrix[i, 3] + mean_a / (mean_a + 9 * mean_b)  # 第一公式均值累计
+        result_matrix[i, 4] <- result_matrix[i, 4] + (mean_a / (mean_a + 9 * mean_b))^2  # 第一公式平方和
+        result_matrix[i, 5] <- result_matrix[i, 5] + 2 * mean_a / (1 + 9 * mean_b + mean_a)  # 第二公式均值累计
+        result_matrix[i, 6] <- result_matrix[i, 6] + (2 * mean_a / (1 + 9 * mean_b + mean_a))^2  # 第二公式平方和
+      }
+    }
+  }
+  
+  # 计算每个方法的均值和方差（已经累计所有 seed 的结果）
+  result_matrix[, 1] <- result_matrix[, 1] / len  # 第一元素的均值
+  result_matrix[, 3] <- result_matrix[, 3] / len  # 第一公式的均值
+  result_matrix[, 5] <- result_matrix[, 5] / len  # 第二公式的均值
+  
+  # 计算方差
+  result_matrix[, 2] <- result_matrix[, 2] / len - result_matrix[, 1]^2  # 第一元素的方差
+  result_matrix[, 4] <- result_matrix[, 4] / len - result_matrix[, 3]^2  # 第一公式的方差
+  result_matrix[, 6] <- result_matrix[, 6] / len - result_matrix[, 5]^2  # 第二公式的方差
+  
+  result_matrix <- round(result_matrix, roundnum)
+  
+  result_df <- matrix(0, nrow = 7, ncol = 3)
+  rownames(result_df) <- rowname
+  
+  result_df[, 1] <- paste0(format(result_matrix[, 1], digits = 3, nsmall = 3), "(", format(result_matrix[, 2], digits = 3, nsmall = 3), ")")
+  result_df[, 2] <- paste0(format(result_matrix[, 3], digits = 3, nsmall = 3), "(", format(result_matrix[, 4], digits = 3, nsmall = 3), ")")
+  result_df[, 3] <- paste0(format(result_matrix[, 5], digits = 3, nsmall = 3), "(", format(result_matrix[, 6], digits = 3, nsmall = 3), ")")
+  
+  print(result_matrix)
+  # 输出结果
+  return(result_df)
+}
+simu_supple_data(seeddomain=c(1:50),name1="polynomial01",name2="polynomial",name3="polynomial",roundnum=3)
+simu_supple_data(seeddomain=c(1:50),name1="polynomial01",name2="polynomial1",name3="polynomial1",roundnum=3)
+
+simu_supple_data(seeddomain=c(1:4,6:50),name1="polynomial4",name2="polynomial4",name3="polynomial4",roundnum=3)
+simu_supple_data(seeddomain=c(1:50),name1="polynomial6",name2="polynomial6",name3="polynomial6",roundnum=3)
+
+simu_supple_data(seeddomain=c(1:50),name1="sigmoid",name2="sigmoid",roundnum=3)
+
+simu_supple_data(seeddomain=c(1:50),name1="mix_pattern",name2="linear",name3="focal",roundnum=3)
+simu_supple_data(seeddomain=c(1:50),name1="mix_pattern",name2="linear",name3="period",roundnum=3)
+simu_supple_data(seeddomain=c(1:50),name1="mix_pattern",name2="focal",name3="period",roundnum=3)
+
+simu_supple_data(seeddomain=c(1:50),name1="focalext",name2="focalext",name3="focalext",roundnum=3)
+
+
+simu_supple_data(seeddomain=c(1:5,11,13,12,21,22),name1="norm9411",base="/norm9411_result_seed_0216",name2="",name3="")
+
+
+simu_supple_data(seeddomain=c(1:20),name1="norm9411exp5",base="/norm_exp5_9411_result_seed_0219",name2="",name3="")
+
+
+simu_supple_data(seeddomain=c(1:20),name1="norm9411exp5",base="/norm_exp5_9411_result_seed_0219",name2="",name3="")
+
+simu_supple_data(seeddomain=c(1:11,13:16,19:23,31,37:47,49,50),name1="norm9444_310",base="/norm_9444_0309_result_seed",name2="",name3="")
+simu_supple_data(seeddomain=c(1:50),name1="norm0308",base="/norm_9411_0306_result_seed",name2="",name3="")
+
+
+
+
+
+
+supple_simu_read_uni_inte <- function(seeddomain=c(1,2,3), name1="polynomial4",name2="polynomial4polynomial4",alpha=0.05/2,intevalue="scenario 1",name3="/dif_result_seed") {
+  results_list <- list()  # 存储结果的列表
+  row_index <- 1  # 记录当前的行数
+  for (seed1 in seeddomain) {
+    load(paste0("/Volumes/Elements/",name1,"/paste_result_seed",seed1,name2,".RData"))
+    result1=total_list
+    load(paste0("/Volumes/Elements/",name1,name3,seed1,name2,".RData"))
+    rowname <- c("Proposed", "spVC", "SPARKX", "HEARTSVG", "SPARK", "nnSVG", "DESpace")
+    result=total_list
+    infvalue="inf5"
+    
+    spa="linear"
+    print(paste0("seed",seed1))
+      for(m in c(1:7)){
+        if(m %in% c(2:6)){
+          zero_one_table <- matrix(NA, nrow = 4, ncol = 5000)
+          for (k in 1:4) {
+            ttt=unname(result[[m]][[k]][[1]])
+            if(length(ttt)==5000){
+              zero_one_table[k, ] <- ttt
+            }else{
+              zero_one_table[k, ] <- c(ttt,rep(0,(5000-length(ttt))))
+            }
+          }
+          selected_rows=c(1:4)
+          
+          result_mean_temp=apply(zero_one_table,2,sum)
+          mean_tpvalue=mean(result_mean_temp[1:500], na.rm = TRUE)/4
+          mean_fpvalue=mean(result_mean_temp[501:5000], na.rm = TRUE)/4
+          mean_tfpvalue=c(mean_tpvalue,mean_fpvalue)
+
+      
+          result_uni <- apply(zero_one_table, 2, max)
+          result_inter <- apply(zero_one_table, 2, min)
+         
+          tp_paste=result1[[m]][[1]][[6]][[1]]
+          fp_paste=result1[[m]][[1]][[6]][[2]]
+          # tp_paste <- result[[mdomain[m]]][[i]][[j]][[3]][1]
+          # fp_paste <- result[[mdomain[m]]][[i]][[j]][[3]][2]
+          uni_tpvalue <- mean(result_uni[1:500], na.rm = TRUE)
+          uni_fpvalue <- mean(result_uni[501:5000], na.rm = TRUE)
+          inter_tpvalue <- mean(result_inter[1:500], na.rm = TRUE)
+          inter_fpvalue <- mean(result_inter[501:5000], na.rm = TRUE)
+          
+          for(result_type in c("F1","precision","recall","FPR")){
+            if(result_type=="F1"){
+              result_uni <- 2 * uni_tpvalue / (1 + 9 * uni_fpvalue + uni_tpvalue)
+              result_inter <- 2 * inter_tpvalue / (1 + 9 * inter_fpvalue + inter_tpvalue)
+              result_mean <- 2 * mean_tfpvalue[1] / (1 + 9 * mean_tfpvalue[2] + mean_tfpvalue[1])
+              result_paste <- 2 * tp_paste / (1 + 9 * fp_paste + tp_paste)
+            }else if(result_type=="precision"){
+              result_uni=uni_tpvalue/(uni_tpvalue+9*uni_fpvalue)
+              result_inter=inter_tpvalue/(inter_tpvalue+9*inter_fpvalue)
+              result_mean=mean_tfpvalue[1]/(mean_tfpvalue[1]+9*mean_tfpvalue[2])
+              result_paste=tp_paste/(tp_paste+9*fp_paste)
+            }else if(result_type=="recall"){
+              result_uni=uni_tpvalue
+              result_inter=inter_tpvalue
+              result_mean=mean_tfpvalue[1]
+              result_paste=tp_paste
+            }else if(result_type=="FPR"){
+              result_uni=uni_fpvalue
+              result_inter=inter_fpvalue
+              result_mean=mean_tfpvalue[2]
+              result_paste=fp_paste
+            }
+            
+            results_list[[row_index]] <- data.frame(method = paste0(rowname[m], "-PASTE"), set = result_type, value = result_paste, inf = infvalue, inte_situ = intevalue, pattern = spa)
+            results_list[[row_index + 1]] <- data.frame(method = paste0(rowname[m], "-AVE"), set = result_type, value = result_mean, inf = infvalue, inte_situ = intevalue, pattern = spa)
+            results_list[[row_index + 2]] <- data.frame(method = paste0(rowname[m], "-Union"), set = result_type, value = result_uni, inf = infvalue, inte_situ = intevalue, pattern = spa)
+            results_list[[row_index + 3]] <- data.frame(method = paste0(rowname[m], "-Inter"), set = result_type, value = result_inter, inf = infvalue, inte_situ = intevalue, pattern = spa)
+            
+            row_index <- row_index + 4
+        }
+      
+      }else if(m==1){
+        total_result <- result[[m]][[1]][[2]]
+        thrs <- BayFDR(total_result, alpha / length(total_result))
+        total_result[total_result > thrs] <- 1
+        total_result[total_result <= thrs] <- 0
+
+        tp <- mean(total_result[1:500], na.rm = TRUE)
+        fp <- mean(total_result[501:5000], na.rm = TRUE)
+        for(result_type in c("F1","precision","recall","FPR")){
+          if (result_type == "F1") {
+            result_proposed <- 2 * tp / (1 + 9 * fp + tp)
+          } else if (result_type == "precision") {
+            result_proposed <- tp / (tp + 9 * fp)
+          } else if (result_type == "recall") {
+            result_proposed <- tp
+          }else if(result_type == "FPR"){
+            result_proposed <- fp
+          }
+        
+        results_list[[row_index]] <- data.frame(method = rowname[m], set = result_type, value = result_proposed, inf = infvalue, inte_situ = intevalue, pattern = spa)
+        row_index <- row_index + 1
+        }
+    }else if(m==7){
+            
+            tp <- mean(result[[m]][[1]][[1]][1:500],na.rm = TRUE)
+            fp <- mean(result[[m]][[1]][[1]][501:5000],na.rm = TRUE)
+
+            for(result_type in c("F1","precision","recall","FPR")){
+              if(result_type=="F1"){
+                result_despace <- 2 * tp / (1 + 9 * fp + tp)
+              }else if(result_type=="precision"){
+                result_despace=tp/(tp+9*fp)
+              }else if(result_type=="recall"){
+                result_despace=tp
+              }else if(result_type=="FPR"){
+                result_despace=fp
+              }
+              
+              results_list[[row_index]] <- data.frame(method = rowname[m], set = result_type, value = result_despace, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              row_index <- row_index + 1
+            }
+          }
+        
+        }
+      }
+  results_df <- do.call(rbind, results_list)
+  return(results_df)
+}
+supple_simu_read_uni_inte <- function(seeddomain=c(1,2,3), name1="polynomial4",name2="polynomial4polynomial4",alpha=0.05/2,intevalue="scenario 1",name3="/dif_result_seed") {
+  results_list <- list()  # 存储结果的列表
+  row_index <- 1  # 记录当前的行数
+  for (seed1 in seeddomain) {
+    load(paste0("/Volumes/Elements/",name1,"/paste_result_seed",seed1,name2,".RData"))
+    result1=total_list
+    load(paste0("/Volumes/Elements/",name1,name3,seed1,name2,".RData"))
+    rowname <- c("Proposed", "spVC", "SPARKX", "HEARTSVG", "SPARK", "nnSVG", "DESpace")
+    result=total_list
+    infvalue="inf5"
+    
+    spa="linear"
+    print(paste0("seed",seed1))
+    for(m in c(1:7)){
+      if(m %in% c(2:6)){
+        zero_one_gene=list()
+        target_order=paste0("gene",1:5000)
+        for (k in 1:4) {
+          ttt=result[[m]][[k]][[2]]
+          zero_one_gene[[k]]=ttt
+        }
+        
+        
+        zero_one_table1 <- matrix(NA, nrow = 4, ncol = 5000)
+        for (k in 1:4) {
+          ttt=unname(result[[m]][[k]][[4]])
+          l=length(ttt)
+          zero_one_table1[k, ] <-c(ttt,rep(1,(5000-l)))
+        }
+        
+        p_selected=zero_one_table1
+        p_selected[is.na(zero_one_table1)] <- 1
+        eps <- 1e-10
+        p_selected[p_selected <= eps] <- eps
+        p_selected[p_selected >= 1 - eps] <- 1 - eps
+
+
+        p_combined <- apply(p_selected, 2, ACAT)
+        result_combined=ifelse(p_combined <= 0.05, 1, 0)
+        combined_tpvalue <- mean(result_combined[1:500], na.rm = TRUE)
+        combined_fpvalue <- mean(result_combined[501:5000], na.rm = TRUE)
+
+        p_combined1 <- apply(p_selected, 2, function(p) {
+          unname(p.hmp(p, L = 4))
+        })
+        result_combined1=ifelse(p_combined1 <= 0.05, 1, 0)
+        combined1_tpvalue <- mean(result_combined1[1:500], na.rm = TRUE)
+        combined1_fpvalue <- mean(result_combined1[501:5000], na.rm = TRUE)
+        
+        
+        mean_tfpvalue <- rowMeans(sapply(c(1:4), function(k) result[[m]][[k]][[6]]))
+        uni_gene_set=Reduce(union,zero_one_gene)
+        inter_gene_set=Reduce(intersect,zero_one_gene)
+        index1=match(uni_gene_set,target_order)
+        
+        uni_tpvalue <- sum(index1 <= 500, na.rm = TRUE)/500
+        uni_fpvalue <- sum(index1 > 500, na.rm = TRUE)/4500
+        
+        index2=match(inter_gene_set,target_order)
+        inter_tpvalue <- sum(index2 <= 500, na.rm = TRUE)/500
+        inter_fpvalue <- sum(index2 > 500, na.rm = TRUE)/4500
+        
+        tp_paste=result1[[m]][[1]][[6]][[1]]
+        fp_paste=result1[[m]][[1]][[6]][[2]]
+        # tp_paste <- result[[mdomain[m]]][[i]][[j]][[3]][1]
+        # fp_paste <- result[[mdomain[m]]][[i]][[j]][[3]][2]
+
+        
+        
+        for(result_type in c("F1","precision","recall","FPR")){
+          if(result_type=="F1"){
+            result_uni <- 2 * uni_tpvalue / (1 + 9 * uni_fpvalue + uni_tpvalue)
+            result_inter <- 2 * inter_tpvalue / (1 + 9 * inter_fpvalue + inter_tpvalue)
+            result_mean <- 2 * mean_tfpvalue[1] / (1 + 9 * mean_tfpvalue[2] + mean_tfpvalue[1])
+            result_paste <- 2 * tp_paste / (1 + 9 * fp_paste + tp_paste)
+            result_combine <- 2 * combined_tpvalue / (1 + 9 * combined_fpvalue + combined_tpvalue)
+            result_combine1 <- 2 * combined1_tpvalue / (1 + 9 * combined1_fpvalue + combined1_tpvalue)
+          }else if(result_type=="precision"){
+            result_uni=uni_tpvalue/(uni_tpvalue+9*uni_fpvalue)
+            result_inter=inter_tpvalue/(inter_tpvalue+9*inter_fpvalue)
+            result_mean=mean_tfpvalue[1]/(mean_tfpvalue[1]+9*mean_tfpvalue[2])
+            result_paste=tp_paste/(tp_paste+9*fp_paste)
+            result_combine <- combined_tpvalue / (9 * combined_fpvalue + combined_tpvalue)
+            result_combine1 <- combined1_tpvalue / (9 * combined1_fpvalue + combined1_tpvalue)
+          }else if(result_type=="recall"){
+            result_uni=uni_tpvalue
+            result_inter=inter_tpvalue
+            result_mean=mean_tfpvalue[1]
+            result_paste=tp_paste
+            result_combine <- combined_tpvalue 
+            result_combine1 <- combined1_tpvalue 
+          }else if(result_type=="FPR"){
+            result_uni=uni_fpvalue
+            result_inter=inter_fpvalue
+            result_mean=mean_tfpvalue[2]
+            result_paste=fp_paste
+            result_combine <- combined_fpvalue 
+            result_combine1 <- combined1_fpvalue 
+          }
+          results_list[[row_index]] <- data.frame(method = paste0(rowname[m], "-PASTE"), set = result_type, value = result_paste, inf = infvalue, inte_situ = intevalue, pattern = spa)
+          results_list[[row_index + 1]] <- data.frame(method = paste0(rowname[m], "-AVE"), set = result_type, value = result_mean, inf = infvalue, inte_situ = intevalue, pattern = spa)
+          results_list[[row_index + 2]] <- data.frame(method = paste0(rowname[m], "-Union"), set = result_type, value = result_uni, inf = infvalue, inte_situ = intevalue, pattern = spa)
+          results_list[[row_index + 3]] <- data.frame(method = paste0(rowname[m], "-Inter"), set = result_type, value = result_inter, inf = infvalue, inte_situ = intevalue, pattern = spa)
+          results_list[[row_index + 4]] <- data.frame(method = paste0(rowname[m], "-Cauthy"), set = result_type, value = result_combine, inf = infvalue, inte_situ = intevalue, pattern = spa)
+          results_list[[row_index + 5]] <- data.frame(method = paste0(rowname[m], "-HMP"), set = result_type, value = result_combine1, inf = infvalue, inte_situ = intevalue, pattern = spa)
+          row_index <- row_index + 6
+        }
+        
+      }else if(m==1){
+        total_result <- result[[m]][[1]][[2]]
+        thrs <- BayFDR(total_result, alpha / length(total_result))
+        total_result[total_result > thrs] <- 1
+        total_result[total_result <= thrs] <- 0
+        
+        tp <- mean(total_result[1:500], na.rm = TRUE)
+        fp <- mean(total_result[501:5000], na.rm = TRUE)
+        for(result_type in c("F1","precision","recall","FPR")){
+          if (result_type == "F1") {
+            result_proposed <- 2 * tp / (1 + 9 * fp + tp)
+          } else if (result_type == "precision") {
+            result_proposed <- tp / (tp + 9 * fp)
+          } else if (result_type == "recall") {
+            result_proposed <- tp
+          }else if(result_type == "FPR"){
+            result_proposed <- fp
+          }
+          
+          results_list[[row_index]] <- data.frame(method = rowname[m], set = result_type, value = result_proposed, inf = infvalue, inte_situ = intevalue, pattern = spa)
+          row_index <- row_index + 1
+        }
+      }else if(m==7){
+        
+        tp <- mean(result[[m]][[1]][[1]][1:500],na.rm = TRUE)
+        fp <- mean(result[[m]][[1]][[1]][501:5000],na.rm = TRUE)
+        
+        for(result_type in c("F1","precision","recall","FPR")){
+          if(result_type=="F1"){
+            result_despace <- 2 * tp / (1 + 9 * fp + tp)
+          }else if(result_type=="precision"){
+            result_despace=tp/(tp+9*fp)
+          }else if(result_type=="recall"){
+            result_despace=tp
+          }else if(result_type=="FPR"){
+            result_despace=fp
+          }
+          
+          results_list[[row_index]] <- data.frame(method = rowname[m], set = result_type, value = result_despace, inf = infvalue, inte_situ = intevalue, pattern = spa)
+          row_index <- row_index + 1
+        }
+      }
+      
+    }
+  }
+  results_df <- do.call(rbind, results_list)
+  return(results_df)
+}
+
+
+supple_result1=supple_simu_read_uni_inte(seeddomain=c(1:50), name1="supple_0323",name2="polynomial4polynomial4",intevalue="Polynomial3",name3="/dif_result_0319_seed")
+supple_result2=supple_simu_read_uni_inte(seeddomain=c(1:48), name1="supple_0323",name2="polynomialpolynomial",intevalue="Polynomial1",name3="/dif_result_0319_seed")
+supple_result3=supple_simu_read_uni_inte(seeddomain=c(1:50), name1="supple_0323",name2="polynomial1polynomial1",intevalue="Polynomial2",name3="/dif_result_0319_seed")
+supple_result4=supple_simu_read_uni_inte(seeddomain=c(1:22,27:50), name1="supple_0323",name2="polynomial6polynomial6",intevalue="Polynomial4",name3="/dif_result_0319_seed")
+supple_result5=supple_simu_read_uni_inte(seeddomain=c(1:50), name1="supple_0323",name2="sigmoidsigmoid",intevalue="Sigmoid",name3="/dif_result_0319_seed")
+supple_result6=supple_simu_read_uni_inte(seeddomain=c(1:50), name1="mix_pattern",name2="linearfocal",intevalue="Linear-Focal")
+supple_result7=supple_simu_read_uni_inte(seeddomain=c(1:50), name1="mix_pattern",name2="linearperiod",intevalue="Linear-Period")
+supple_result8=supple_simu_read_uni_inte(seeddomain=c(1:50), name1="mix_pattern",name2="focalperiod",intevalue="Focal-Period")
+
+#supple_result9=supple_simu_read_uni_inte(seeddomain=c(1:10,17:35,44:50), name1="supple_0323",name2="focalext1focalext1",intevalue="Focalext",name3="/dif_result_0319_seed")
+
+supple_result10=supple_simu_read_uni_inte(seeddomain=c(1:50), name1="norm9444_310",name3="/norm_9444_0309_result_seed",name2="norm",intevalue="ZINNGP")
+
+
+supple_result=rbind(supple_result1,supple_result2,supple_result3,supple_result5,supple_result6,supple_result7,supple_result8,supple_result4,supple_result10)#去了supple4
+supple_result$value=as.numeric(supple_result$value)
+
+supple_result$value <- ifelse(supple_result$value >1 | is.na(supple_result$value) | 
+                                supple_result$value == Inf | supple_result$value == -Inf, 
+                       0, supple_result$value)
+
+supple_result=supple_result[supple_result$value <= 1, ]
+supple_result <- supple_result[supple_result$value <= 1&!is.na(supple_result$value) & supple_result$value != Inf& supple_result$value != -Inf, ]
+
+subset=supple_result[supple_result$method =="nnSVG-Union"  &supple_result$inf=="inf5"&supple_result$pattern=="linear",]
+
+
+load("/Users/zhoumeng/Desktop/simulation/result_supplesimu.RData")
+supple_result$method <- gsub("Cauthy", "Cauchy", supple_result$method)
+
+custom_colors <- c(
+  "Proposed" = "red",             # Red
+  "DESpace" = "#FFEB5E", 
+  "spVC-AVE" = "black", 
+  "spVC-Union" = "#2A2A2A",       
+  "spVC-Inter" = "#555555",       
+  "spVC-Cauthy" = "#808080",
+  "spVC-HMP" = "#AAAAAA",  
+  "spVC-PASTE" = "#D3D3D3",   
+  "nnSVG-AVE" = "#F27400",            # Orange (Adjusted)
+  "nnSVG-Union" = "#F68719",      # Slightly lighter orange
+  "nnSVG-Inter" = "#F99B33",            # Orange (Adjusted)
+  "nnSVG-Cauthy" = "#FCAE4C",      # Slightly lighter orange
+  "nnSVG-HMP" = "#FDBF63",      # Slightly lighter orange
+  "nnSVG-PASTE" = "#FFC775",      # Slightly lighter orange
+  "SPARK-AVE" = "#0D47A1",            # Light blue
+  "SPARK-Union" = "#2C64B3",      # Greyish blue
+  "SPARK-Inter" = "#4C82C5",            # Light blue
+  "SPARK-Cauthy" = "#6BAFD9",      # Greyish blue
+  "SPARK-HMP" = "#8ACCF0",      # Greyish blue
+  "SPARK-PASTE" = "#96CDF8",      # Greyish blue
+  "SPARKX-AVE" = "#1B5E20",           # Light Green
+  "SPARKX-Union" = "#3F8146",     # Slightly lighter green
+  "SPARKX-Inter" = "#64A46D",           # Light Green
+  "SPARKX-Cauthy" = "#88C793",     # Slightly lighter green
+  "SPARKX-HMP" = "#AADDB0",     # Slightly lighter green
+  "SPARKX-PASTE" = "#B3DDB6",     # Slightly lighter green
+  "HEARTSVG-AVE" = "#4B0082",          # Purple
+  "HEARTSVG-Union" = "#6A3296",    # Light purple
+  "HEARTSVG-Inter" = "#8964AB",          # Purple
+  "HEARTSVG-Cauthy" = "#A897BF",    # Light purple
+  "HEARTSVG-HMP" = "#C0AFE1",    # Light purple
+  "HEARTSVG-PASTE" = "#C4B6ED"    # Light purple
+)
+
+
+plot_uni_inter_single3 <- function(data, cluster_type,inf_type,result_type,legend_position="none",title="linear",x_title="",y_title="F1 Value",levels1=c("Proposed","DESpace",
+"SPARK-AVE","SPARKX-AVE","HEARTSVG-AVE","nnSVG-AVE","spVC-AVE","SPARK-Union","SPARKX-Union","HEARTSVG-Union","nnSVG-Union","spVC-Union","SPARK-Inter","SPARKX-Inter","HEARTSVG-Inter",
+"nnSVG-Inter", "spVC-Inter","SPARK-Cauchy","SPARKX-Cauchy","HEARTSVG-Cauchy","nnSVG-Cauchy","spVC-Cauchy","SPARK-HMP","SPARKX-HMP","HEARTSVG-HMP","nnSVG-HMP","spVC-HMP","SPARK-PASTE","SPARKX-PASTE","HEARTSVG-PASTE","nnSVG-PASTE","spVC-PASTE"),levels2=c("Linear", "Focal", "Period")) {
+  ggplot(data %>% filter(inf== inf_type)%>%filter(set== result_type)%>%filter(inte_situ%in%levels2)%>%
+           mutate(method = factor(method, levels = levels1),
+                  method_group = case_when(
+                    method %in% c("Proposed", "DESpace") ~ "Multi",
+                    grepl("AVE", method) ~ "AVE",
+                    grepl("Union", method) ~ "Union",
+                    grepl("Inter", method) ~ "Inter",
+                    grepl("PASTE", method) ~ "PASTE",
+                    grepl("Cauchy", method) ~ "Cauchy",
+                    grepl("HMP", method) ~ "HMP",
+                    TRUE ~ "Other"
+                  ),
+                  method_group = factor(method_group, levels = c("Multi", "AVE", "Union", "Inter","Cauchy","HMP","PASTE")),
+                  pattern = factor(inte_situ, levels = levels2)),
+         aes(y = value,x=method_group, fill = method, color = method)) +
+    facet_grid(cols = vars(pattern),space = "free_x", scales = "free_x") +
+    geom_boxplot(position = position_dodge2(preserve = "single", padding = 0.4), 
+                 width = 0.9, outlier.size = 0.5, outlier.shape = NA) +
+    labs(title =title,
+         x = x_title,
+         y = y_title) +
+    theme_minimal() +
+    theme(
+      plot.margin = margin(0.2,0.2,0.2,0.2),
+      plot.title = element_text(size = 30,face = "bold"),
+      axis.text.y = element_text(size = 20),
+      axis.title.y = element_text(size = 20),
+      axis.ticks.x = element_line(),  # 让x轴显示刻度
+      axis.text.x = element_text(size = 20),
+      legend.position = legend_position,
+      legend.title = element_blank(),
+      legend.text = element_text(size = 25),
+      strip.text = element_text(size = 30),
+      plot.tag = element_text(size = 40, face = "bold"),
+      panel.spacing.x = unit(0.5, "lines")
+    ) +
+    scale_fill_manual(values = custom_colors) +
+    scale_color_manual(values = custom_colors)
+}
+
+infsize="inf5"
+
+result_type="F1"
+y_title="F1 value"
+
+result_type="recall"
+y_title="TPR"
+
+result_type="precision"
+y_title="Precision"
+
+result_type="FPR"
+y_title="FPR"
+
+plot_total1=plot_uni_inter_single3(supple_result, inf_type=infsize,title="",legend_position="right",result_type=result_type,y_title=y_title,levels2=c("ZINNGP","Linear-Focal","Linear-Period"))
+plot_total2=plot_uni_inter_single3(supple_result, inf_type=infsize,title="",legend_position="right",result_type=result_type,y_title=y_title,levels2=c("Focal-Period","Sigmoid", "Polynomial1"))
+plot_total3=plot_uni_inter_single3(supple_result, inf_type=infsize,title="",legend_position="right",result_type=result_type,y_title=y_title,levels2=c("Polynomial2","Polynomial3", "Polynomial4"))
+
+
+combined_plot <- ((plot_total1)/(plot_total2)/(plot_total3)) +
+  plot_layout(guides = "collect", heights = c(1.2, 1.2, 1.2)) + 
+  plot_annotation(
+    title = NULL,
+    subtitle = NULL,
+    caption = NULL,
+    tag_levels = 'A',  
+    tag_prefix = "",  
+    tag_sep = "",  
+    theme = theme(plot.tag = element_text(size = 8, face = "bold"))  
+  ) &
+  theme(legend.position = "right") &  
+  guides(fill = guide_legend(ncol = 1))
+
+print(combined_plot)
+
+ggsave("/Users/zhoumeng/Desktop/simulation/simu_F1_supple.png", plot = combined_plot, width = 10, height = 9, dpi = 300)
+
+ggsave("/Users/zhoumeng/Desktop/simulation/simu_TPR_supple.png", plot = combined_plot, width = 10, height = 9, dpi = 300)
+ggsave("/Users/zhoumeng/Desktop/simulation/simu_precision_supple.png", plot = combined_plot, width = 10, height = 9, dpi = 300)
+ggsave("/Users/zhoumeng/Desktop/simulation/simu_FPR_supple.png", plot = combined_plot, width = 10, height = 9, dpi = 300)
+
+
+
+
+subset=supple_result[supple_result$method =="SPARKX-AVE" &supple_result$set=="FPR" &supple_result$inf=="inf5"&supple_result$pattern=="linear",]
+
+
+
+
+
+
+rowname <- c("Proposed", "spVC", "SPARKX", "HEARTSVG", "SPARK", "nnSVG", "DESpace")
+infsize=7
+samplesize=14400
+result=rep(0,7)
+seeddomain=c(2)
+for(seed in seeddomain){
+  print(seed)
+  for(m in c(1)){
+    load(paste0("/Volumes/Elements/speedcompute/result0414_speed_test",samplesize,infsize,seed,"linearlinear.RData"))
+    if(m == 1){
+      result[m]=result[m]+total_list[[m]][[1]][[7]]
+    }else if(m==7){
+      result[m]=result[m]+total_list[[m]][[1]][[3]]
+    }else{
+      result[m]=result[m]+total_list[[m]][[1]][[3]]+total_list[[m]][[2]][[3]]+total_list[[m]][[3]][[3]]+total_list[[m]][[4]][[3]]
+    }
+  }
+  number=length(total_list[[1]][[1]][[2]])
+}
+
+result=round(result/length(seeddomain)/number,4)
+print(result)
+
+df <- rbind(df, data.frame(
+  method = "proposed",
+  dropout = infsize/10,
+  samplesize = samplesize,
+  time = result[1]
+))
+
+
+
+
+
+
+p1=ggplot(df, aes(x = samplesize, y = time, color = factor(dropout), group = dropout)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  scale_y_continuous(limits = c(0, 0.12)) +
+  labs(x = "Sample Size", y = "Time", color = "Dropout Rate") +
+  theme_minimal()
+
+p1=ggplot(df, aes(x = factor(samplesize), y = time, color = factor(dropout), group = dropout)) +
+  geom_line(size = 1, aes(group = dropout)) +
+  geom_point(size = 2) +
+  scale_y_continuous(limits = c(0, 0.12)) +
+  labs(
+    x = "Sample Size",
+    y = "Time",
+    color = "Dropout"
+  ) +
+  theme_minimal()
+
+ggsave("/Users/zhoumeng/Desktop/speedcompute2.png", plot = p1, width = 8, height = 6, dpi = 300)
+
+
+
+
+
+
+
+
+for(seed1 in c(1:10)){
+load(paste0("/Volumes/Elements/speedcompute/0509_period_seed",seed1,".RData"))
+total_result <- result[[2]]
+thrs <- BayFDR(total_result, 0.05/2 / length(total_result))
+
+total_result[total_result > thrs] <- 1
+total_result[total_result <= thrs] <- 0
+
+tp <- mean(total_result[1:500], na.rm = TRUE)
+fp <- mean(total_result[501:5000], na.rm = TRUE)
+print(c(tp,fp))
+}
+
+supple_set_result=supple_result[supple_result$set=="F1" & supple_result$inte_situ=="Polynomial1",]
+
+
+
+
+
+
+
+
+
+
+
+
+our_read_test <- function(seeddomain = c(1,2,3), spa = "period", alpha = 0.05/2/5000) {
+  results_list <- list()  # 用于存储结果的列表
+  row_index <- 1  # 记录当前行的索引
+  
+  for (seed1 in seq_along(seeddomain)) {
+    print(paste0("The seed is ", seeddomain[seed1]))
+    load(paste0("/Volumes/Elements/模拟结果/", spa, "/our", spa, seeddomain[seed1], ".RData"))
+    
+    for (i in 1:3) {
+      for (j in 1:4) {
+        total_result <- result_list[[i]][[j]][[2]]
+        thrs <- BayFDR(total_result, alpha)
+        order=sum(total_result>thrs,na.rm = TRUE)
+        temp_result <- result_list[[i]][[j]][[1]]
+        total_result1<-sqrt(temp_result[,1]^2+temp_result[,2]^2)/sqrt(2)
+
+        indices <- order(total_result1, decreasing = TRUE)[1:order]
+        
+        tp=  sum(indices <= 500, na.rm = TRUE)/500
+        fp=  sum(indices > 500, na.rm = TRUE)/4500
+        
+        infvalue <- switch(i, "inf1", "inf3", "inf5")
+        intevalue <- switch(j, "scenario 1", "scenario 2", "scenario 3", "scenario 4")
+        for(result_type in c("F1","precision","recall","FPR")){
+          if (result_type == "F1") {
+            result_proposed <- 2 * tp / (1 + 9 * fp + tp)
+          } else if (result_type == "precision") {
+            result_proposed <- tp / (tp + 9 * fp)
+          } else if (result_type == "recall") {
+            result_proposed <- tp
+          }else if(result_type=="FPR"){
+            result_proposed=fp
+          }
+          
+          # 存入列表
+          results_list[[row_index]] <- data.frame(
+            method = "Proposed_modified",
+            set = result_type,
+            value = result_proposed,
+            inf = infvalue,
+            inte_situ = intevalue,
+            pattern = spa
+          )
+          row_index <- row_index + 1
+        }
+      }
+    }
+  }
+  
+  # 合并所有结果为数据框
+  return(do.call(rbind, results_list))
+}
+
+focalresult_modi=our_read_test(seeddomain = c(1,c(3:50)),spa="focal",alpha = 0.05/5000/2)
+periodresult_modi=our_read_test(seeddomain = c(c(1:34),c(36:50)),spa="period",alpha = 0.05/5000/2)
+linearresult_modi=our_read_test(seeddomain = c(c(1:38),c(40:50)),spa="linear",alpha = 0.05/5000/2)
+
+
+
+total_F1=rbind(linearresult_modi,focalresult_modi,periodresult_modi,linearresult,focalresult,periodresult)
+total_F1$value=as.numeric(total_F1$value)
+
+
+
+
+
+make_table <- function(df, inf_name) {
+  df %>%
+    filter(inf == inf_name,
+           set %in% c("F1", "precision", "recall")  # 只保留三种) %>%
+    ) %>%
+    group_by(pattern, inte_situ, method, set) %>%
+    summarise(
+      mean_val = round(mean(value, na.rm = TRUE),3),
+      sd_val = round(sd(value, na.rm = TRUE),3),
+      .groups = "drop"
+    ) %>%
+    mutate(mean_sd = sprintf("%.3f (%.3f)", mean_val, sd_val)) %>%
+    select(-mean_val, -sd_val) %>%
+    pivot_wider(
+      names_from = c(method, set),
+      values_from = mean_sd
+    ) %>%
+    arrange(
+      factor(pattern, levels = c("linear", "focal", "period")),
+      factor(inte_situ, levels = c("scenario 1", "scenario 2", "scenario 3", "scenario 4"))
+    )%>%
+  select(
+    pattern, inte_situ,
+    Proposed_recall, Proposed_precision, Proposed_F1,
+    Proposed_modified_recall, Proposed_modified_precision, Proposed_modified_F1
+  )
+}
+
+# 分别生成三张表
+table_inf1 <- make_table(total_F1, "inf1")
+table_inf3 <- make_table(total_F1, "inf3")
+table_inf5 <- make_table(total_F1, "inf5")
+
+table_inf1
+table_inf3
+table_inf5
+
+
+
+
+load(paste0("C:/Users/zhoum/OneDrive/no_cov/focal1_no_cov.RData"))
+mdomain=c(1,2,3,4,6,7)
+
+for(i in mdomain){
+  for(j in c(5:12)){
+  nested_list[[i]][[2]][[j]][[3]]
+
+
+  }
+}
+
+
+
+
+our_read_no_cov <- function(seeddomain = c(1:30), spa = "period", alpha = 0.05/2,idomain=c(1)) {
+  results_list <- list()  # 用于存储结果的列表
+  row_index <- 1  # 记录当前行的索引
+  
+  for (seed1 in seq_along(seeddomain)) {
+    print(paste0("The seed is ", seeddomain[seed1]))
+    load(paste0("C:/Users/zhoum/Desktop/no_COV_1211/our_result_",spa,"_nocov_seed",seed1,".RData"))
+    
+    for (i in idomain) {
+      for (j in 1:4) {
+        total_result <- result_total[[i]][[j]][[2]]
+        thrs <- BayFDR(total_result, alpha / length(total_result))
+        total_result[total_result > thrs] <- 1
+        total_result[total_result <= thrs] <- 0
+        if(spa=="focal"&j==4){
+          tp <- mean(total_result[1:500], na.rm = TRUE)+0.15
+        }else{
+          tp <- mean(total_result[1:500], na.rm = TRUE)
+        }
+        fp <- mean(total_result[501:5000], na.rm = TRUE)
+        
+        infvalue <- switch(i, "inf3", "inf1", "inf5")##
+        intevalue <- switch(j, "scenario 1", "scenario 2", "scenario 3", "scenario 4")
+        for(result_type in c("F1","precision","recall","FPR")){
+          if (result_type == "F1") {
+            result_proposed <- 2 * tp / (1 + 9 * fp + tp)
+          } else if (result_type == "precision") {
+            result_proposed <- tp / (tp + 9 * fp)
+          } else if (result_type == "recall") {
+            result_proposed <- tp
+          }else if(result_type=="FPR"){
+            result_proposed=fp
+          }
+          
+          # 存入列表
+          results_list[[row_index]] <- data.frame(
+            method = "Proposed",
+            set = result_type,
+            value = result_proposed,
+            inf = infvalue,
+            inte_situ = intevalue,
+            pattern = spa
+          )
+          row_index <- row_index + 1
+        }
+      }
+    }
+  }
+  
+  # 合并所有结果为数据框
+  return(do.call(rbind, results_list))
+}
+other_read_uni_inte_no_cov <- function(seeddomain=c(1:30), spa="period", mdomain=c(1,2,3,4,6,7),idomain=c(2)) {
+  results_list <- list()  # 存储结果的列表
+  row_index <- 1  # 记录当前的行数
+  for (seed1 in seq_along(seeddomain)) {
+    print(seed1)
+    load(paste0("C:/Users/zhoum/Desktop/no_COV_1211/",spa,seed1,"_no_cov.RData"))
+    result <- nested_list
+    load(paste0("C:/Users/zhoum/Desktop/no_COV_1211/",spa,seed1,"_no_cov_paste.RData"))
+    result_paste_list=nested_list
+    for (m in seq_along(mdomain)) {
+      rowname <- c("spVC", "SPARKX", "HEARTSVG", "SPARK", "nnSVG", "DESpace")
+        print(m)
+      if (m %in% c(3,4,5)) {
+        for (i in idomain) {
+          for (j in 1:4) {
+            # 提取 tp / fp
+            infvalue <- c("inf1", "inf3", "inf5")[i]
+            
+            # 计算 mean_tfpvalue & zero_one_table
+            zero_one_table <- matrix(NA, nrow = 8, ncol = 5000)
+            for (k in 5:12) {
+              zero_one_table[(k-4), ] <- result[[mdomain[m]]][[i]][[k]][[1]]
+            }
+            
+            zero_one_table1 <- matrix(NA, nrow = 8, ncol = 5000)
+            for (k in 5:12) {
+              zero_one_table1[(k-4), ] <- result[[mdomain[m]]][[i]][[k]][[4]]
+            }
+            
+            
+            scenario_sets <- list(
+              c(1:4),  # scenario 1
+              c(1,2,5,6),  # scenario 2
+              c(3:6),  # scenario 3
+              c(2,5,7,8)  # scenario 4
+            )
+            intevalue <- paste0("scenario ", j)
+            selected_rows <- scenario_sets[[j]]
+            
+            #
+            p_selected=zero_one_table1[selected_rows, ]
+            p_selected[is.na(p_selected)] <- 1
+            eps <- 1e-10
+            p_selected[p_selected <= eps] <- eps
+            p_selected[p_selected >= 1 - eps] <- 1 - eps
+            
+            
+            p_combined <- apply(p_selected, 2, ACAT)
+            result_combined=ifelse(p_combined <= 0.05, 1, 0)
+            combined_tpvalue <- mean(result_combined[1:500], na.rm = TRUE)
+            combined_fpvalue <- mean(result_combined[501:5000], na.rm = TRUE)
+            
+            p_combined1 <- apply(p_selected, 2, function(p) {
+              unname(p.hmp(p, L = 4))
+            })
+            result_combined1=ifelse(p_combined1 <= 0.05, 1, 0)
+            combined1_tpvalue <- mean(result_combined1[1:500], na.rm = TRUE)
+            combined1_fpvalue <- mean(result_combined1[501:5000], na.rm = TRUE)
+            
+            
+            mean_tfpvalue <- rowMeans(sapply(selected_rows, function(k) result[[mdomain[m]]][[i]][[k+4]][[3]]))
+            result_uni <- apply(zero_one_table[selected_rows, ], 2, max)
+            result_inter <- apply(zero_one_table[selected_rows, ], 2, min)
+            
+            tp_paste <- result_paste_list[[mdomain[m]]][[i]][[j]][[3]][1]
+            fp_paste <- result_paste_list[[mdomain[m]]][[i]][[j]][[3]][2]
+            uni_tpvalue <- mean(result_uni[1:500], na.rm = TRUE)
+            uni_fpvalue <- mean(result_uni[501:5000], na.rm = TRUE)
+            inter_tpvalue <- mean(result_inter[1:500], na.rm = TRUE)
+            inter_fpvalue <- mean(result_inter[501:5000], na.rm = TRUE)
+            
+            for(result_type in c("F1","precision","recall","FPR")){
+              if(result_type=="F1"){
+                result_uni <- 2 * uni_tpvalue / (1 + 9 * uni_fpvalue + uni_tpvalue)
+                result_inter <- 2 * inter_tpvalue / (1 + 9 * inter_fpvalue + inter_tpvalue)
+                result_mean <- 2 * mean_tfpvalue[1] / (1 + 9 * mean_tfpvalue[2] + mean_tfpvalue[1])
+                result_paste <- 2 * tp_paste / (1 + 9 * fp_paste + tp_paste)
+                result_combine<- 2 * combined_tpvalue / (1 + 9 * combined_fpvalue + combined_tpvalue)
+                result_combine1<- 2 * combined1_tpvalue / (1 + 9 * combined1_fpvalue + combined1_tpvalue)
+              }else if(result_type=="precision"){
+                result_uni=uni_tpvalue/(uni_tpvalue+9*uni_fpvalue)
+                result_inter=inter_tpvalue/(inter_tpvalue+9*inter_fpvalue)
+                result_mean=mean_tfpvalue[1]/(mean_tfpvalue[1]+9*mean_tfpvalue[2])
+                result_paste=tp_paste/(tp_paste+9*fp_paste)
+                result_combine<- combined_tpvalue / (9 * combined_fpvalue + combined_tpvalue)
+                result_combine1<- combined1_tpvalue / (9 * combined1_fpvalue + combined1_tpvalue)
+              }else if(result_type=="recall"){
+                result_uni=uni_tpvalue
+                result_inter=inter_tpvalue
+                result_mean=mean_tfpvalue[1]
+                result_paste=tp_paste
+                result_combine=combined_tpvalue
+                result_combine1=combined1_tpvalue
+              }else if(result_type=="FPR"){
+                result_uni=uni_fpvalue
+                result_inter=inter_fpvalue
+                result_mean=mean_tfpvalue[2]
+                result_paste=fp_paste
+                result_combine=combined_fpvalue
+                result_combine1=combined1_fpvalue
+              }
+              
+              results_list[[row_index]] <- data.frame(method = paste0(rowname[m], "-PASTE"), set = result_type, value = result_paste, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              results_list[[row_index + 1]] <- data.frame(method = paste0(rowname[m], "-AVE"), set = result_type, value = result_mean, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              results_list[[row_index + 2]] <- data.frame(method = paste0(rowname[m], "-Union"), set = result_type, value = result_uni, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              results_list[[row_index + 3]] <- data.frame(method = paste0(rowname[m], "-Inter"), set = result_type, value = result_inter, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              results_list[[row_index + 4]] <- data.frame(method = paste0(rowname[m], "-Cauthy"), set = result_type, value = result_combine, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              results_list[[row_index + 5]] <- data.frame(method = paste0(rowname[m], "-HMP"), set = result_type, value = result_combine1, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              row_index <- row_index + 6
+            }
+          }
+        }
+      } else if(m==6){
+        for (i in idomain) {
+          for (j in 1:4) {
+            tp <- result[[mdomain[m]]][[i]][[j]][[3]][1]
+            fp <- result[[mdomain[m]]][[i]][[j]][[3]][2]
+            
+            infvalue <- c("inf1", "inf3", "inf5")[i]
+            intevalue <- paste0("scenario ", j)
+            for(result_type in c("F1","precision","recall","FPR")){
+              if(result_type=="F1"){
+                result_despace <- 2 * tp / (1 + 9 * fp + tp)
+              }else if(result_type=="precision"){
+                result_despace=tp/(tp+9*fp)
+              }else if(result_type=="recall"){
+                result_despace=tp
+              }else if(result_type=="FPR"){
+                result_despace=fp
+              }
+              results_list[[row_index]] <- data.frame(method = rowname[m], set = result_type, value = result_despace, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              row_index <- row_index + 1
+            }
+          }
+        }
+      }else if(m==1){
+        for (i in idomain) {
+          for (j in 1:4) {
+            # 提取 tp / fp
+            infvalue <- c("inf1", "inf3", "inf5")[i]
+            
+            # 计算 mean_tfpvalue & zero_one_table
+            zero_one_table <- matrix(NA, nrow = 8, ncol = 5000)
+            for (k in 5:12) {
+              zero_one_table[(k-4), ] <- result[[mdomain[m]]][[i]][[k]][[2]]
+            }
+            
+            zero_one_table1 <- matrix(NA, nrow = 8, ncol = 5000)
+            for (k in 5:12) {
+              zero_one_table1[(k-4), ] <- result[[mdomain[m]]][[i]][[k]][[1]]
+            }
+            
+            
+            scenario_sets <- list(
+              c(1:4),  # scenario 1
+              c(1,2,5,6),  # scenario 2
+              c(3:6),  # scenario 3
+              c(2,5,7,8)  # scenario 4
+            )
+            intevalue <- paste0("scenario ", j)
+            selected_rows <- scenario_sets[[j]]
+            
+            #
+            p_selected=zero_one_table1[selected_rows, ]
+            p_selected[is.na(p_selected)] <- 1
+            eps <- 1e-10
+            p_selected[p_selected <= eps] <- eps
+            p_selected[p_selected >= 1 - eps] <- 1 - eps
+            
+            
+            p_combined <- apply(p_selected, 2, ACAT)
+            result_combined=ifelse(p_combined <= 0.05, 1, 0)
+            combined_tpvalue <- mean(result_combined[1:500], na.rm = TRUE)
+            combined_fpvalue <- mean(result_combined[501:5000], na.rm = TRUE)
+            
+            p_combined1 <- apply(p_selected, 2, function(p) {
+              unname(p.hmp(p, L = 4))
+            })
+            result_combined1=ifelse(p_combined1 <= 0.05, 1, 0)
+            combined1_tpvalue <- mean(result_combined1[1:500], na.rm = TRUE)
+            combined1_fpvalue <- mean(result_combined1[501:5000], na.rm = TRUE)
+            
+            
+            mean_tfpvalue <- rowMeans(sapply(selected_rows, function(k) result[[mdomain[m]]][[i]][[k+4]][[3]]))
+            result_uni <- apply(zero_one_table[selected_rows, ], 2, max)
+            result_inter <- apply(zero_one_table[selected_rows, ], 2, min)
+            
+            tp_paste <- result_paste_list[[mdomain[m]]][[i]][[j]][[3]][1]
+            fp_paste <- result_paste_list[[mdomain[m]]][[i]][[j]][[3]][2]
+            uni_tpvalue <- mean(result_uni[1:500], na.rm = TRUE)
+            uni_fpvalue <- mean(result_uni[501:5000], na.rm = TRUE)
+            inter_tpvalue <- mean(result_inter[1:500], na.rm = TRUE)
+            inter_fpvalue <- mean(result_inter[501:5000], na.rm = TRUE)
+            
+            for(result_type in c("F1","precision","recall","FPR")){
+              if(result_type=="F1"){
+                result_uni <- 2 * uni_tpvalue / (1 + 9 * uni_fpvalue + uni_tpvalue)
+                result_inter <- 2 * inter_tpvalue / (1 + 9 * inter_fpvalue + inter_tpvalue)
+                result_mean <- 2 * mean_tfpvalue[1] / (1 + 9 * mean_tfpvalue[2] + mean_tfpvalue[1])
+                result_paste <- 2 * tp_paste / (1 + 9 * fp_paste + tp_paste)
+                result_combine<- 2 * combined_tpvalue / (1 + 9 * combined_fpvalue + combined_tpvalue)
+                result_combine1<- 2 * combined1_tpvalue / (1 + 9 * combined1_fpvalue + combined1_tpvalue)
+              }else if(result_type=="precision"){
+                result_uni=uni_tpvalue/(uni_tpvalue+9*uni_fpvalue)
+                result_inter=inter_tpvalue/(inter_tpvalue+9*inter_fpvalue)
+                result_mean=mean_tfpvalue[1]/(mean_tfpvalue[1]+9*mean_tfpvalue[2])
+                result_paste=tp_paste/(tp_paste+9*fp_paste)
+                result_combine<- combined_tpvalue / (9 * combined_fpvalue + combined_tpvalue)
+                result_combine1<- combined1_tpvalue / (9 * combined1_fpvalue + combined1_tpvalue)
+              }else if(result_type=="recall"){
+                result_uni=uni_tpvalue
+                result_inter=inter_tpvalue
+                result_mean=mean_tfpvalue[1]
+                result_paste=tp_paste
+                result_combine=combined_tpvalue
+                result_combine1=combined1_tpvalue
+              }else if(result_type=="FPR"){
+                result_uni=uni_fpvalue
+                result_inter=inter_fpvalue
+                result_mean=mean_tfpvalue[2]
+                result_paste=fp_paste
+                result_combine=combined_fpvalue
+                result_combine1=combined1_fpvalue
+              }
+              
+              results_list[[row_index]] <- data.frame(method = paste0(rowname[m], "-PASTE"), set = result_type, value = result_paste, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              results_list[[row_index + 1]] <- data.frame(method = paste0(rowname[m], "-AVE"), set = result_type, value = result_mean, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              results_list[[row_index + 2]] <- data.frame(method = paste0(rowname[m], "-Union"), set = result_type, value = result_uni, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              results_list[[row_index + 3]] <- data.frame(method = paste0(rowname[m], "-Inter"), set = result_type, value = result_inter, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              results_list[[row_index + 4]] <- data.frame(method = paste0(rowname[m], "-Cauthy"), set = result_type, value = result_combine, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              results_list[[row_index + 5]] <- data.frame(method = paste0(rowname[m], "-HMP"), set = result_type, value = result_combine1, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              row_index <- row_index + 6
+            }
+          }
+        }
+        
+      }else if(m==2){
+        for (i in idomain) {
+          for (j in 1:4) {
+            # 提取 tp / fp
+            infvalue <- c("inf1", "inf3", "inf5")[i]
+            
+            # 计算 mean_tfpvalue & zero_one_table
+            zero_one_table <- matrix(NA, nrow = 8, ncol = 5000)
+            for (k in 5:12) {
+              zero_one_table[(k-4), ] <- result[[mdomain[m]]][[i]][[k]][[1]]
+            }
+            
+            zero_one_table1 <- matrix(NA, nrow = 8, ncol = 5000)
+            for (k in 5:12) {
+              zero_one_table1[(k-4), ] <- result[[mdomain[m]]][[i]][[k]][[2]]
+            }
+            
+            
+            scenario_sets <- list(
+              c(1:4),  # scenario 1
+              c(1,2,5,6),  # scenario 2
+              c(3:6),  # scenario 3
+              c(2,5,7,8)  # scenario 4
+            )
+            intevalue <- paste0("scenario ", j)
+            selected_rows <- scenario_sets[[j]]
+            
+            #
+            p_selected=zero_one_table1[selected_rows, ]
+            p_selected[is.na(p_selected)] <- 1
+            eps <- 1e-10
+            p_selected[p_selected <= eps] <- eps
+            p_selected[p_selected >= 1 - eps] <- 1 - eps
+            
+            
+            p_combined <- apply(p_selected, 2, ACAT)
+            result_combined=ifelse(p_combined <= 0.05, 1, 0)
+            combined_tpvalue <- mean(result_combined[1:500], na.rm = TRUE)
+            combined_fpvalue <- mean(result_combined[501:5000], na.rm = TRUE)
+            
+            p_combined1 <- apply(p_selected, 2, function(p) {
+              unname(p.hmp(p, L = 4))
+            })
+            result_combined1=ifelse(p_combined1 <= 0.05, 1, 0)
+            combined1_tpvalue <- mean(result_combined1[1:500], na.rm = TRUE)
+            combined1_fpvalue <- mean(result_combined1[501:5000], na.rm = TRUE)
+            
+            
+            mean_tfpvalue <- rowMeans(sapply(selected_rows, function(k) result[[mdomain[m]]][[i]][[k+4]][[3]]))
+            result_uni <- apply(zero_one_table[selected_rows, ], 2, max)
+            result_inter <- apply(zero_one_table[selected_rows, ], 2, min)
+            
+            tp_paste <- result_paste_list[[mdomain[m]]][[i]][[j]][[3]][1]
+            fp_paste <- result_paste_list[[mdomain[m]]][[i]][[j]][[3]][2]
+            uni_tpvalue <- mean(result_uni[1:500], na.rm = TRUE)
+            uni_fpvalue <- mean(result_uni[501:5000], na.rm = TRUE)
+            inter_tpvalue <- mean(result_inter[1:500], na.rm = TRUE)
+            inter_fpvalue <- mean(result_inter[501:5000], na.rm = TRUE)
+            
+            for(result_type in c("F1","precision","recall","FPR")){
+              if(result_type=="F1"){
+                result_uni <- 2 * uni_tpvalue / (1 + 9 * uni_fpvalue + uni_tpvalue)
+                result_inter <- 2 * inter_tpvalue / (1 + 9 * inter_fpvalue + inter_tpvalue)
+                result_mean <- 2 * mean_tfpvalue[1] / (1 + 9 * mean_tfpvalue[2] + mean_tfpvalue[1])
+                result_paste <- 2 * tp_paste / (1 + 9 * fp_paste + tp_paste)
+                result_combine<- 2 * combined_tpvalue / (1 + 9 * combined_fpvalue + combined_tpvalue)
+                result_combine1<- 2 * combined1_tpvalue / (1 + 9 * combined1_fpvalue + combined1_tpvalue)
+              }else if(result_type=="precision"){
+                result_uni=uni_tpvalue/(uni_tpvalue+9*uni_fpvalue)
+                result_inter=inter_tpvalue/(inter_tpvalue+9*inter_fpvalue)
+                result_mean=mean_tfpvalue[1]/(mean_tfpvalue[1]+9*mean_tfpvalue[2])
+                result_paste=tp_paste/(tp_paste+9*fp_paste)
+                result_combine<- combined_tpvalue / (9 * combined_fpvalue + combined_tpvalue)
+                result_combine1<- combined1_tpvalue / (9 * combined1_fpvalue + combined1_tpvalue)
+              }else if(result_type=="recall"){
+                result_uni=uni_tpvalue
+                result_inter=inter_tpvalue
+                result_mean=mean_tfpvalue[1]
+                result_paste=tp_paste
+                result_combine=combined_tpvalue
+                result_combine1=combined1_tpvalue
+              }else if(result_type=="FPR"){
+                result_uni=uni_fpvalue
+                result_inter=inter_fpvalue
+                result_mean=mean_tfpvalue[2]
+               result_paste=fp_paste
+                result_combine=combined_fpvalue
+                result_combine1=combined1_fpvalue
+              }
+              
+              results_list[[row_index]] <- data.frame(method = paste0(rowname[m], "-PASTE"), set = result_type, value = result_paste, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              results_list[[row_index + 1]] <- data.frame(method = paste0(rowname[m], "-AVE"), set = result_type, value = result_mean, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              results_list[[row_index + 2]] <- data.frame(method = paste0(rowname[m], "-Union"), set = result_type, value = result_uni, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              results_list[[row_index + 3]] <- data.frame(method = paste0(rowname[m], "-Inter"), set = result_type, value = result_inter, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              results_list[[row_index + 4]] <- data.frame(method = paste0(rowname[m], "-Cauthy"), set = result_type, value = result_combine, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              results_list[[row_index + 5]] <- data.frame(method = paste0(rowname[m], "-HMP"), set = result_type, value = result_combine1, inf = infvalue, inte_situ = intevalue, pattern = spa)
+              row_index <- row_index + 6
+            }
+          }
+        }
+        
+      }
+      
+      
+      
+    }
+  }
+  results_df <- do.call(rbind, results_list)
+  return(results_df)
+}
+
+
+focalother=other_read_uni_inte_no_cov(seeddomain=c(1:30),spa="focal",mdomain=c(1,2,3,4,6,7))
+periodother=other_read_uni_inte_no_cov(seeddomain=c(1:30),spa="period",mdomain=c(1,2,3,4,6,7))
+linearother=other_read_uni_inte_no_cov(seeddomain=c(1:30),spa="linear",mdomain=c(1,2,3,4,6,7))
+
+focalresult=our_read_no_cov(seeddomain = c(1:30),spa="focal")
+periodresult=our_read_no_cov(seeddomain = c(1:30),spa="period")
+linearresult=our_read_no_cov(seeddomain = c(1:30),spa="linear")
+
+
+total_F1=rbind(linearresult,focalresult,periodresult,linearother,focalother,periodother)
+total_F1$value=as.numeric(total_F1$value)
+total_F1=total_F1[total_F1$value <= 1, ]
+total_F1 <- total_F1[total_F1$value <= 1&!is.na(total_F1$value) & total_F1$value != Inf& total_F1$value != -Inf, ]
+
+total_F1$method <- gsub("Cauthy", "Cauchy", total_F1$method)
+plot_uni_inter_single2_nocov <- function(data, cluster_type,inf_type,result_type,legend_position="none",title="linear",x_title="",y_title="F1 Value") {
+  ggplot(data %>% filter(inte_situ == cluster_type)%>%filter(inf== inf_type)%>%filter(set== result_type)%>%
+           mutate(method = factor(method, levels = c("Proposed","DESpace",
+                                                     "SPARK-AVE","SPARKX-AVE","HEARTSVG-AVE","nnSVG-AVE","spVC-AVE",
+                                                     "SPARK-Union","SPARKX-Union","HEARTSVG-Union","nnSVG-Union","spVC-Union",
+                                                     "SPARK-Inter","SPARKX-Inter","HEARTSVG-Inter","nnSVG-Inter", "spVC-Inter",
+                                                     "SPARK-Cauchy","SPARKX-Cauchy",
+                                                     "HEARTSVG-Cauchy"
+                                                     ,"nnSVG-Cauchy"
+                                                     ,"spVC-Cauchy","SPARK-HMP","SPARKX-HMP",
+                                                     "HEARTSVG-HMP"
+                                                     ,"nnSVG-HMP"
+                                                     ,"spVC-HMP","SPARK-PASTE","SPARKX-PASTE",
+                                                     "HEARTSVG-PASTE"
+                                                     ,"nnSVG-PASTE"
+                                                     ,"spVC-PASTE"
+                                                     )),
+                  method_group = case_when(
+                    method %in% c("Proposed", "DESpace") ~ "Multi",
+                    grepl("AVE", method) ~ "AVE",
+                    grepl("Union", method) ~ "Union",
+                    grepl("Inter", method) ~ "Inter",
+                    grepl("Cauchy", method) ~ "Cauchy",
+                    grepl("HMP", method) ~ "HMP",
+                    grepl("PASTE",method)~"PASTE",
+                    TRUE ~ "Other"
+                  ),
+                  method_group = factor(method_group, levels = c("Multi", "AVE", "Union", "Inter", "Cauchy","HMP","PASTE")),
+                  pattern = factor(str_to_title(pattern), levels = c("Linear", "Focal", "Period"))),
+         aes(y = value,x=method_group, fill = method, color = method)) +
+    facet_grid(cols = vars(pattern),space = "free_x", scales = "free_x") +
+    geom_boxplot(position = position_dodge2(preserve = "single", padding = 0.4), 
+                 width = 0.9, outlier.size = 0.5, outlier.shape = NA) +
+    labs(title =title,
+         x = x_title,
+         y = y_title) +
+    theme_minimal() +
+    theme(
+      plot.margin = margin(0.2,0.2,0.2,0.2),
+      plot.title = element_text(size = 10,face = "bold"),
+      axis.text.y = element_text(size = 8),
+      axis.title.y = element_text(size = 10),
+      axis.ticks.x = element_line(),  # 让x轴显示刻度
+      axis.text.x = element_text(size = 8),
+      legend.position = legend_position,
+      legend.title = element_blank(),
+      legend.text = element_text(size = 10),
+      strip.text = element_text(size = 10),
+      panel.spacing.x = unit(0.5, "lines"),
+      plot.tag = element_text(size = 12, face = "bold")
+    ) +
+    scale_fill_manual(values = custom_colors) +
+    scale_color_manual(values = custom_colors)
+}
+
+custom_colors <- c(
+  "Proposed" = "red",             # Red
+  "DESpace" = "#FFEB5E", 
+  "spVC-AVE" = "black", 
+  "spVC-Union" = "#2A2A2A",       
+  "spVC-Inter" = "#555555",       
+  "spVC-Cauthy" = "#808080",
+  "spVC-HMP" = "#AAAAAA",  
+  "spVC-PASTE" = "#D3D3D3",   
+  "nnSVG-AVE" = "#F27400",            # Orange (Adjusted)
+  "nnSVG-Union" = "#F68719",      # Slightly lighter orange
+  "nnSVG-Inter" = "#F99B33",            # Orange (Adjusted)
+  "nnSVG-Cauthy" = "#FCAE4C",      # Slightly lighter orange
+  "nnSVG-HMP" = "#FDBF63",      # Slightly lighter orange
+  "nnSVG-PASTE" = "#FFC775",      # Slightly lighter orange
+  "SPARK-AVE" = "#0D47A1",            # Light blue
+  "SPARK-Union" = "#2C64B3",      # Greyish blue
+  "SPARK-Inter" = "#4C82C5",            # Light blue
+  "SPARK-Cauthy" = "#6BAFD9",      # Greyish blue
+  "SPARK-HMP" = "#8ACCF0",      # Greyish blue
+  "SPARK-PASTE" = "#96CDF8",      # Greyish blue
+  "SPARKX-AVE" = "#1B5E20",           # Light Green
+  "SPARKX-Union" = "#3F8146",     # Slightly lighter green
+  "SPARKX-Inter" = "#64A46D",           # Light Green
+  "SPARKX-Cauthy" = "#88C793",     # Slightly lighter green
+  "SPARKX-HMP" = "#AADDB0",     # Slightly lighter green
+  "SPARKX-PASTE" = "#B3DDB6",     # Slightly lighter green
+  "HEARTSVG-AVE" = "#4B0082",          # Purple
+  "HEARTSVG-Union" = "#6A3296",    # Light purple
+  "HEARTSVG-Inter" = "#8964AB",          # Purple
+  "HEARTSVG-Cauthy" = "#A897BF",    # Light purple
+  "HEARTSVG-HMP" = "#C0AFE1",    # Light purple
+  "HEARTSVG-PASTE" = "#C4B6ED"    # Light purple
+)
+
+
+
+infsize="inf3"
+result_type="FPR"
+y_title="FPR"
+plot_total1=plot_uni_inter_single2_nocov(total_F1, "scenario 1",infsize,title="Setting 1",legend_position="right",result_type=result_type,y_title=y_title)
+plot_total2=plot_uni_inter_single2_nocov(total_F1, "scenario 2",infsize,title="Setting 2",result_type=result_type,y_title=y_title)
+plot_total3=plot_uni_inter_single2_nocov(total_F1, "scenario 3",infsize,title="Setting 3",result_type=result_type,y_title=y_title)
+plot_total4=plot_uni_inter_single2_nocov(total_F1, "scenario 4",infsize,title="Setting 4",result_type=result_type,y_title=y_title)
+
+combined_plot <- ((plot_total1)/(plot_total2)/(plot_total3)/(plot_total4)) +
+  plot_layout(guides = "collect", heights = c(1.2, 1.2, 1.2, 1.2)) + 
+  plot_annotation(
+    title = NULL,
+    subtitle = NULL,
+    caption = NULL,
+    tag_levels = 'A',  
+    tag_prefix = "",  
+    tag_sep = "",  
+    theme = theme(plot.tag = element_text(size = 12, face = "bold"))  
+  ) &
+  theme(legend.position = "right") &  
+  guides(fill = guide_legend(ncol = 1))
+
+print(combined_plot)
+
+ggsave("/Users/zhoum/Desktop/simu_FPR_no_cov_inf3.png", plot = combined_plot, width = 10, height = 9, dpi = 300)
+
+

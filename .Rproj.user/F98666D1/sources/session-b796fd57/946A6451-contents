@@ -1,0 +1,1174 @@
+library(truncnorm)
+library(nlme)
+library(spatstat.data)
+library(spatstat.geom)
+library(spatstat.random)
+library(spatstat.explore)
+library(spatstat.model)
+library(spatstat.linnet)
+library(spatstat)
+library(splines)
+library(mvtnorm)
+library(Rcpp)
+library(statmod)
+library(R.utils)
+library(MCMCpack)
+library(Matrix)
+library(MASS)
+library(parallel)
+library(pscl)
+
+
+
+#spark和heartsvg
+library(Seurat)
+library(ggplot2)
+library(plotly)
+library(plot3D)
+library(TTR)
+library(stringr)
+library(fpp2)
+library(seasonal)
+library(cluster)
+library(poolr)
+library(reshape2)
+library(data.table)
+library(plyr)
+library(dplyr)
+library(EnvStats)
+library(BreakPoints)
+library(gprofiler2)
+library(HEARTSVG)
+library(SPARK)
+#spv/ctsv
+library(spVC)
+library(sp)
+library(BPST)
+library(MGLM)
+library(ggplot2)
+library(colorRamps)
+library(Triangulation)
+library(SpatialExperiment)
+#nnsvg/despace
+library(scran)
+library(nnSVG)
+library(ggplot2)
+library(DESpace)
+
+sim_create <- function(gene_size =100,svgene_size=0.1,sv_mark=c(1,1),no_sv_mark = c(0,0),inf_size=0.1,phi=15,etamean=2,
+                       xspace="linear",yspace="linear",seed=1,cell_dist=rep(1,6),domainnum=5,use_covariate=TRUE){
+  ###
+  ###
+  set.seed(seed)
+  x_coords <- rep(0:31, each = 32)
+  y_coords <- rep(0:31, times = 32)
+  if(domainnum==1){
+    z_type <- c(rep(rep(1:2,each=16),9),rep(1,96),rep(c(rep(3,12),rep(4,20)),10),rep(3,128),rep(rep(3:4,each=16),6))#横平竖直的分成了四个区域
+  }else if(domainnum==2){
+    z_type <- rep(1,1024)
+  }else if(domainnum==3){
+    z_type <- c(rep(1,512),rep(2,512))
+  }else if(domainnum==4){
+    z_type <- c(rep(rep(1:2,each=16),16),rep(3,512))
+  }else if(domainnum==5){
+    z_type <- c(rep(c(rep(1,20),rep(2,12)),16),rep(c(rep(3,12),rep(1,8),rep(4,12)),4),rep(rep(3:4,each=16),12))
+  }else if(domainnum==6){
+    z_type <- c(rep(c(rep(2,12),rep(1,20)),16),rep(c(rep(2,12),rep(3,20)),6),rep(3,320))
+  }else if(domainnum==7){
+    z_type <- c(rep(c(rep(2,12),rep(1,20)),16),rep(c(rep(2,12),rep(3,20)),6),rep(5,320))
+  }else if(domainnum==8){
+    z_type <- c(rep(c(rep(2,12),rep(1,20)),16),rep(c(rep(2,12),rep(3,20)),6),rep(4,320))
+  }else if(domainnum==9){
+    z_type <- c(rep(c(rep(1,20),rep(2,12)),16),rep(c(rep(3,12),rep(1,8),rep(4,12)),8),rep(rep(3:4,each=16),8))
+  }else if(domainnum==10){
+    z_type <- c(rep(c(rep(1,20),rep(2,12)),16),rep(c(rep(3,4),rep(1,16),rep(4,12)),4),rep(rep(3:4,each=16),12))
+  }else if(domainnum==11){
+    #
+    z_type <- c(rep(rep(2:3,each=16),16),rep(1,512))
+  }
+  
+  
+  location <- as.matrix(data.frame(x = x_coords, y = y_coords,z=z_type))
+  
+  x <- location[,1]
+  y <- location[,2]
+  
+  x <- x-mean(x)
+  x <- x/sd(x)
+  y <- y-mean(y)
+  y <- y/sd(y)
+  
+  x <- switch(xspace, "focal" = exp(-x^2/2),
+              "period" = cos(2*pi*x),
+              "linear" = x,
+              "sigmoid"=1/(1+exp(-x)),
+              "polynomial1"=0.5 * (x + 1) * (x - 0.8) * (x - 1.6),
+              "polynomial2"=-0.5*(x^3)+0.3*x,
+              "polynomial3"=0.15*(x^4)-0.1*x^2+0.7,
+              "polynomial4"=0.25 * x^3 + 0.1 * x^2 - 0.15 * x + 0.3,
+              stop("Invalid xspace!"))
+  
+  y <- switch(yspace,
+              "focal" = exp(-y^2/2),
+              "period" = cos(2*pi*y),
+              "linear" = y,
+              "sigmoid"=1/(1+exp(-y)),
+              "polynomial1"=0.5 * (y + 1) * (y - 0.8) * (y - 1.6),
+              "polynomial2"=-0.5*(y^3)+0.3*y,
+              "polynomial3"=0.15*(y^4)-0.1*y^2+0.7,
+              "polynomial4"=0.25 * y^3 + 0.1 * y^2 - 0.15 * y + 0.3,
+              stop("Invalid yspace!"))
+  
+  kern_coord<-cbind(x,y)
+  
+  npoints <- nrow(location)
+  rownames(location) = paste('spot', 1:npoints, sep = '')
+  expres_marx = as.data.frame(matrix(NA, nrow = npoints, ncol = gene_size))
+  rownames(expres_marx) = paste('spot', 1:npoints, sep = '')
+  colnames(expres_marx) = paste('gene', 1:gene_size, sep = '')
+  
+  sv_points=svgene_size*gene_size
+  sv_gene <- c(1:sv_points)
+  no_sv_gene <- setdiff(1:gene_size, sv_gene)
+  
+  eta <- rnorm(gene_size,mean = 2,sd = 0.5)
+  
+  cell_matrix <- matrix(NA,nrow = npoints,ncol = 6)
+  
+  for(i in 1:npoints){
+    if(z_type[i]==1){
+      cell_matrix[i,] <- MCMCpack::rdirichlet(1,alpha = c(1,1,1,1,1,1))
+    }else if(z_type[i]==2){
+      cell_matrix[i,] <- MCMCpack::rdirichlet(1,alpha = c(1,3,5,7,9,11))
+    }else if(z_type[i]==3){
+      cell_matrix[i,] <- MCMCpack::rdirichlet(1,alpha = c(14,12,10,8,6,4))
+    }else if(z_type[i]==4){
+      cell_matrix[i,] <- MCMCpack::rdirichlet(1,alpha = c(1,4,4,4,4,1))
+    }else{
+      cell_matrix[i,] <- MCMCpack::rdirichlet(1,alpha = c(18,16,14,12,10,8))
+    }
+  }
+  
+  cell_mark <- rnorm(6,mean=0,sd=1)
+  
+  for(i in sv_gene){
+    for(t in 1:npoints){
+      if(use_covariate){
+        mu = exp(eta[i]+sum(kern_coord[t,]*sv_mark)+sum(cell_matrix[t,]*cell_mark))
+      }else{
+        mu = exp(eta[i]+sum(kern_coord[t,]*sv_mark))
+      }
+      expres_marx[t,i] <- rnbinom(1,mu=mu,size=phi)
+    }
+  }
+  for(i in no_sv_gene){
+    for(t in 1:npoints){
+      if(use_covariate){
+        mu= exp(eta[i]+sum(kern_coord[t,]*no_sv_mark)+sum(cell_matrix[t,]*cell_mark))
+      }else{
+        mu= exp(eta[i]+sum(kern_coord[t,]*no_sv_mark))
+      }
+      expres_marx[t,i] <- rnbinom(1,mu=mu,size=phi)
+    }
+  }
+  
+  
+  expres_marx <- as.matrix(expres_marx)
+  total.size <- npoints*gene_size
+  zero_size<-floor(npoints*gene_size*inf_size)
+  zeroin<-sample(c(1:total.size),zero_size)
+  expres_marx[zeroin]<-0
+  location <- as.matrix(location[,1:2])
+  cell_matrix=as.matrix(cell_matrix)
+  rownames(cell_matrix)=paste("spot",c(1:npoints))
+  rownames(location)=paste("spot",c(1:npoints))
+  rownames(expres_marx)=paste("spot",c(1:npoints))
+  colnames(expres_marx)=paste("gene",c(1:gene_size))
+  colnames(location)=c("x","y")
+  colnames(cell_matrix)=paste0("cell",c(1:6))
+  if(!use_covariate){
+    cell_matrix=NULL
+  }
+  spe <- list(expres_marx,location,cell_matrix)
+  
+  return(spe)
+}
+
+
+##生成主体数据data1~8
+intedata <- function(k1 = "linear", seeddomain = c(1:5), random1 = rep(5, 8), svmark = c(0.8, 0.5, 0.2, 0.05), infdomain=c(0.1, 0.3, 0.5),
+                     genesize = 5000,use_covariate=TRUE,curdir="/gemini/code/simulation/") {
+  for(seed1 in seeddomain){
+  sv1 <- rep(svmark[1], 2)
+  sv2 <- rep(svmark[2], 2)
+  sv3 <- rep(svmark[3], 2)
+  sv4 <- rep(svmark[4], 2) 
+  svgenesize <- genesize * 0.1
+  
+  seeds <- seed1*8 + 0:7
+  svmarks <- list(sv1, sv2, sv2, sv2, sv3, sv3, sv4, sv4)
+  
+  # Define a function for generating a single dataset
+  generate_data <- function(i1, i) {
+    sim_create(
+      svgene_size = 0.1,
+      sv_mark = svmarks[[i]],
+      no_sv_mark = rep(0, 2),
+      inf_size = i1,
+      phi = 15,
+      gene_size = genesize,
+      xspace = k1,
+      yspace = k1,
+      cell_dist = rep(1, 6),
+      seed = seeds[i],
+      domainnum = random1[i],
+      use_covariate=use_covariate
+    )
+  }
+  
+  if(use_covariate){
+    covar_choose="cov"
+  }else{
+    covar_choose="nocov"
+  }
+  all_results_list <- list()
+  
+  for (i1 in infdomain) {
+    # Run the simulations in parallel using mclapply
+    results <- mclapply(1:8, function(i) generate_data(i1, i), mc.cores = 8)
+    
+    # Extract data and calpha lists
+    data_list <- lapply(results, function(spe) as.data.frame(spe[[1]]))
+    if(use_covariate){
+      calpha_list <- lapply(results, function(spe) as.data.frame(spe[[3]]))
+    }else{
+      calpha_list=NULL
+    }
+    # Create a list to store both data_list and calpha_list for this i1 value
+    dataset_info_list <- list(
+      data_list = data_list,
+      calpha_list = calpha_list
+    )
+    all_results_list[[paste0("inf", (i1*10))]] <- dataset_info_list
+    
+    for (i in 1:8) {
+      print(dim(data_list[[i]]))
+    }
+    
+    print(paste0("Successfully generated datasets for i1 = ", i1))
+  }
+  
+  
+  save(all_results_list, file = paste0(curdir, "data_",k1,"_",covar_choose,"_seed", seed1,".RData"))
+  }
+}
+
+
+
+intedata(seeddomain=c(4:30),k1="linear",svmark=c(0.6,0.4,0.2,0.05),use_covariate=FALSE,infdomain=c(0.3),curdir="/gemini/code/simulation_nocov/")
+
+intedata(seeddomain=c(4:30),k1="focal",svmark=c(0.5,0.4,0.2,0.1),use_covariate=FALSE,infdomain=c(0.3),curdir="/gemini/code/simulation_nocov/")
+
+
+intedata(seeddomain=c(4:30),k1="period",svmark=c(1,0.8,0.6,0.4),use_covariate=FALSE,infdomain=c(0.3),curdir="/gemini/code/simulation_nocov/")
+
+
+
+
+seeddomain=c(2:3)
+spatialdomain=c("period")
+settingdomain=c(1:4)
+num_cores=12
+
+#inf3,跑我们的方法
+for(seed1 in seeddomain){
+  for(k1 in spatialdomain){
+    result_total=replicate(1, replicate(4, list(), simplify = FALSE), simplify = FALSE)
+    load(paste0("/gemini/code/simulation_nocov/data_",k1,"_nocov_seed", seed1,".RData"))
+    for(s1 in settingdomain){
+      loc=expand.grid(y=0:31,x=0:31)[,2:1]
+      rownames(loc)=paste("spot",1:1024)
+      colnames(loc)=c("x","y")
+      loc <- as.matrix(loc)
+      
+      if(s1==1){
+        spelist=list(list(as.matrix(all_results_list[["inf3"]][[1]][[1]]),loc),list(as.matrix(all_results_list[["inf3"]][[1]][[2]]),loc)
+                             ,list(as.matrix(all_results_list[["inf3"]][[1]][[3]]),loc),list(as.matrix(all_results_list[["inf3"]][[1]][[4]]),loc))
+      }else if(s1==2){
+        spelist=list(list(as.matrix(all_results_list[["inf3"]][[1]][[1]]),loc),list(as.matrix(all_results_list[["inf3"]][[1]][[2]]),loc)
+                             ,list(as.matrix(all_results_list[["inf3"]][[1]][[5]]),loc),list(as.matrix(all_results_list[["inf3"]][[1]][[6]]),loc))
+      }else if(s1==3){
+        spelist=list(list(as.matrix(all_results_list[["inf3"]][[1]][[3]]),loc),list(as.matrix(all_results_list[["inf3"]][[1]][[4]]),loc)
+                             ,list(as.matrix(all_results_list[["inf3"]][[1]][[5]]),loc),list(as.matrix(all_results_list[["inf3"]][[1]][[6]]),loc))
+      }else{
+        spelist=list(list(as.matrix(all_results_list[["inf3"]][[1]][[2]]),loc),list(as.matrix(all_results_list[["inf3"]][[1]][[5]]),loc)
+                             ,list(as.matrix(all_results_list[["inf3"]][[1]][[7]]),loc),list(as.matrix(all_results_list[["inf3"]][[1]][[8]]),loc))
+      }
+      
+      c_alpha=NULL
+      
+      result <- NBIMSVG(spelist = spelist,c_alpha = c_alpha,num_cores =num_cores,max_iter=200)
+      tp=mean(result[[3]][1:500],na.rm=TRUE)
+      fp=mean(result[[3]][501:5000],na.rm=TRUE)
+      result[[5]]=c(tp,fp)
+      print(paste0(k1,",seed:",seed1," tp: ",tp,"fp: ",fp))
+      
+      result_total[[1]][[s1]]=result
+
+    }
+    save(result_total,file=paste0("/gemini/code/simulation_nocov/our_result_",k1,"_nocov_seed", seed1,".RData"))
+  }
+}
+
+
+
+
+
+#inf5,跑我们的方法
+for(seed1 in seeddomain){
+  for(k1 in spatialdomain){
+    result_total=replicate(1, replicate(4, list(), simplify = FALSE), simplify = FALSE)
+    load(paste0("/gemini/code/simulation_nocov_inf5/data_",k1,"_nocov_seed", seed1,".RData"))
+    for(s1 in settingdomain){
+      loc=expand.grid(y=0:31,x=0:31)[,2:1]
+      rownames(loc)=paste("spot",1:1024)
+      colnames(loc)=c("x","y")
+      loc <- as.matrix(loc)
+      
+      if(s1==1){
+        spelist=list(list(as.matrix(all_results_list[["inf5"]][[1]][[1]]),loc),list(as.matrix(all_results_list[["inf5"]][[1]][[2]]),loc)
+                     ,list(as.matrix(all_results_list[["inf5"]][[1]][[3]]),loc),list(as.matrix(all_results_list[["inf5"]][[1]][[4]]),loc))
+      }else if(s1==2){
+        spelist=list(list(as.matrix(all_results_list[["inf5"]][[1]][[1]]),loc),list(as.matrix(all_results_list[["inf5"]][[1]][[2]]),loc)
+                     ,list(as.matrix(all_results_list[["inf5"]][[1]][[5]]),loc),list(as.matrix(all_results_list[["inf5"]][[1]][[6]]),loc))
+      }else if(s1==3){
+        spelist=list(list(as.matrix(all_results_list[["inf5"]][[1]][[3]]),loc),list(as.matrix(all_results_list[["inf5"]][[1]][[4]]),loc)
+                     ,list(as.matrix(all_results_list[["inf5"]][[1]][[5]]),loc),list(as.matrix(all_results_list[["inf5"]][[1]][[6]]),loc))
+      }else{
+        spelist=list(list(as.matrix(all_results_list[["inf5"]][[1]][[2]]),loc),list(as.matrix(all_results_list[["inf5"]][[1]][[5]]),loc)
+                     ,list(as.matrix(all_results_list[["inf5"]][[1]][[7]]),loc),list(as.matrix(all_results_list[["inf5"]][[1]][[8]]),loc))
+      }
+      
+      c_alpha=NULL
+      
+      result <- NBIMSVG(spelist = spelist,c_alpha = c_alpha,num_cores =num_cores,max_iter=200)
+      tp=mean(result[[3]][1:500],na.rm=TRUE)
+      fp=mean(result[[3]][501:5000],na.rm=TRUE)
+      result[[5]]=c(tp,fp)
+      print(paste0(k1,",seed:",seed1," tp: ",tp,"fp: ",fp))
+      
+      result_total[[1]][[s1]]=result
+      
+    }
+    save(result_total,file=paste0("/gemini/code/simulation_nocov_inf5/our_inf5_result_",k1,"_nocov_seed", seed1,".RData"))
+  }
+}
+
+#只跑spax的方法
+seeddomain=c(1:10)
+spatialdomain=c("linear","focal")
+settingdomain=c(1:4)
+num_cores=22
+
+dataanalysis_other=function(matrixlist,positionlist,num_cores=24){
+  result_sparx=replicate(8, list(), simplify = FALSE)
+  for(dataindex in c(1:8)){
+    exp_mat=matrixlist[[dataindex]]
+    print(dim(exp_mat))
+    position=positionlist[[dataindex]]
+    print(dim(position))
+    
+    exp_mat <- t(exp_mat)
+    
+    genename=colnames(exp_mat)
+    
+    barcode=rownames(exp_mat)
+    
+    loc=position
+    rownames(loc)=paste0("spot",1:length(rownames(loc)))
+    rownames(exp_mat) <- paste0("spot",1:length(rownames(exp_mat)))
+    colnames(exp_mat) <- paste0("gene",1:length(colnames(exp_mat)))
+    
+    head(loc)
+    begin=Sys.time()
+    sparkX <- sparkx(exp_mat,loc,X_in = NULL,numCores=num_cores,option="mixture",verbose = FALSE)
+    sparkX$res_mtest <- as.matrix(sparkX$res_mtest)
+    result <- sparkX$res_mtest[,2]##p值
+    p_value=result##获得p值
+    result[result<=0.05]=0
+    result[result>0.05]=1
+    result <- 1-result
+    result_value=result##获得选择后的1/0
+    tp=mean(result_value[1:500],na.rm=TRUE)
+    fp=mean(result_value[501:5000],na.rm=TRUE)
+    print(paste0("tp: ",tp,"fp: ",fp))
+    tfp=c(tp,fp)
+    target_order <- paste0("gene",1:length(genename))
+    sparkx_genename=rownames(sparkX$res_mtest)[result==1]
+    index <- match(sparkx_genename,target_order)
+    sparkxsvgene=genename[index]
+    
+    end=Sys.time()
+    time_value=as.numeric((end-begin), units = "mins")
+    result=list(result_value,sparkxsvgene,time_value,p_value,tfp,sparkX$res_mtest)
+    result_sparx[[dataindex]]=result
+  }
+  return(result_sparx)
+}
+
+for(seed1 in seeddomain){
+  for(k1 in spatialdomain){
+    load(paste0("/gemini/code/simulation_nocov/data_",k1,"_nocov_seed", seed1,".RData"))
+    loc=expand.grid(y=0:31,x=0:31)[,2:1]
+    rownames(loc)=paste("spot",1:1024)
+    colnames(loc)=c("x","y")
+    loc <- as.matrix(loc)
+    matrixlist=all_results_list[["inf3"]][[1]]
+    positionlist=list(loc,loc,loc,loc,loc,loc,loc,loc)
+    result_spax=dataanalysis_other(matrixlist,positionlist)
+    save(result_spax,file=paste0("/gemini/code/simulation_nocov/spax_result_",k1,"_nocov_seed", seed1,".RData"))
+  }
+}
+
+
+
+
+infdomain=c("inf3")
+num_cores=24
+spa="focal"
+sit1=c(5:12)
+svmark=c(0.8,0.5,0.2,0.05)
+
+library(PRECAST)
+produce_cluster<-function(matrix,position,k_num=4){
+  seurat_obj <- CreateSeuratObject(counts = matrix, assay = "RNA")
+  
+  colnames(position) <- c("row", "col") 
+  rownames(position) <- colnames(matrix)  
+  
+  # 3. 添加坐标到 meta.data
+  seurat_obj@meta.data$row <- position[rownames(seurat_obj@meta.data), "row"]
+  seurat_obj@meta.data$col <- position[rownames(seurat_obj@meta.data), "col"]
+  seurat_obj
+  
+  preobj <- CreatePRECASTObject(seuList = list(seurat_obj), selectGenesMethod = "HVGs", gene.number = 5000)
+  
+  PRECASTObj <- AddAdjList(preobj, platform = "ST")
+  PRECASTObj <- AddParSetting(PRECASTObj, Sigma_equal = FALSE, coreNum = 8, maxIter = 30, verbose = TRUE)
+  PRECASTObj <- PRECAST(PRECASTObj, K = k_num)
+  resList <- PRECASTObj@resList
+  
+  cluster <-as.character(unlist(PRECASTObj@resList[[1]]$cluster))
+  return(cluster)
+}
+
+#所有的方法，都不包含协变量
+totalwork_no_cov <- function(seeddomain=c(1:5),infdomain=c("inf5"),num_cores=24,spa="linear",sit1=c(5:12),svmark=c(0.8,0.6,0.4,0.2)
+                             ,curdir="/gemini/code/simulation_nocov/"){
+  for(seed1 in seeddomain){
+    nested_list <- replicate(7, replicate(3, replicate(12, list(), simplify = FALSE), simplify = FALSE), simplify = FALSE)
+    data_dir <- paste0(curdir,"data_",spa,"_nocov_seed",seed1,".RData")
+    load(data_dir)
+    for(inf in infdomain){
+      if(inf=="inf1"){
+        num2=1
+      }else if(inf=="inf3"){
+        num2=2
+      }else{
+        num2=3
+      }
+      for(sit in sit1){
+        if(sit>4){
+          exp_mat=all_results_list[[inf]][[1]][[sit-4]]#点位乘基因
+          exp_mat <- as.matrix(exp_mat)
+        }else{
+          sit_paste=c(1,1,3,2)
+          exp_mat=data_paste_list[[num2]][[sit]]#点位乘基因
+          exp_mat <- as.matrix(exp_mat)
+        }
+        rownames(exp_mat) <- paste0("spot",1:1024)
+        colnames(exp_mat) <- paste0("gene",1:5000)
+        loc=expand.grid(y=0:31,x=0:31)[,2:1]
+        rownames(loc)=paste0("spot",1:1024)
+        loc <- as.matrix(loc)
+        
+        begin=Sys.time()
+        
+        tr_mat=cbind(c(0,0,0,15.5,15.5,15.5,31,31,31),c(0,15.5,31,0,15.5,31,0,15.5,31))
+        colnames(tr_mat)=c("x","y")
+        tr_mat=as.data.frame(tr_mat)
+        
+        Tr.cell <- TriMesh(tr_mat, n = 2) 
+        V <- as.matrix(Tr.cell$V)
+        Tr <- as.matrix(Tr.cell$Tr)
+        
+        simu.results <-test.spVC(Y = t(exp_mat), X = NULL, S = loc, V = V, Tr = Tr, 
+                                 para.cores = num_cores, filter.min.nonzero = 100)
+        
+        result1 <- rep(1,length(simu.results$results.constant))
+        result <- rep(NA,5000)
+        #首先去访问他reduced的结果，针对我们的模型，我认为应该选择第8个数字
+        for( i in c(1:length(simu.results$results.constant))){
+          result1[i]=unname(simu.results$results.constant[[i]][[1]][2])
+        }
+        target_order <- paste0("gene",1:5000)
+        
+        index <- match(names(simu.results$results.constant),target_order)
+        
+        result[index] <-result1 
+        p_value=result##获得p值
+        result[result<=0.05] <- 0
+        result[result>0.05] <- 1
+        result=1-result
+        result_value=result##获得选择后的1/0
+        
+        tp=mean(result[1:500],na.rm=TRUE)
+        fp=mean(result[501:5000],na.rm=TRUE)
+        print(paste0("spv",spa,"系数为",sit,"零膨胀率为",inf,"结果为",tp,"fp=",fp))
+        #包装结果
+        end=Sys.time()
+        tp_fp=c(tp,fp)
+        time_value=as.numeric((end-begin), units = "mins")
+        result_save <- list(p_value,result_value,tp_fp,time_value,simu.results$results.constant)
+        nested_list[[1]][[num2]][[sit]] <- result_save
+        
+        
+        begin=Sys.time()
+        sparkX <- sparkx(t(exp_mat),loc,X_in = NULL,numCores=num_cores,option="mixture",verbose = FALSE)
+        sparkX$res_mtest <- as.matrix(sparkX$res_mtest)
+        result <- sparkX$res_mtest[,2]##p值
+        length(result)
+        p_value=result##获得p值
+        result[result<=0.05]=0
+        result[result>0.05]=1
+        result <- 1-result
+        result_value=result##获得选择后的1/0
+        
+        sparkx_genename=rownames(sparkX$res_mtest)[result==1]
+        index <- match(sparkx_genename,target_order)
+        
+        tp=mean(result[1:500],na.rm=TRUE)
+        fp=mean(result[501:5000],na.rm=TRUE)
+        tfp_value=c(tp,fp)
+        print(paste0("tp=",tp,"fp=",fp))
+        
+        end=Sys.time()
+        time_value=as.numeric((end-begin), units = "mins")
+        result=list(result_value,p_value,tfp_value,time_value,sparkX$res_mtest,tfp_value)
+        nested_list[[2]][[num2]][[sit]]=result
+        
+        ##heartsvg
+        ##heartsvg
+        begin=Sys.time()
+        mat <- cbind(loc,exp_mat)
+        colnames(mat)[1:2] = c("row","col")
+        result <- heartsvg(mat)
+        hea_result=result
+        aaa <- result$gene
+        bbb <- result$p_adj
+        print("success")
+        p_value=bbb
+        bbb[bbb<=0.05]=0
+        bbb[bbb>0.05]=1
+        bbb <- 1-bbb
+        result_value=bbb
+        heartsvg_genename=aaa[bbb==1]
+        
+        tp=mean(result_value[1:500],na.rm=TRUE)
+        fp=mean(result_value[501:5000],na.rm=TRUE)
+        tfp_value=c(tp,fp)
+        print(paste0("tp=",tp,"fp=",fp))
+        
+        end=Sys.time()
+        time_value=as.numeric((end-begin), units = "mins")
+        result=list(result_value,time_value,tfp_value,p_value,hea_result$gene,tfp_value)
+        nested_list[[3]][[num2]][[sit]]=result
+        
+        ##spark
+        ##spark
+        begin=Sys.time()
+        spark <- CreateSPARKObject(counts=t(exp_mat),
+                                   location=as.data.frame(loc),
+                                   percentage = 0.1,
+                                   min_total_counts = 10)##构建spark对象
+        spark@lib_size <- apply(spark@counts, 2, sum)
+        spark <- spark.vc(spark,
+                          covariates = NULL,
+                          lib_size = spark@lib_size,
+                          num_core = num_cores,
+                          verbose = F)
+        spark <- spark.test(spark,
+                            check_positive = T,
+                            verbose = F)##计算p值
+        result <- spark@res_mtest[,"adjusted_pvalue"]
+        spark_genename=rownames(spark@res_mtest)
+        p_value=result
+        result[result<=0.05] <- 0
+        result[result>0.05] <- 1
+        result=1-result
+        result_value=result
+        spark_genename=spark_genename[result==1]##符合结果的gene列表
+        
+        tp=mean(result[1:500],na.rm=TRUE)
+        fp=mean(result[501:5000],na.rm=TRUE)
+        tfp_value=c(tp,fp)
+        print(paste0("tp=",tp,"fp=",fp))
+        
+        end=Sys.time()
+        time_value=as.numeric((end-begin), units = "mins")
+        result=list(result_value,time_value,tfp_value,p_value,spark@res_mtest,tfp_value)
+        nested_list[[4]][[num2]][[sit]]=result
+        
+        ##nnsvg
+        ##nnsvg###删去了90%
+        begin=Sys.time()
+        spe<- SpatialExperiment(
+          assay = list(counts = t(exp_mat)),
+          colData = loc, 
+          spatialCoordsNames = c("x", "y")
+        )
+        rowData(spe)$gene_name <- paste0("gene",1:length(colnames(exp_mat)))
+        spe <- filter_genes(spe)
+        spe <- computeLibraryFactors(spe)
+        
+        sf <- sizeFactors(spe)
+        sf[sf <= 0] <- 1e-6
+        sizeFactors(spe) <- sf
+        
+        spe <- logNormCounts(spe)
+        spe <- nnSVG(spe,n_threads = num_cores,X=NULL)
+        spv_genename=rowData(spe)$gene_name
+        result=rowData(spe)$padj
+        p_value=result
+        result[result<=0.05] <- 0
+        result[result>0.05] <- 1
+        result=1-result
+        result_value=result
+        spv_genename=spv_genename[result==1]
+        
+        tp=mean(result[1:500],na.rm=TRUE)
+        fp=mean(result[501:5000],na.rm=TRUE)
+        tfp_value=c(tp,fp)
+        print(paste0("tp=",tp,"fp=",fp))
+        
+        end=Sys.time()
+        time_value=as.numeric((end-begin), units = "mins")
+        result=list(result_value,time_value,tfp_value,p_value,rowData(spe),tfp_value)
+        nested_list[[6]][[num2]][[sit]]=result
+        
+      }
+      
+      #跑despace
+      for(de1 in c(1:4)){
+        #exp_mat=all_results_list[[inf]][[1]][[sit-4]]
+        if(de1==1){
+          matrix1=as.matrix(all_results_list[[inf]][[1]][[1]])
+          matrix2=as.matrix(all_results_list[[inf]][[1]][[2]])
+          matrix3=as.matrix(all_results_list[[inf]][[1]][[3]])
+          matrix4=as.matrix(all_results_list[[inf]][[1]][[4]])
+        }else if(de1==2){
+          matrix1=as.matrix(all_results_list[[inf]][[1]][[1]])
+          matrix2=as.matrix(all_results_list[[inf]][[1]][[2]])
+          matrix3=as.matrix(all_results_list[[inf]][[1]][[5]])
+          matrix4=as.matrix(all_results_list[[inf]][[1]][[6]])
+        }else if(de1==3){
+          matrix1=as.matrix(all_results_list[[inf]][[1]][[3]])
+          matrix2=as.matrix(all_results_list[[inf]][[1]][[4]])
+          matrix3=as.matrix(all_results_list[[inf]][[1]][[5]])
+          matrix4=as.matrix(all_results_list[[inf]][[1]][[6]])
+        }else{
+          matrix1=as.matrix(all_results_list[[inf]][[1]][[2]])
+          matrix2=as.matrix(all_results_list[[inf]][[1]][[5]])
+          matrix3=as.matrix(all_results_list[[inf]][[1]][[7]])
+          matrix4=as.matrix(all_results_list[[inf]][[1]][[8]])
+        }
+        
+        rownames(matrix1) <- paste0("spot",1:1024)
+        colnames(matrix1) <- paste0("gene",1:5000)
+        rownames(matrix2) <- paste0("spot",1:1024)
+        colnames(matrix2) <- paste0("gene",1:5000)
+        rownames(matrix3) <- paste0("spot",1:1024)
+        colnames(matrix3) <- paste0("gene",1:5000)
+        rownames(matrix4) <- paste0("spot",1:1024)
+        colnames(matrix4) <- paste0("gene",1:5000)
+        position1=loc
+        position2=loc
+        position3=loc
+        position4=loc
+        
+        
+        layer_barco1=produce_cluster(t(matrix1),position1)
+        layer_barco2=produce_cluster(t(matrix2),position2)
+        layer_barco3=produce_cluster(t(matrix3),position3)
+        layer_barco4=produce_cluster(t(matrix4),position4)
+        
+        genenum=5000
+        genename=paste0("gene",c(1:5000))
+        
+        
+        #第一个
+        cold=cbind(position1,layer_barco1,rep(1,length(rownames(position1))))
+        colnames(cold)[1:2]=c("array_row","array_col")
+        colnames(cold)[4]="sample_id"
+        colnames(cold)[3]="z_type"
+        spe1<- SpatialExperiment(
+          assay = list(counts = t(matrix1)),
+          colData = cold,
+          rowData = paste("gene",1:length(colnames(matrix1)))
+        )
+        rownames(spe1)=rowData(spe1)$X
+        
+        cold=cbind(position2,layer_barco2,rep(2,length(rownames(position2))))
+        colnames(cold)[1:2]=c("array_row","array_col")
+        colnames(cold)[4]="sample_id"
+        colnames(cold)[3]="z_type"
+        spe2<- SpatialExperiment(
+          assay = list(counts = t(matrix2)),
+          colData = cold,
+          rowData = paste("gene",1:length(colnames(matrix2)))
+        )
+        rownames(spe2)=rowData(spe2)$X
+        
+        cold=cbind(position3,layer_barco3,rep(3,length(rownames(position3))))
+        colnames(cold)[1:2]=c("array_row","array_col")
+        colnames(cold)[4]="sample_id"
+        colnames(cold)[3]="z_type"
+        spe3<- SpatialExperiment(
+          assay = list(counts = t(matrix3)),
+          colData = cold,
+          rowData = paste("gene",1:length(colnames(matrix3)))
+        )
+        rownames(spe3)=rowData(spe3)$X
+        
+        cold=cbind(position4,layer_barco4,rep(4,length(rownames(position4))))
+        colnames(cold)[1:2]=c("array_row","array_col")
+        colnames(cold)[4]="sample_id"
+        colnames(cold)[3]="z_type"
+        spe4<- SpatialExperiment(
+          assay = list(counts = t(matrix4)),
+          colData = cold,
+          rowData = paste("gene",1:length(colnames(matrix4)))
+        )
+        rownames(spe4)=rowData(spe4)$X
+        
+        spe.combined =cbind(spe1,spe2,spe3,spe4,deparse.level = 1)
+        multi_results <- DESpace_test(spe=spe.combined,spatial_cluster="z_type",sample_col ="sample_id",replicates = TRUE)
+        result= multi_results$gene_results
+        id <- result$gene_id
+        padj <- result$PValue
+        
+        p_value=padj
+        padj[padj<=0.05] <- 0
+        padj[padj>0.05] <- 1
+        padj=1-padj
+        result_value=padj
+        despacegenename=id[padj==1]
+        
+        tp=mean(result_value[1:500],na.rm=TRUE)
+        fp=mean(result_value[501:5000],na.rm=TRUE)
+        tfp_value=c(tp,fp)
+        print(paste0("tp=",tp,"fp=",fp))
+        
+        end=Sys.time()
+        time_value=as.numeric((end-begin), units = "mins")
+        result=list(result_value,time_value,tfp_value,p_value,multi_results,tfp_value)
+        nested_list[[7]][[num2]][[de1]]=result
+      }
+    }
+    
+    save(nested_list,file=paste0(curdir,spa,seed1,"_no_cov.RData"))
+  }
+}
+
+
+intedata(seeddomain=c(4:30),k1="linear",svmark=c(0.6,0.4,0.2,0.05),use_covariate=FALSE
+         ,infdomain=c(0.3),curdir="/gemini/code/simulation_nocov/")
+
+intedata(seeddomain=c(10:30),k1="focal",svmark=c(0.5,0.4,0.2,0.1),use_covariate=FALSE
+         ,infdomain=c(0.3),curdir="/gemini/code/simulation_nocov/")
+
+intedata(seeddomain=c(4:30),k1="period",svmark=c(1,0.8,0.6,0.4),use_covariate=FALSE
+         ,infdomain=c(0.3),curdir="/gemini/code/simulation_nocov/")
+
+
+totalwork_no_cov(seeddomain=c(19:30),infdomain=c("inf3"),num_cores=12,spa="linear",svmark=c(0.6,0.4,0.2,0.05))
+
+totalwork_no_cov(seeddomain=c(17:30),infdomain=c("inf3"),num_cores=12,spa="focal",svmark=c(0.5,0.4,0.2,0.1))
+
+totalwork_no_cov(seeddomain=c(4:30),infdomain=c("inf3"),num_cores=12,spa="period",svmark=c(1,0.8,0.6,0.4))
+
+
+##paste
+spa="period"
+situdomain=c("hmmm","hmll","mmll","mlvlvl")
+for(seed in c(1:30)){
+  data_paste_list<- replicate(3, replicate(12, list(), simplify = FALSE), simplify = FALSE)
+  for(situ in seq(situdomain)){
+    exp_mat=as.matrix(read.csv(paste0("/gemini/code/simulation_nocov/data_nocov_paste_inf3_",spa,"_seed",seed,"_",situdomain[situ],".csv"), header = TRUE))
+    data_paste_list[[2]][[situ]]=exp_mat
+  }
+  save(data_paste_list,file=paste0("/gemini/code/simulation_nocov/data_",spa,"_nocov_paste_seed",seed,".RData"))
+}
+
+
+
+
+totalwork_no_cov_paste <- function(seeddomain=c(1:5),infdomain=c("inf5"),num_cores=24,spa="linear",sit1=c(5:12),svmark=c(0.8,0.6,0.4,0.2)
+                             ,curdir="/gemini/code/simulation_nocov/",de=FALSE){
+  for(seed1 in seeddomain){
+    nested_list <- replicate(7, replicate(3, replicate(12, list(), simplify = FALSE), simplify = FALSE), simplify = FALSE)
+    data_dir <- paste0(curdir,"data_",spa,"_nocov_paste_seed",seed1,".RData")
+    load(data_dir)
+    for(inf in infdomain){
+      if(inf=="inf1"){
+        num2=1
+      }else if(inf=="inf3"){
+        num2=2
+      }else{
+        num2=3
+      }
+      for(sit in sit1){
+        if(sit>4){
+          exp_mat=all_results_list[[inf]][[1]][[sit-4]]#点位乘基因
+          exp_mat <- as.matrix(exp_mat)
+        }else{
+          sit_paste=c(1,1,3,2)
+          exp_mat=data_paste_list[[num2]][[sit]]#点位乘基因
+          exp_mat <- as.matrix(exp_mat)
+        }
+        rownames(exp_mat) <- paste0("spot",1:1024)
+        colnames(exp_mat) <- paste0("gene",1:5000)
+        loc=expand.grid(y=0:31,x=0:31)[,2:1]
+        rownames(loc)=paste0("spot",1:1024)
+        loc <- as.matrix(loc)
+        
+        begin=Sys.time()
+        
+        tr_mat=cbind(c(0,0,0,15.5,15.5,15.5,31,31,31),c(0,15.5,31,0,15.5,31,0,15.5,31))
+        colnames(tr_mat)=c("x","y")
+        tr_mat=as.data.frame(tr_mat)
+        
+        Tr.cell <- TriMesh(tr_mat, n = 2) 
+        V <- as.matrix(Tr.cell$V)
+        Tr <- as.matrix(Tr.cell$Tr)
+        
+        simu.results <-test.spVC(Y = t(exp_mat), X = NULL, S = loc, V = V, Tr = Tr, 
+                                 para.cores = num_cores, filter.min.nonzero = 100)
+        
+        result1 <- rep(1,length(simu.results$results.constant))
+        result <- rep(NA,5000)
+        #首先去访问他reduced的结果，针对我们的模型，我认为应该选择第8个数字
+        for( i in c(1:length(simu.results$results.constant))){
+          result1[i]=unname(simu.results$results.constant[[i]][[1]][2])
+        }
+        target_order <- paste0("gene",1:5000)
+        
+        index <- match(names(simu.results$results.constant),target_order)
+        
+        result[index] <-result1 
+        p_value=result##获得p值
+        result[result<=0.05] <- 0
+        result[result>0.05] <- 1
+        result=1-result
+        result_value=result##获得选择后的1/0
+        
+        tp=mean(result[1:500],na.rm=TRUE)
+        fp=mean(result[501:5000],na.rm=TRUE)
+        print(paste0("spv",spa,"系数为",sit,"零膨胀率为",inf,"结果为",tp,"fp=",fp))
+        #包装结果
+        end=Sys.time()
+        tp_fp=c(tp,fp)
+        time_value=as.numeric((end-begin), units = "mins")
+        result_save <- list(p_value,result_value,tp_fp,time_value,simu.results$results.constant)
+        nested_list[[1]][[num2]][[sit]] <- result_save
+        
+        
+        begin=Sys.time()
+        sparkX <- sparkx(t(exp_mat),loc,X_in = NULL,numCores=num_cores,option="mixture",verbose = FALSE)
+        sparkX$res_mtest <- as.matrix(sparkX$res_mtest)
+        result <- sparkX$res_mtest[,2]##p值
+        length(result)
+        p_value=result##获得p值
+        result[result<=0.05]=0
+        result[result>0.05]=1
+        result <- 1-result
+        result_value=result##获得选择后的1/0
+        
+        sparkx_genename=rownames(sparkX$res_mtest)[result==1]
+        index <- match(sparkx_genename,target_order)
+        
+        tp=mean(result[1:500],na.rm=TRUE)
+        fp=mean(result[501:5000],na.rm=TRUE)
+        tfp_value=c(tp,fp)
+        print(paste0("tp=",tp,"fp=",fp))
+        
+        end=Sys.time()
+        time_value=as.numeric((end-begin), units = "mins")
+        result=list(result_value,p_value,tfp_value,time_value,sparkX$res_mtest,tfp_value)
+        nested_list[[2]][[num2]][[sit]]=result
+        
+        ##heartsvg
+        ##heartsvg
+        begin=Sys.time()
+        mat <- cbind(loc,exp_mat)
+        colnames(mat)[1:2] = c("row","col")
+        result <- heartsvg(mat)
+        hea_result=result
+        aaa <- result$gene
+        bbb <- result$p_adj
+        print("success")
+        p_value=bbb
+        bbb[bbb<=0.05]=0
+        bbb[bbb>0.05]=1
+        bbb <- 1-bbb
+        result_value=bbb
+        heartsvg_genename=aaa[bbb==1]
+        
+        tp=mean(result_value[1:500],na.rm=TRUE)
+        fp=mean(result_value[501:5000],na.rm=TRUE)
+        tfp_value=c(tp,fp)
+        print(paste0("tp=",tp,"fp=",fp))
+        
+        end=Sys.time()
+        time_value=as.numeric((end-begin), units = "mins")
+        result=list(result_value,time_value,tfp_value,p_value,hea_result$gene,tfp_value)
+        nested_list[[3]][[num2]][[sit]]=result
+        
+        ##spark
+        ##spark
+        begin=Sys.time()
+        spark <- CreateSPARKObject(counts=t(exp_mat),
+                                   location=as.data.frame(loc),
+                                   percentage = 0.1,
+                                   min_total_counts = 10)##构建spark对象
+        spark@lib_size <- apply(spark@counts, 2, sum)
+        spark <- spark.vc(spark,
+                          covariates = NULL,
+                          lib_size = spark@lib_size,
+                          num_core = num_cores,
+                          verbose = F)
+        spark <- spark.test(spark,
+                            check_positive = T,
+                            verbose = F)##计算p值
+        result <- spark@res_mtest[,"adjusted_pvalue"]
+        spark_genename=rownames(spark@res_mtest)
+        p_value=result
+        result[result<=0.05] <- 0
+        result[result>0.05] <- 1
+        result=1-result
+        result_value=result
+        spark_genename=spark_genename[result==1]##符合结果的gene列表
+        
+        tp=mean(result[1:500],na.rm=TRUE)
+        fp=mean(result[501:5000],na.rm=TRUE)
+        tfp_value=c(tp,fp)
+        print(paste0("tp=",tp,"fp=",fp))
+        
+        end=Sys.time()
+        time_value=as.numeric((end-begin), units = "mins")
+        result=list(result_value,time_value,tfp_value,p_value,spark@res_mtest,tfp_value)
+        nested_list[[4]][[num2]][[sit]]=result
+        
+        ##nnsvg
+        ##nnsvg###删去了90%
+        begin=Sys.time()
+        spe<- SpatialExperiment(
+          assay = list(counts = t(exp_mat)),
+          colData = loc, 
+          spatialCoordsNames = c("x", "y")
+        )
+        rowData(spe)$gene_name <- paste0("gene",1:length(colnames(exp_mat)))
+        spe <- filter_genes(spe)
+        spe <- computeLibraryFactors(spe)
+        
+        sf <- sizeFactors(spe)
+        sf[sf <= 0] <- 1e-6
+        sizeFactors(spe) <- sf
+        
+        spe <- logNormCounts(spe)
+        spe <- nnSVG(spe,n_threads = num_cores,X=NULL)
+        spv_genename=rowData(spe)$gene_name
+        result=rowData(spe)$padj
+        p_value=result
+        result[result<=0.05] <- 0
+        result[result>0.05] <- 1
+        result=1-result
+        result_value=result
+        spv_genename=spv_genename[result==1]
+        
+        tp=mean(result[1:500],na.rm=TRUE)
+        fp=mean(result[501:5000],na.rm=TRUE)
+        tfp_value=c(tp,fp)
+        print(paste0("tp=",tp,"fp=",fp))
+        
+        end=Sys.time()
+        time_value=as.numeric((end-begin), units = "mins")
+        result=list(result_value,time_value,tfp_value,p_value,rowData(spe),tfp_value)
+        nested_list[[6]][[num2]][[sit]]=result
+        
+      }
+      
+      #跑despace
+      if(de){
+      for(de1 in c(1:4)){
+        #exp_mat=all_results_list[[inf]][[1]][[sit-4]]
+        if(de1==1){
+          matrix1=as.matrix(all_results_list[[inf]][[1]][[1]])
+          matrix2=as.matrix(all_results_list[[inf]][[1]][[2]])
+          matrix3=as.matrix(all_results_list[[inf]][[1]][[3]])
+          matrix4=as.matrix(all_results_list[[inf]][[1]][[4]])
+        }else if(de1==2){
+          matrix1=as.matrix(all_results_list[[inf]][[1]][[1]])
+          matrix2=as.matrix(all_results_list[[inf]][[1]][[2]])
+          matrix3=as.matrix(all_results_list[[inf]][[1]][[5]])
+          matrix4=as.matrix(all_results_list[[inf]][[1]][[6]])
+        }else if(de1==3){
+          matrix1=as.matrix(all_results_list[[inf]][[1]][[3]])
+          matrix2=as.matrix(all_results_list[[inf]][[1]][[4]])
+          matrix3=as.matrix(all_results_list[[inf]][[1]][[5]])
+          matrix4=as.matrix(all_results_list[[inf]][[1]][[6]])
+        }else{
+          matrix1=as.matrix(all_results_list[[inf]][[1]][[2]])
+          matrix2=as.matrix(all_results_list[[inf]][[1]][[5]])
+          matrix3=as.matrix(all_results_list[[inf]][[1]][[7]])
+          matrix4=as.matrix(all_results_list[[inf]][[1]][[8]])
+        }
+        
+        rownames(matrix1) <- paste0("spot",1:1024)
+        colnames(matrix1) <- paste0("gene",1:5000)
+        rownames(matrix2) <- paste0("spot",1:1024)
+        colnames(matrix2) <- paste0("gene",1:5000)
+        rownames(matrix3) <- paste0("spot",1:1024)
+        colnames(matrix3) <- paste0("gene",1:5000)
+        rownames(matrix4) <- paste0("spot",1:1024)
+        colnames(matrix4) <- paste0("gene",1:5000)
+        position1=loc
+        position2=loc
+        position3=loc
+        position4=loc
+        
+        
+        layer_barco1=produce_cluster(t(matrix1),position1)
+        layer_barco2=produce_cluster(t(matrix2),position2)
+        layer_barco3=produce_cluster(t(matrix3),position3)
+        layer_barco4=produce_cluster(t(matrix4),position4)
+        
+        genenum=5000
+        genename=paste0("gene",c(1:5000))
+        
+        
+        #第一个
+        cold=cbind(position1,layer_barco1,rep(1,length(rownames(position1))))
+        colnames(cold)[1:2]=c("array_row","array_col")
+        colnames(cold)[4]="sample_id"
+        colnames(cold)[3]="z_type"
+        spe1<- SpatialExperiment(
+          assay = list(counts = t(matrix1)),
+          colData = cold,
+          rowData = paste("gene",1:length(colnames(matrix1)))
+        )
+        rownames(spe1)=rowData(spe1)$X
+        
+        cold=cbind(position2,layer_barco2,rep(2,length(rownames(position2))))
+        colnames(cold)[1:2]=c("array_row","array_col")
+        colnames(cold)[4]="sample_id"
+        colnames(cold)[3]="z_type"
+        spe2<- SpatialExperiment(
+          assay = list(counts = t(matrix2)),
+          colData = cold,
+          rowData = paste("gene",1:length(colnames(matrix2)))
+        )
+        rownames(spe2)=rowData(spe2)$X
+        
+        cold=cbind(position3,layer_barco3,rep(3,length(rownames(position3))))
+        colnames(cold)[1:2]=c("array_row","array_col")
+        colnames(cold)[4]="sample_id"
+        colnames(cold)[3]="z_type"
+        spe3<- SpatialExperiment(
+          assay = list(counts = t(matrix3)),
+          colData = cold,
+          rowData = paste("gene",1:length(colnames(matrix3)))
+        )
+        rownames(spe3)=rowData(spe3)$X
+        
+        cold=cbind(position4,layer_barco4,rep(4,length(rownames(position4))))
+        colnames(cold)[1:2]=c("array_row","array_col")
+        colnames(cold)[4]="sample_id"
+        colnames(cold)[3]="z_type"
+        spe4<- SpatialExperiment(
+          assay = list(counts = t(matrix4)),
+          colData = cold,
+          rowData = paste("gene",1:length(colnames(matrix4)))
+        )
+        rownames(spe4)=rowData(spe4)$X
+        
+        spe.combined =cbind(spe1,spe2,spe3,spe4,deparse.level = 1)
+        multi_results <- DESpace_test(spe=spe.combined,spatial_cluster="z_type",sample_col ="sample_id",replicates = TRUE)
+        result= multi_results$gene_results
+        id <- result$gene_id
+        padj <- result$PValue
+        
+        p_value=padj
+        padj[padj<=0.05] <- 0
+        padj[padj>0.05] <- 1
+        padj=1-padj
+        result_value=padj
+        despacegenename=id[padj==1]
+        
+        tp=mean(result_value[1:500],na.rm=TRUE)
+        fp=mean(result_value[501:5000],na.rm=TRUE)
+        tfp_value=c(tp,fp)
+        print(paste0("tp=",tp,"fp=",fp))
+        
+        end=Sys.time()
+        time_value=as.numeric((end-begin), units = "mins")
+        result=list(result_value,time_value,tfp_value,p_value,multi_results,tfp_value)
+        nested_list[[7]][[num2]][[de1]]=result
+      }
+      }
+      
+    }
+    
+    save(nested_list,file=paste0(curdir,spa,seed1,"_no_cov_paste.RData"))
+  }
+}
+
+
+totalwork_no_cov_paste(seeddomain=c(1:30),infdomain=c("inf3"),num_cores=12,spa="linear",sit1=c(1:4),svmark=c(0.8,0.6,0.4,0.2)
+                                   ,curdir="/gemini/code/simulation_nocov/",de=FALSE)
+
+totalwork_no_cov_paste(seeddomain=c(1:30),infdomain=c("inf3"),num_cores=12,spa="focal",sit1=c(1:4),svmark=c(0.8,0.6,0.4,0.2)
+                       ,curdir="/gemini/code/simulation_nocov/",de=FALSE)
+
+totalwork_no_cov_paste(seeddomain=c(1:30),infdomain=c("inf3"),num_cores=12,spa="period",sit1=c(1:4),svmark=c(0.8,0.6,0.4,0.2)
+                       ,curdir="/gemini/code/simulation_nocov/",de=FALSE)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

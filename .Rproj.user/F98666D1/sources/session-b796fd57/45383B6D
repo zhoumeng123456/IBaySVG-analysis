@@ -1,0 +1,28 @@
+{
+    "id": "45383B6D",
+    "path": null,
+    "project_path": null,
+    "type": "object_explorer",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1772299516545.0,
+    "source_on_save": false,
+    "relative_order": 27,
+    "properties": {
+        "id": "536bc3966bc047deb84abecfe2d90f5f",
+        "name": "sensitive_list",
+        "title": "sensitive_list",
+        "language": "R",
+        "source_window_id": "",
+        "Source": "Source"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 32370030349975668,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1772299516545,
+    "read_only": false,
+    "read_only_alternatives": []
+}
