@@ -525,9 +525,9 @@ library(Matrix)
 library(MASS)
 library(parallel)
 library(pscl)
-source(here("Simulations/code","IBaySVG_main.R"))#load the function
+source(here::here("Demo","IBaySVG_main.R"))#load the function
 
-#2.generate the data
+#2.1.generate the data
 result1=sim_create(gene_size =5000,svgene_size=0.1,sv_mark=c(0.8,0.8),no_sv_mark = c(0,0),inf_size=0.3,phi=15,etamean=2,
                   xspace="linear",yspace="linear",seed=1,domainnum=5,use_covariate=TRUE)
 result2=sim_create(gene_size =5000,svgene_size=0.1,sv_mark=c(0.5,0.5),no_sv_mark = c(0,0),inf_size=0.3,phi=15,etamean=2,
@@ -539,7 +539,23 @@ result4=sim_create(gene_size =5000,svgene_size=0.1,sv_mark=c(0.5,0.5),no_sv_mark
 spelist <- list(list(result1[[1]], result1[[2]]),list(result2[[1]], result2[[2]]),
                 list(result3[[1]], result3[[2]]),list(result4[[1]], result4[[2]])) 
 c_alpha <- list(result1[[3]],  result2[[3]],result3[[3]],result4[[3]])# covariates
-    
+
+#2.2 or load the data from the "data/Simulation data/", details can be seen in the readme_data.pdf.
+#for example:the setting1 in linear pattern with middle dropout
+load(here::here("data/Simulation data/basic simulation/linear","data_linear_seed1.RData"))
+loc=read.csv(here::here("data/Simulation data","location.csv"),row.names = NULL)
+rownames(loc) <- paste0("spot", 1:1024)
+loc <- as.matrix(loc)
+
+spelist <- list(list(as.matrix(all_results_list[[2]][[1]][[1]]), loc),list(as.matrix(all_results_list[[2]][[1]][[2]]), loc),
+                list(as.matrix(all_results_list[[2]][[1]][[3]]), loc),list(as.matrix(all_results_list[[2]][[1]][[4]]), loc))
+c_alpha <- list(as.matrix(all_results_list[[2]][[2]][[1]]),as.matrix(all_results_list[[2]][[2]][[2]]),
+                as.matrix(all_results_list[[2]][[2]][[3]]),as.matrix(all_results_list[[2]][[2]][[4]]))# covariates
+c_alpha <- lapply(c_alpha, function(mat) {
+  rownames(mat) <- paste0("spot", 1:1024) 
+  mat
+})
+
 ##3.process            
 result <- IBaySVG(spelist = spelist,c_alpha = c_alpha,num_cores = 10)
 
