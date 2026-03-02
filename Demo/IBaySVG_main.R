@@ -19,11 +19,11 @@
 #' @param cp :hyperparameter of alpha's beta prior
 #' @param cq :hyperparameter of u's beta prior
 #' @param dq :hyperparameter of u's beta prior
-#' @param a_phi_single :Hyperparameter of the shape parameter $\phi$. Default is 0.001.
-#' @param b_phi_single :Hyperparameter of the shape parameter $\phi$. Default is 0.001.
+#' @param a_phi_single :Hyperparameter of the shape parameter \eqn{\phi}. Default is 0.001.
+#' @param b_phi_single :Hyperparameter of the shape parameter \eqn{\phi}. Default is 0.001.
 #' @param a_pi,b_pi Numeric. Hyperparameters for the Beta prior of the zero-inflation probability \eqn{\pi}. Defaults are 1 and 1.
-#' @param eta_sigma_single :Hyperparameter of variance of $\eta$, the baseline gene expression. Default is 1.
-#' @param psi_sigma_single :Hyperparameter of variance of $\psi$, controlling the contribution of covariates. Default is 1.
+#' @param eta_sigma_single :Hyperparameter of variance of \eqn{\eta}, the baseline gene expression. Default is 1.
+#' @param psi_sigma_single :Hyperparameter of variance of \eqn{\psi}, controlling the contribution of covariates. Default is 1.
 #'
 #' @return A list with:
 #'   \itemize{
@@ -59,7 +59,7 @@
 #' c_alpha <- list(result1[[3]],  result2[[3]],result3[[3]],result4[[3]])# covariates
 #'# you can choose c_alpha <- NULL for the lack of cell-type covariates.
 #' # Run analysis (parallel with 4 cores)
-#' result=IBaySVG(spelist=spelist,c_alpha=c_alpha,num_cores=4)
+#' result=IBaySVG(spelist=spelist,c_alpha=c_alpha,num_cores=1)
 #' # Print key outputs:
 #' # 1. Posterior mean probabilities after maximization
 #' print("Posterior mean probabilities:")
@@ -375,11 +375,11 @@ sim_create <- function(gene_size =100,svgene_size=0.1,sv_mark=c(1,1),no_sv_mark 
 #' @param max_iter : the maximum number of iteration.
 #' @param speci_iter : Number of times the early convergence criterion is met
 #' @param use_covariate :the logistic variable of using covariate. Default is TRUE which use covariates.
-#' @param a_phi_single :Hyperparameter of the shape parameter $\phi$. Default is 0.001.
-#' @param b_phi_single :Hyperparameter of the shape parameter $\phi$. Default is 0.001.
+#' @param a_phi_single :Hyperparameter of the shape parameter \eqn{\phi}. Default is 0.001.
+#' @param b_phi_single :Hyperparameter of the shape parameter \eqn{\phi}. Default is 0.001.
 #' @param a_pi,b_pi Numeric. Hyperparameters for the Beta prior of the zero-inflation probability \eqn{\pi}. Defaults are 1 and 1.
-#' @param eta_sigma_single :Hyperparameter of variance of $\eta$, the baseline gene expression. Default is 1.
-#' @param psi_sigma_single :Hyperparameter of variance of $\psi$, controlling the contribution of covariates. Default is 1.
+#' @param eta_sigma_single :Hyperparameter of variance of \eqn{\eta}, the baseline gene expression. Default is 1.
+#' @param psi_sigma_single :Hyperparameter of variance of \eqn{\psi}, controlling the contribution of covariates. Default is 1.
 #'
 #' @return the posterior mean of all the parameters
 #' @export
@@ -704,6 +704,7 @@ VIZINB <- function(y,splinevalue,samplenumber,splinelevel,acrate=0.01,ak=1,dp=1.
 #' @param calpha.list :same to c_alpha
 #' @param g :gene number
 #' @param use_covariate :the logistic variable of using covariate. Default is TRUE which use covariates.
+#' @param result : preprocessed data produced by CTIG
 #'
 #' @return the number of basic function degree
 #' @export
@@ -879,18 +880,13 @@ CTIG<-function(spelist){
 #' @param cq :hyperparameter of u's beta prior
 #' @param dq :hyperparameter of u's beta prior
 #' @param use_covariate :the logistic variable of using covariate. Default is TRUE which use covariates.
-#' @param a_phi_single :Hyperparameter of the shape parameter $\phi$. Default is 0.001.
-#' @param b_phi_single :Hyperparameter of the shape parameter $\phi$. Default is 0.001.
+#' @param a_phi_single :Hyperparameter of the shape parameter \eqn{\phi}. Default is 0.001.
+#' @param b_phi_single :Hyperparameter of the shape parameter \eqn{\phi}. Default is 0.001.
 #' @param a_pi,b_pi Numeric. Hyperparameters for the Beta prior of the zero-inflation probability \eqn{\pi}. Defaults are 1 and 1.
-#' @param eta_sigma_single :Hyperparameter of variance of $\eta$, the baseline gene expression. Default is 1.
-#' @param psi_sigma_single :Hyperparameter of variance of $\psi$, controlling the contribution of covariates. Default is 1.
+#' @param eta_sigma_single :Hyperparameter of variance of \eqn{\eta}, the baseline gene expression. Default is 1.
+#' @param psi_sigma_single :Hyperparameter of variance of \eqn{\psi}, controlling the contribution of covariates. Default is 1.
 #' @return the posterior mean of all parameters for gene g.
 #' @export
-#'
-#'
-#'
-#'
-#'
 #'
 #'
 citgtest <- function(g,result,c_alpha,spelist,acrate,gamma1,gamma2,min_iter,max_iter,speci_iter,use_covariate=TRUE,
