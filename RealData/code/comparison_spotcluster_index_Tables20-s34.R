@@ -12,18 +12,18 @@ library(aricode)
 
 #load the data
 dataset="samedonor"
-matrix1=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix1_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
-matrix2=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix2_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
-matrix3=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix3_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
-matrix4=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix4_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
-position1=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix1_position_",dataset,".csv")),row.names = 1))
-position2=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix2_position_",dataset,".csv")),row.names = 1))
-position3=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix3_position_",dataset,".csv")),row.names = 1))
-position4=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix4_position_",dataset,".csv")),row.names = 1))
-calpha1=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix1_celltype_",dataset,".csv")),row.names = 1))
-calpha2=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix2_celltype_",dataset,".csv")),row.names = 1))
-calpha3=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix3_celltype_",dataset,".csv")),row.names = 1))
-calpha4=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix4_celltype_",dataset,".csv")),row.names = 1))
+matrix1=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix1_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
+matrix2=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix2_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
+matrix3=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix3_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
+matrix4=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix4_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
+position1=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix1_position_",dataset,".csv")),row.names = 1))
+position2=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix2_position_",dataset,".csv")),row.names = 1))
+position3=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix3_position_",dataset,".csv")),row.names = 1))
+position4=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix4_position_",dataset,".csv")),row.names = 1))
+calpha1=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix1_celltype_",dataset,".csv")),row.names = 1))
+calpha2=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix2_celltype_",dataset,".csv")),row.names = 1))
+calpha3=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix3_celltype_",dataset,".csv")),row.names = 1))
+calpha4=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix4_celltype_",dataset,".csv")),row.names = 1))
 
 colnames(position1)=c("row","col")
 colnames(position2)=c("row","col")
@@ -34,7 +34,7 @@ rowname <- c("nnSVG","SPARKX","SPARK","spVC", "HEARTSVG","IBaySVG","DESpace","St
 C <- 20
 R <- 7
 set.seed(0)
-load(here("RealData/result_data/realdata svgene",paste0("data_dlpfc_",dataset,"_svgene_list.RData")))
+load(here::here("RealData/result_data/realdata svgene",paste0("data_dlpfc_",dataset,"_svgene_list.RData")))
 svgene_list=data_dlpfc_samedonor_svgene_list
   
 #implement
@@ -131,8 +131,8 @@ for(i in c(1:9)){
 ##################################################################################################################################################
 #plot of real spot cluster in dlpfc dataset with same donor
 dataset="dlpfc_samedonor"# Alternative: "dlpfc_acrossdonor"
-load(here("RealData/result_data/spotcluster",paste0("spot_real_",dataset,".RData")))
-load(here("RealData/result_data/spotcluster",paste0("total_bass_cluster_",dataset,".RData")))
+load(here::here("RealData/result_data/spotcluster",paste0("spot_real_",dataset,".RData")))
+load(here::here("RealData/result_data/spotcluster",paste0("total_bass_cluster_",dataset,".RData")))
 
 for(j in c(1:4)){
   ari_matrix=matrix(NA,nrow=10,ncol=7)
@@ -346,24 +346,23 @@ symbolgenerate<-function(distance_matrix,cluster_result,sectnum=2,count1,idomain
 
 ##2.for dlpfc dataset
 dataset="acrossdonor"#Alternative: "acrossdonor"
-load(here("RealData/result_data/spotcluster",paste0("total_bass_cluster_dlpfc_",dataset,".RData")))
-
+load(here::here("RealData/result_data/spotcluster",paste0("total_bass_cluster_dlpfc_",dataset,".RData")))
 for(datanum in c(1:4)){
-  count1=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix1_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
+  count1=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix1_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
   count1=t(count1)
-  #distance_matrix <- parallelDist::parDist(as.matrix(count1), method = "euclidean", threads = 8)
-  #save(distance_matrix,file=paste0("/Users/zhoum/Desktop/dlpfc_data/distance",datanum,"_matrix.RData"))
-  load(paste0("C:/Users/zhoum/OneDrive/distance_matrix_0714_",datanum,".RData"))
+  distance_matrix <- parallelDist::parDist(as.matrix(count1), method = "euclidean", threads = 8)
+  #save(distance_matrix,file=paste0("distance",datanum,"_matrix.RData"))
   cluster_result=cluster_dlpfc[[datanum]]
   index_result=symbolgenerate(distance_matrix=distance_matrix,cluster_result=cluster_result,sectnum=datanum,count1=count1,idomain=c(1:9))
   print(index_result)
 }
 
+
 ##for scc dataset
 dataset="scc"
-load(here("RealData/result_data/spotcluster",paste0("total_bass_cluster_",dataset,".RData")))
+load(here::here("RealData/result_data/spotcluster",paste0("total_bass_cluster_",dataset,".RData")))
 for(datanum in c(1:3)){
-  count1=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/scc"),paste0("matrix",datanum,"_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
+  count1=as.matrix(read.csv(here::here(paste0("data/Realdataset/scc"),paste0("matrix",datanum,"_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
   count1=t(count1)
   distance_matrix <- parallelDist::parDist(as.matrix(count1), method = "euclidean", threads = 8)
   cluster_result=cluster_scc[[datanum]]

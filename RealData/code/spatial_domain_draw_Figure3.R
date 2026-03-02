@@ -13,9 +13,9 @@ dir="RealData/result_data/spotcluster"
 
 #plot of spot cluster identified by IBaySVG in dlpfc dataset with same donor
 plot_list=list()
-load(paste0(here(dir,"spot_IBaySVG_dlpfc_samedonor.RData")))
+load(paste0(here::here(dir,"spot_IBaySVG_dlpfc_samedonor.RData")))
 for(datanum in c(1:4)){
-  position1=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc samedonor"),paste0("matrix",datanum,"_position_samedonor.csv")),row.names = 1))
+  position1=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc samedonor"),paste0("matrix",datanum,"_position_samedonor.csv")),row.names = 1))
   coordinates=as.data.frame(position1)
   coordinates$cluster <- result_total[[datanum]]
   if(datanum==1 |datanum==2){
@@ -48,10 +48,10 @@ plot_total_list[["dlpfc_samedonor"]]=plot_list
   
 
 #plot of spot cluster identified by IBaySVG in dlpfc dataset with across donor
-load(paste0(here(dir,"spot_IBaySVG_dlpfc_acrossdonor.RData")))
+load(paste0(here::here(dir,"spot_IBaySVG_dlpfc_acrossdonor.RData")))
 plot_list=list()
 for(datanum in c(1:4)){
-  position1=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc acrossdonor"),paste0("matrix",datanum,"_position_acrossdonor.csv")),row.names = 1))
+  position1=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc acrossdonor"),paste0("matrix",datanum,"_position_acrossdonor.csv")),row.names = 1))
   coordinates=as.data.frame(position1)
   coordinates$cluster <- result_total[[datanum]]
   custom_colors <- c("#54beaa" ,"#fccccb","#eca680","#bdb5e1","#b0d992","#99b9e9","#f9d580","#e3716e","#7ac7e2","#f3deb7")
@@ -81,10 +81,10 @@ plot_total_list[["dlpfc_acrossdonor"]]=plot_list
   
 
 #plot of spot cluster identified by IBaySVG in scc dataset 
-load(here(dir,"spot_IBaySVG_scc.RData"))
+load(here::here(dir,"spot_IBaySVG_scc.RData"))
 plot_list=list()
 for(datanum in c(1:3)){
-  position1=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/scc"),paste0("matrix",datanum,"_position_scc.csv")),row.names = 1))
+  position1=as.matrix(read.csv(here::here(paste0("data/Realdataset/scc"),paste0("matrix",datanum,"_position_scc.csv")),row.names = 1))
   coordinates=as.data.frame(position1)
   coordinates$cluster <- result_total[[datanum]]
   if(datanum==1){
@@ -126,10 +126,10 @@ plot_total_list_real=list()#the total list to save
 dir="RealData/result_data/spotcluster"
 
 #plot of real spot cluster in dlpfc dataset with same donor
-load(paste0(here(dir,"spot_real_dlpfc_samedonor.RData")))
+load(paste0(here::here(dir,"spot_real_dlpfc_samedonor.RData")))
 plot_list=list()
 for(datanum in c(1:4)){
-  position1=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc samedonor"),paste0("matrix",datanum,"_position_samedonor.csv")),row.names = 1))
+  position1=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc samedonor"),paste0("matrix",datanum,"_position_samedonor.csv")),row.names = 1))
   coordinates=as.data.frame(position1)
   coordinates$cluster <- layer_barcode[[datanum]]
   custom_colors <- c("#54beaa", "#b0d992","#eca680",  "#f9d580", "#bdb5e1", "#fccccb","#e3716e","#99b9e9","#7ac7e2","#f3deb7")
@@ -159,10 +159,10 @@ plot_total_list_real[["dlpfc_samedonor"]]=plot_list
 
 
 #plot of real spot cluster in dlpfc dataset with across donor
-load(paste0(here(dir,"spot_real_dlpfc_acrossdonor.RData")))
+load(paste0(here::here(dir,"spot_real_dlpfc_acrossdonor.RData")))
 plot_list=list()
 for(datanum in c(1:4)){
-  position1=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc acrossdonor"),paste0("matrix",datanum,"_position_acrossdonor.csv")),row.names = 1))
+  position1=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc acrossdonor"),paste0("matrix",datanum,"_position_acrossdonor.csv")),row.names = 1))
   coordinates=as.data.frame(position1)
   coordinates$cluster <- layer_barcode[[datanum]]
   custom_colors <- c("#54beaa", "#b0d992","#eca680",  "#f9d580", "#bdb5e1", "#fccccb","#e3716e","#99b9e9","#7ac7e2","#f3deb7")
@@ -206,8 +206,8 @@ plot_total_list_real[["scc"]]=plot_list
 
 ############################################################################################################################################
 
-load(here(dir,"plot_IBaySVG_spotcluster.RData"))
-load(here(dir,"plot_real_spotcluster.RData"))
+load(here::here(dir,"plot_IBaySVG_spotcluster.RData"))
+load(here::here(dir,"plot_real_spotcluster.RData"))
 
 plot1 <- plot_total_list[["dlpfc_samedonor"]][[1]] + theme(legend.position = "none")
 plot2 <- plot_total_list[["dlpfc_samedonor"]][[2]] + theme(legend.position = "none")

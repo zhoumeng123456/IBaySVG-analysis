@@ -9,12 +9,12 @@ library(readxl)
 
 ############################################################################################################################################
 #load the benchmark from Zeng et al.~(2012)
-df <- read_excel(here("RealData/result_data/benchmark","model_result.xlsx"), sheet = "Table S5")
+df <- read_excel(here::here("RealData/result_data/benchmark","model_result.xlsx"), sheet = "Table S5")
 zeng_moly_benchmark=df$gene_name
 
 #load the benchmark from Maynard et al.~(2021)
-load(here("RealData/result_data/benchmark","Human_DLPFC_Visium_modeling_results.Rdata"))
-load(here("RealData/result_data/benchmark","Human_DLPFC_Visium_processedData_sce_scran_sce_layer_spatialLIBD.Rdata"))
+load(here::here("RealData/result_data/benchmark","Human_DLPFC_Visium_modeling_results.Rdata"))
+load(here::here("RealData/result_data/benchmark","Human_DLPFC_Visium_processedData_sce_scran_sce_layer_spatialLIBD.Rdata"))
 
 colData(sce_layer)$spatialLIBD <- TRUE
 system.time(
@@ -119,7 +119,7 @@ calc_metrics <- function(predicted, benchmark) {
 
 #produce the result
 dataset="acrossdonor"#alternative: "samedonor"
-load(here("RealData/result_data/realdata svgene",paste0("data_dlpfc_",dataset,"_svgene_list.RData")))
+load(here::here("RealData/result_data/realdata svgene",paste0("data_dlpfc_",dataset,"_svgene_list.RData")))
 benchmark_result(data_dlpfc_acrossdonor_svgene_list,select_benchmark)
 
 

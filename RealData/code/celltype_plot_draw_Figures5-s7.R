@@ -65,26 +65,26 @@ enhance_contrast <- function(calpha, power=3) {
 
 
 #load the data for dlpfc with samedonor
-dir="RealData/result_data/realdata dataset/dlpfc samedonor"
-position4=as.matrix(read.csv(here(dir,"matrix4_position_samedonor.csv"),row.names = 1))
-calpha4=as.matrix(read.csv(here(dir,"matrix4_celltype_samedonor.csv"),row.names = 1))
-position3=as.matrix(read.csv(here(dir,"matrix3_position_samedonor.csv"),row.names = 1))
-calpha3=as.matrix(read.csv(here(dir,"matrix3_celltype_samedonor.csv"),row.names = 1))
-position2=as.matrix(read.csv(here(dir,"matrix2_position_samedonor.csv"),row.names = 1))
-calpha2=as.matrix(read.csv(here(dir,"matrix2_celltype_samedonor.csv"),row.names = 1))
-position1=as.matrix(read.csv(here(dir,"matrix1_position_samedonor.csv"),row.names = 1))
-calpha1=as.matrix(read.csv(here(dir,"matrix1_celltype_samedonor.csv"),row.names = 1))
+dir="data/Realdataset/dlpfc samedonor"
+position4=as.matrix(read.csv(here::here(dir,"matrix4_position_samedonor.csv"),row.names = 1))
+calpha4=as.matrix(read.csv(here::here(dir,"matrix4_celltype_samedonor.csv"),row.names = 1))
+position3=as.matrix(read.csv(here::here(dir,"matrix3_position_samedonor.csv"),row.names = 1))
+calpha3=as.matrix(read.csv(here::here(dir,"matrix3_celltype_samedonor.csv"),row.names = 1))
+position2=as.matrix(read.csv(here::here(dir,"matrix2_position_samedonor.csv"),row.names = 1))
+calpha2=as.matrix(read.csv(here::here(dir,"matrix2_celltype_samedonor.csv"),row.names = 1))
+position1=as.matrix(read.csv(here::here(dir,"matrix1_position_samedonor.csv"),row.names = 1))
+calpha1=as.matrix(read.csv(here::here(dir,"matrix1_celltype_samedonor.csv"),row.names = 1))
 
 #or load the data for dlpfc with acrossdonor(share the common enhance and produce function)
-dir="RealData/result_data/realdata dataset/dlpfc acrossdonor"
-position4=as.matrix(read.csv(here(dir,"matrix4_position_acrossdonor.csv"),row.names = 1))
-calpha4=as.matrix(read.csv(here(dir,"matrix4_celltype_acrossdonor.csv"),row.names = 1))
-position3=as.matrix(read.csv(here(dir,"matrix3_position_acrossdonor.csv"),row.names = 1))
-calpha3=as.matrix(read.csv(here(dir,"matrix3_celltype_acrossdonor.csv"),row.names = 1))
-position2=as.matrix(read.csv(here(dir,"matrix2_position_acrossdonor.csv"),row.names = 1))
-calpha2=as.matrix(read.csv(here(dir,"matrix2_celltype_acrossdonor.csv"),row.names = 1))
-position1=as.matrix(read.csv(here(dir,"matrix1_position_acrossdonor.csv"),row.names = 1))
-calpha1=as.matrix(read.csv(here(dir,"matrix1_celltype_acrossdonor.csv"),row.names = 1))
+dir="data/Realdataset/dlpfc acrossdonor"
+position4=as.matrix(read.csv(here::here(dir,"matrix4_position_acrossdonor.csv"),row.names = 1))
+calpha4=as.matrix(read.csv(here::here(dir,"matrix4_celltype_acrossdonor.csv"),row.names = 1))
+position3=as.matrix(read.csv(here::here(dir,"matrix3_position_acrossdonor.csv"),row.names = 1))
+calpha3=as.matrix(read.csv(here::here(dir,"matrix3_celltype_acrossdonor.csv"),row.names = 1))
+position2=as.matrix(read.csv(here::here(dir,"matrix2_position_acrossdonor.csv"),row.names = 1))
+calpha2=as.matrix(read.csv(here::here(dir,"matrix2_celltype_acrossdonor.csv"),row.names = 1))
+position1=as.matrix(read.csv(here::here(dir,"matrix1_position_acrossdonor.csv"),row.names = 1))
+calpha1=as.matrix(read.csv(here::here(dir,"matrix1_celltype_acrossdonor.csv"),row.names = 1))
 
 
 #enhance and produce the plot
@@ -178,13 +178,13 @@ plot_scatterpie_scc <- function(position, calpha, pie_scale = 0.4) {
     labs(x = NULL, y = NULL)  # 移除坐标轴标签
 }
 
-dir="RealData/result_data/realdata dataset/scc"
-position3=as.matrix(read.csv(here(dir,"matrix3_position_scc.csv"),row.names = 1))
-calpha3=as.matrix(read.csv(here(dir,"matrix3_celltype_scc.csv"),row.names = 1))
-position2=as.matrix(read.csv(here(dir,"matrix2_position_scc.csv"),row.names = 1))
-calpha2=as.matrix(read.csv(here(dir,"matrix2_celltype_scc.csv"),row.names = 1))
-position1=as.matrix(read.csv(here(dir,"matrix1_position_scc.csv"),row.names = 1))
-calpha1=as.matrix(read.csv(here(dir,"matrix1_celltype_scc.csv"),row.names = 1))
+dir="data/Realdataset/scc"
+position3=as.matrix(read.csv(here::here(dir,"matrix3_position_scc.csv"),row.names = 1))
+calpha3=as.matrix(read.csv(here::here(dir,"matrix3_celltype_scc.csv"),row.names = 1))
+position2=as.matrix(read.csv(here::here(dir,"matrix2_position_scc.csv"),row.names = 1))
+calpha2=as.matrix(read.csv(here::here(dir,"matrix2_celltype_scc.csv"),row.names = 1))
+position1=as.matrix(read.csv(here::here(dir,"matrix1_position_scc.csv"),row.names = 1))
+calpha1=as.matrix(read.csv(here::here(dir,"matrix1_celltype_scc.csv"),row.names = 1))
 
 #produce the plot
 p1 <- plot_scatterpie_scc(position1, calpha1, pie_scale = 0.6)

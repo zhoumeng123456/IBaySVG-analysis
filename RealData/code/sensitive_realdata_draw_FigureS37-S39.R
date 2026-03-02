@@ -50,10 +50,10 @@ sensitive_plot=function(sensitive_list){
         scale_fill_gradient(
           low = "white", 
           high = "#e3716e",
-          limits = c(0, 1),          # 固定颜色映射范围为0到1
-          name = "Jaccard"          # 图例标题
+          limits = c(0, 1),         
+          name = "Jaccard"          
         ) +
-        geom_text(aes(label = round(Value, 3)), color = "black", size = 3) + # 可选数值标注
+        geom_text(aes(label = round(Value, 3)), color = "black", size = 3) + 
         theme_minimal() +
         labs(x =  xname, y =  yname, fill = "Jaccard")+
         theme(axis.text.x = element_text(size = xsize),legend.position = "none")
@@ -69,16 +69,16 @@ sensitive_plot=function(sensitive_list){
         Param4 = c(0.02,0.025,0.03,0.035,0.04)
       )
       
-      # 转换为长格式
+
       df <- data.frame(
         Parameter = rep(rownames(results_matrix), each = 5),
-        Value = unlist(param_values),       # 展开每个参数的取值
+        Value = unlist(param_values),       
         Result = as.vector(t(results_matrix))
       )
       
-      # 绘制圆形热点图
+
       p1=ggplot(df, aes(x = Value, y = Parameter, fill = Result)) +
-        geom_point(aes(fill = Result),shape = 21, size = 11, color = "transparent") +  # 圆形，边框透明
+        geom_point(aes(fill = Result),shape = 21, size = 11, color = "transparent") +  
         scale_fill_gradient(    low = "white", 
                                 high = "#e3716e",
                                 limits = c(0, 1),          
@@ -104,7 +104,7 @@ dataset="dlpfc_samedonor" # alternative choose: "dlpfc_acrossdonor", "scc"
 ##load the sensitive result and plot
 sensitive_list=list()
 for(paras in c("abpi","abphi","etapsi_sigma","gamma12","cdp","cdq","akdomain") ){
-  sensitive_list[[paras]]=as.matrix(read.csv(here(paste0("RealData/result_data/sensitive analysis/",dataset),paste0(paras,"_",dataset,"_sensi.csv"))))
+  sensitive_list[[paras]]=as.matrix(read.csv(here::here(paste0("RealData/result_data/sensitive analysis/",dataset),paste0(paras,"_",dataset,"_sensi.csv"))))
 }
 p_list=sensitive_plot(sensitive_list)#
 

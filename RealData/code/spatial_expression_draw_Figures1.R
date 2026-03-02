@@ -15,7 +15,7 @@ ggsave(paste0("period.png"), plot = g, width = 6, height = 6, dpi = 150)
 name1=c("linear","focal","period","complex","linear_gene","focal_gene","period_gene","complex_gene")
 img_paths <-"RealData/result_data/plot of figures1/"
 images <- lapply(1:8, function(genenum) {
-  img <- image_read(here(img_paths,paste0(name1[genenum],".png")))
+  img <- image_read(here::here(img_paths,paste0(name1[genenum],".png")))
 })
 
 

@@ -103,7 +103,7 @@ run_svg_clustering <- function(svgenename,data_dir,sectnumber=4,dis_method = "eu
 
 ##2.Run spatial gene clustering for multiple tissue sections
 #Example:for dlpfc dataset with same donor.
-load(here("RealData/result_data/realdata svgene","data_dlpfc_samedonor_svgene_list.RData"))
+load(here::here("RealData/result_data/realdata svgene","data_dlpfc_samedonor_svgene_list.RData"))
 svgene_list=data_dlpfc_samedonor_svgene_list
 result_gene_cluster_list <- run_svg_clustering(svgenename = svgene_list[[6]],
                                                data_dir = "RealData/result_data/realdata dataset/dlpfc samedonor",
@@ -112,7 +112,9 @@ result_gene_cluster_list <- run_svg_clustering(svgenename = svgene_list[[6]],
                                                deepsplit_domain =c(2,2,2,2),
                                                dis_method = "euclidean",
                                                hcl_med = "average"
-)#The same results can be obtained with minor modifications.
+)#The same results can be obtained with minor modifications in deepsplit_domain.
+
+#the preprocessed results have been stored in RealData/result_data/genecluster
 
 ###########################################################################################################################################
                                             #3.plot for gene cluster expression :(S14,S16,S18)
@@ -179,18 +181,18 @@ pattern_plot2 <- function(pltdat, igene, xy = T, main = F, titlesize = 2,
 #(1)for the dlpfc dataset with same donor
 #choose the svgene list and  corresponse gene cluster result
 dataset="samedonor" #alternative choose:acrossdonor,scc
-load(here("RealData/result_data/genecluster",paste0("gene_clusters_",dataset,".RData")))
+load(here("RealData/result_data/genecluster",paste0("gene_clusters_",dataset,".RData")))#the gene_clusters results in 
 load(here("RealData/result_data/realdata svgene",paste0("data_dlpfc_",dataset,"_svgene_list.RData")))
 svgene_list=data_dlpfc_samedonor_svgene_list
 
-position1=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix1_position_",dataset,".csv")),row.names = 1))
-count1=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix1_count_",dataset,".csv")),row.names = 1))
-position2=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix2_position_",dataset,".csv")),row.names = 1))
-count2=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix2_count_",dataset,".csv")),row.names = 1))
-position3=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix3_position_",dataset,".csv")),row.names = 1))
-count3=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix3_count_",dataset,".csv")),row.names = 1))
-position4=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix4_position_",dataset,".csv")),row.names = 1))
-count4=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix4_count_",dataset,".csv")),row.names = 1))
+position1=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix1_position_",dataset,".csv")),row.names = 1))
+count1=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix1_count_",dataset,".csv")),row.names = 1))
+position2=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix2_position_",dataset,".csv")),row.names = 1))
+count2=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix2_count_",dataset,".csv")),row.names = 1))
+position3=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix3_position_",dataset,".csv")),row.names = 1))
+count3=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix3_count_",dataset,".csv")),row.names = 1))
+position4=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix4_position_",dataset,".csv")),row.names = 1))
+count4=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix4_count_",dataset,".csv")),row.names = 1))
 
 count1=count1[svgene_list[[6]],]
 count2=count2[svgene_list[[6]],]
@@ -240,18 +242,18 @@ ggsave(paste0("genecluster_samedonor.png"), plot = combined_plot, width = 9, hei
 
 #(2)for the dlpfc dataset with across donor
 dataset="acrossdonor" 
-load(here("RealData/result_data/genecluster",paste0("gene_clusters_",dataset,".RData")))
-load(here("RealData/result_data/realdata svgene",paste0("data_dlpfc_",dataset,"_svgene_list.RData")))
+load(here::here("RealData/result_data/genecluster",paste0("gene_clusters_",dataset,".RData")))
+load(here::here("RealData/result_data/realdata svgene",paste0("data_dlpfc_",dataset,"_svgene_list.RData")))
 svgene_list=data_dlpfc_acrossdonor_svgene_list
 
-position1=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix1_position_",dataset,".csv")),row.names = 1))
-count1=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix1_count_",dataset,".csv")),row.names = 1))
-position2=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix2_position_",dataset,".csv")),row.names = 1))
-count2=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix2_count_",dataset,".csv")),row.names = 1))
-position3=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix3_position_",dataset,".csv")),row.names = 1))
-count3=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix3_count_",dataset,".csv")),row.names = 1))
-position4=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix4_position_",dataset,".csv")),row.names = 1))
-count4=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/dlpfc ",dataset),paste0("matrix4_count_",dataset,".csv")),row.names = 1))
+position1=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix1_position_",dataset,".csv")),row.names = 1))
+count1=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix1_count_",dataset,".csv")),row.names = 1))
+position2=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix2_position_",dataset,".csv")),row.names = 1))
+count2=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix2_count_",dataset,".csv")),row.names = 1))
+position3=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix3_position_",dataset,".csv")),row.names = 1))
+count3=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix3_count_",dataset,".csv")),row.names = 1))
+position4=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix4_position_",dataset,".csv")),row.names = 1))
+count4=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix4_count_",dataset,".csv")),row.names = 1))
 
 count1=count1[svgene_list[[6]],]
 count2=count2[svgene_list[[6]],]
@@ -300,16 +302,16 @@ ggsave(paste0("genecluster_dlpfc_34711.png"), plot = combined_plot, width = 8, h
 
 #(3)for the scc dataset
 dataset="scc" 
-load(here("RealData/result_data/genecluster",paste0("gene_clusters_",dataset,".RData")))
-load(here("RealData/result_data/realdata svgene",paste0("data_",dataset,"_svgene_list.RData")))
+load(here::here("RealData/result_data/genecluster",paste0("gene_clusters_",dataset,".RData")))
+load(here::here("RealData/result_data/realdata svgene",paste0("data_",dataset,"_svgene_list.RData")))
 svgene_list=data_scc_svgene_list
 
-position1=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/",dataset),paste0("matrix1_position_",dataset,".csv")),row.names = 1))
-count1=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/",dataset),paste0("matrix1_count_",dataset,".csv")),row.names = 1))
-position2=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/",dataset),paste0("matrix2_position_",dataset,".csv")),row.names = 1))
-count2=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/",dataset),paste0("matrix2_count_",dataset,".csv")),row.names = 1))
-position3=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/",dataset),paste0("matrix3_position_",dataset,".csv")),row.names = 1))
-count3=as.matrix(read.csv(here(paste0("RealData/result_data/realdata dataset/",dataset),paste0("matrix3_count_",dataset,".csv")),row.names = 1))
+position1=as.matrix(read.csv(here::here(paste0("data/Realdataset/",dataset),paste0("matrix1_position_",dataset,".csv")),row.names = 1))
+count1=as.matrix(read.csv(here::here(paste0("data/Realdataset/",dataset),paste0("matrix1_count_",dataset,".csv")),row.names = 1))
+position2=as.matrix(read.csv(here::here(paste0("data/Realdataset/",dataset),paste0("matrix2_position_",dataset,".csv")),row.names = 1))
+count2=as.matrix(read.csv(here::here(paste0("data/Realdataset/",dataset),paste0("matrix2_count_",dataset,".csv")),row.names = 1))
+position3=as.matrix(read.csv(here::here(paste0("data/Realdataset/",dataset),paste0("matrix3_position_",dataset,".csv")),row.names = 1))
+count3=as.matrix(read.csv(here::here(paste0("data/Realdataset/",dataset),paste0("matrix3_count_",dataset,".csv")),row.names = 1))
 
 count1=count1[svgene_list[[6]],]
 count2=count2[svgene_list[[6]],]
@@ -410,7 +412,7 @@ heatmapplot <- function(result_gene_cluster_list, i, j, show_legend = TRUE) {
 
 #(1)for dlpfc with same donor
 dataset="samedonor" 
-load(here("RealData/result_data/genecluster",paste0("gene_clusters_",dataset,".RData")))
+load(here::here("RealData/result_data/genecluster",paste0("gene_clusters_",dataset,".RData")))
 p1=heatmapplot(result_gene_cluster_list,1,2,show_legend = FALSE)
 p2=heatmapplot(result_gene_cluster_list,1,3,show_legend = FALSE)
 p3=heatmapplot(result_gene_cluster_list,1,4,show_legend = FALSE)
@@ -423,7 +425,7 @@ ggsave(paste0("dlpfc_cluster_heatmap_samedonor.png"), plot = combined_heatmap, w
 
 #(2)for dlpfc with across donor
 dataset="acrossdonor" 
-load(here("RealData/result_data/genecluster",paste0("gene_clusters_",dataset,".RData")))
+load(here::here("RealData/result_data/genecluster",paste0("gene_clusters_",dataset,".RData")))
 p1=heatmapplot(result_gene_cluster_list,2,1,show_legend = FALSE)
 p2=heatmapplot(result_gene_cluster_list,3,1,show_legend = FALSE)
 p3=heatmapplot(result_gene_cluster_list,1,4,show_legend = FALSE)
@@ -436,7 +438,7 @@ ggsave(paste0("dlpfc_cluster_heatmap_acrossdonor.png"), plot = combined_heatmap,
 
 #(3)for scc dataset
 dataset="scc" 
-load(here("RealData/result_data/genecluster",paste0("gene_clusters_",dataset,".RData")))
+load(here::here("RealData/result_data/genecluster",paste0("gene_clusters_",dataset,".RData")))
 p1=heatmapplot(result_gene_cluster_list,2,1,show_legend = FALSE)
 p2=heatmapplot(result_gene_cluster_list,3,1,show_legend = FALSE)
 p3=heatmapplot(result_gene_cluster_list,2,3,show_legend = FALSE)
@@ -471,9 +473,9 @@ enrich_function=function(result_gene_cluster_list){
 
 #produce the enrichment result and obtain the first five cluster of each dataset
 for(dataset in c("samedonor","acrossdonor","scc")){
-  load(here("RealData/result_data/genecluster",paste0("gene_clusters_",dataset,".RData")))
+  load(here::here("RealData/result_data/genecluster",paste0("gene_clusters_",dataset,".RData")))
   result_enrich_list=enrich_function(result_gene_cluster_list)
-  save(result_enrich_list,file=here("RealData/result_data/genecluster",paste0("enrich_result_",dataset,".RData")))#the result have been saved in correspond dictionary.
+  save(result_enrich_list,file=here::here("RealData/result_data/genecluster",paste0("enrich_result_",dataset,".RData")))#the result have been saved in correspond dictionary.
   cluster1_results <- list()
   for(clusternum in c(1:length(unique(result_gene_cluster_list[[1]]$cluster)))){
     for(sect in c(1:length(result_enrich_list))) {

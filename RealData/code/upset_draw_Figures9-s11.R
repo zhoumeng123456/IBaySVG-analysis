@@ -5,7 +5,7 @@ library(UpSetR)
 dir="RealData/result_data/realdata svgene"
 
 #choose the dataset
-load(here(dir,"data_dlpfc_acrossdonor_svgene_list.RData"))
+load(here::here(dir,"data_dlpfc_acrossdonor_svgene_list.RData"))
 #alternative1: data_dlpfc_samedonor_svgene_list.RData for dlpfc dataset with same donor.
 #alternative2: data_scc_svgene_list.RData for scc dataset.
 svgene_list=data_dlpfc_acrossdonor_svgene_list
@@ -88,7 +88,7 @@ upset_integ_set=fromList(integ_set)
 ##3.plot the upset for each dataset,you need to change the "nsets", "mainbar.y.max" and "set_size.scale_max" to adapt each dataset.
 #Here is the example for dlpfc datasets across donors.
 dir2="RealData/result_data/upset plot"
-png(here(dir2,"upset_cauchy_acrossdonor.png"), width = 10, height =2.8, units = "in", res = 300)
+png(here::here(dir2,"upset_cauchy_acrossdonor.png"), width = 10, height =2.8, units = "in", res = 300)
 upset(upset_cauthy_set,
       nsets = 20, 
       mainbar.y.max=600,
@@ -111,7 +111,7 @@ upset(upset_cauthy_set,
 )
 dev.off()
 
-png(here(dir2,"upset_HMP_acrossdonor.png"), width = 10, height = 2.8, units = "in", res = 300)
+png(here::here(dir2,"upset_HMP_acrossdonor.png"), width = 10, height = 2.8, units = "in", res = 300)
 upset(upset_HMP_set,
       nsets = 20, 
       mainbar.y.max=1500,
@@ -134,7 +134,7 @@ upset(upset_HMP_set,
 )
 dev.off()
 
-png(here(dir2,"upset_union_acrossdonor.png"), width = 10, height = 3.2, units = "in", res = 300)
+png(here::here(dir2,"upset_union_acrossdonor.png"), width = 10, height = 3.2, units = "in", res = 300)
 upset(upset_uni_set,
       nsets = 20, 
       mainbar.y.max=1200,
@@ -157,7 +157,7 @@ upset(upset_uni_set,
 )
 dev.off()
 
-png(here(dir2,"upset_inter_acrossdonor.png"), width = 10, height = 3.2, units = "in", res = 300)
+png(here::here(dir2,"upset_inter_acrossdonor.png"), width = 10, height = 3.2, units = "in", res = 300)
 upset(upset_inter_set,
       nsets = 20,
       mainbar.y.max=1000,
@@ -180,7 +180,7 @@ upset(upset_inter_set,
 )
 dev.off()
 
-png(here(dir2,"upset_paste_acrossdonor.png"), width = 10, height = 3.2, units = "in", res = 300)
+png(here::here(dir2,"upset_paste_acrossdonor.png"), width = 10, height = 3.2, units = "in", res = 300)
 upset(upset_integ_set,
       nsets = 20, 
       mainbar.y.max=1700,
@@ -216,7 +216,7 @@ img_paths <- c(
 )
 
 images <- lapply(1:5, function(i) {
-    img <- image_read(here(dir2,img_paths[i]))
+    img <- image_read(here::here(dir2,img_paths[i]))
 
     image_annotate(img, 
                    text = LETTERS[i], 
@@ -228,7 +228,7 @@ images <- lapply(1:5, function(i) {
   
 combined <- image_append(do.call(c, images), stack = TRUE)
 print(combined)
-image_write(combined, here(dir2,paste0("dlp_upset_combined_",dataset,".png")))
+image_write(combined, here::here(dir2,paste0("dlp_upset_combined_",dataset,".png")))
 
 
 

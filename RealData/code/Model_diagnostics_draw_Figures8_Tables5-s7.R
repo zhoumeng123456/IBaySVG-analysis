@@ -323,42 +323,42 @@ compare_models <- function(result_nb, result_zinb, spelist, calpha.list, g, resu
 
 
 ##load the data for dlpfc
-dir="RealData/result_data/realdata dataset/dlpfc samedonor" #You may switch to the across-donor dataset, as the processing steps are identical except for the number of genes.
+dir="data/Realdataset/dlpfc samedonor" #You may switch to the across-donor dataset, as the processing steps are identical except for the number of genes.
 subgene=c(1:2400)#We recommend selecting gene sets in batches, as the detection function has limitations on the size of the input dataset.
-matrix4=as.matrix(read.csv(here(dir,"matrix4_count_samedonor.csv"),row.names = 1,check.names = FALSE))[subgene,]
-matrix3=as.matrix(read.csv(here(dir,"matrix3_count_samedonor.csv"),row.names = 1,check.names = FALSE))[subgene,]
-matrix2=as.matrix(read.csv(here(dir,"matrix2_count_samedonor.csv"),row.names = 1,check.names = FALSE))[subgene,]
-matrix1=as.matrix(read.csv(here(dir,"matrix1_count_samedonor.csv"),row.names = 1,check.names = FALSE))[subgene,]
+matrix4=as.matrix(read.csv(here::here(dir,"matrix4_count_samedonor.csv"),row.names = 1,check.names = FALSE))[subgene,]
+matrix3=as.matrix(read.csv(here::here(dir,"matrix3_count_samedonor.csv"),row.names = 1,check.names = FALSE))[subgene,]
+matrix2=as.matrix(read.csv(here::here(dir,"matrix2_count_samedonor.csv"),row.names = 1,check.names = FALSE))[subgene,]
+matrix1=as.matrix(read.csv(here::here(dir,"matrix1_count_samedonor.csv"),row.names = 1,check.names = FALSE))[subgene,]
 
-position4=as.matrix(read.csv(here(dir,"matrix4_position_samedonor.csv"),row.names = 1))
-position3=as.matrix(read.csv(here(dir,"matrix3_position_samedonor.csv"),row.names = 1))
-position2=as.matrix(read.csv(here(dir,"matrix2_position_samedonor.csv"),row.names = 1))
-position1=as.matrix(read.csv(here(dir,"matrix1_position_samedonor.csv"),row.names = 1))
+position4=as.matrix(read.csv(here::here(dir,"matrix4_position_samedonor.csv"),row.names = 1))
+position3=as.matrix(read.csv(here::here(dir,"matrix3_position_samedonor.csv"),row.names = 1))
+position2=as.matrix(read.csv(here::here(dir,"matrix2_position_samedonor.csv"),row.names = 1))
+position1=as.matrix(read.csv(here::here(dir,"matrix1_position_samedonor.csv"),row.names = 1))
 
-calpha4=as.matrix(read.csv(here(dir,"matrix4_celltype_samedonor.csv"),row.names = 1))
-calpha3=as.matrix(read.csv(here(dir,"matrix3_celltype_samedonor.csv"),row.names = 1))
-calpha2=as.matrix(read.csv(here(dir,"matrix2_celltype_samedonor.csv"),row.names = 1))
-calpha1=as.matrix(read.csv(here(dir,"matrix1_celltype_samedonor.csv"),row.names = 1))
+calpha4=as.matrix(read.csv(here::here(dir,"matrix4_celltype_samedonor.csv"),row.names = 1))
+calpha3=as.matrix(read.csv(here::here(dir,"matrix3_celltype_samedonor.csv"),row.names = 1))
+calpha2=as.matrix(read.csv(here::here(dir,"matrix2_celltype_samedonor.csv"),row.names = 1))
+calpha1=as.matrix(read.csv(here::here(dir,"matrix1_celltype_samedonor.csv"),row.names = 1))
 
 spelist<-list(list(t(matrix1),position1),list(t(matrix2),position2),
               list(t(matrix3),position3),list(t(matrix4),position4))
 c_alpha<-list(calpha1,calpha2,calpha3,calpha4)#the default input for function CTIG_modified()
 
 ##or you can load data for scc
-dir="RealData/result_data/realdata dataset/scc" 
+dir="data/Realdataset/scc" 
 subgene=c(1:2400)#We recommend selecting gene sets in batches, as the detection function has limitations on the size of the input dataset.
 
-matrix3=as.matrix(read.csv(here(dir,"matrix3_count_scc.csv"),row.names = 1,check.names = FALSE))[subgene,]
-matrix2=as.matrix(read.csv(here(dir,"matrix2_count_scc.csv"),row.names = 1,check.names = FALSE))[subgene,]
-matrix1=as.matrix(read.csv(here(dir,"matrix1_count_scc.csv"),row.names = 1,check.names = FALSE))[subgene,]
+matrix3=as.matrix(read.csv(here::here(dir,"matrix3_count_scc.csv"),row.names = 1,check.names = FALSE))[subgene,]
+matrix2=as.matrix(read.csv(here::here(dir,"matrix2_count_scc.csv"),row.names = 1,check.names = FALSE))[subgene,]
+matrix1=as.matrix(read.csv(here::here(dir,"matrix1_count_scc.csv"),row.names = 1,check.names = FALSE))[subgene,]
 
-position3=as.matrix(read.csv(here(dir,"matrix3_position_scc.csv"),row.names = 1))
-position2=as.matrix(read.csv(here(dir,"matrix2_position_scc.csv"),row.names = 1))
-position1=as.matrix(read.csv(here(dir,"matrix1_position_scc.csv"),row.names = 1))
+position3=as.matrix(read.csv(here::here(dir,"matrix3_position_scc.csv"),row.names = 1))
+position2=as.matrix(read.csv(here::here(dir,"matrix2_position_scc.csv"),row.names = 1))
+position1=as.matrix(read.csv(here::here(dir,"matrix1_position_scc.csv"),row.names = 1))
 
-calpha3=as.matrix(read.csv(here(dir,"matrix3_celltype_scc.csv"),row.names = 1))
-calpha2=as.matrix(read.csv(here(dir,"matrix2_celltype_scc.csv"),row.names = 1))
-calpha1=as.matrix(read.csv(here(dir,"matrix1_celltype_scc.csv"),row.names = 1))
+calpha3=as.matrix(read.csv(here::here(dir,"matrix3_celltype_scc.csv"),row.names = 1))
+calpha2=as.matrix(read.csv(here::here(dir,"matrix2_celltype_scc.csv"),row.names = 1))
+calpha1=as.matrix(read.csv(here::here(dir,"matrix1_celltype_scc.csv"),row.names = 1))
 
 spelist<-list(list(t(matrix1),position1),list(t(matrix2),position2),
               list(t(matrix3),position3))
@@ -428,7 +428,7 @@ for(i in genedomain){
 ############################################################################################################################################
 #load the result
 dir="RealData/result_data/model check"
-load(here(dir,"total_list_model_check_zinb_vs_nb.RData"))#This result contains the comparison between the ZINB and NB models across multiple slices from three datasets.
+load(here::here(dir,"total_list_model_check_zinb_vs_nb.RData"))#This result contains the comparison between the ZINB and NB models across multiple slices from three datasets.
 
 #handle the result 
 datasetname=c("DLPFC-same donor","DLPFC-across donors","SCC")
@@ -569,9 +569,9 @@ count_model_comparison <- function(result, mode_names = c("linear","focal","peri
 
 
 #load the result
-load(here(dir,"voung_spatial_dlpfc_samedonor.RData"))#name:voung_spatial_dlpfc_samedonor
-#load(here(dir,"voung_spatial_dlpfc_acrossdonor.RData"))#name:voung_spatial_dlpfc_acrossdonor
-#load(here(dir,"voung_spatial_dlpfc_scc.RData"))#name:voung_spatial_dlpfc_scc
+load(here::here(dir,"voung_spatial_dlpfc_samedonor.RData"))#name:voung_spatial_dlpfc_samedonor
+#load(here::here(dir,"voung_spatial_dlpfc_acrossdonor.RData"))#name:voung_spatial_dlpfc_acrossdonor
+#load(here::here(dir,"voung_spatial_dlpfc_scc.RData"))#name:voung_spatial_dlpfc_scc
 
 res <- count_model_comparison(
   result = voung_spatial_dlpfc_samedonor,#alternative:voung_spatial_dlpfc_acrossdonor,voung_spatial_dlpfc_scc
