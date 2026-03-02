@@ -1,17 +1,24 @@
+---
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
 
 # README document for manuscript ” Integrated Bayesian non-parametric spatial modeling for cross-sample identification of spatially variable genes”
 
 ## Data
 
+All datasets (real spatial transcriptomic data and Simulation data) used in
+this study are publicly available and stored in the GitHub repository zhoumeng123456/IBaySVG-analysis.
+
 ### Directory Structure Description
 
-The data used in this study is stored in the `data` folder of the
+The data used in this study is stored in the `data/` folder of the
 repository, which is divided into two core subdirectories:
 
-- `RealData`: Contains the two publicly available spatial transcriptomic
+- `Realdataset`: Contains the two publicly available spatial transcriptomic
   datasets described below, including preprocessed expression matrices,
-  scRNA/snRNA matrix, cell type proportion, and downstream analysis
-  results.
+  scRNA/snRNA matrix and cell type proportion.
 - `Simulation data`: Includes simulation datasets spanning three
   canonical spatial patterns and Three additional heterogeneous spatial
   structures. For each canonical pattern, multiple data-integration
@@ -119,6 +126,9 @@ configurations.
 The `code_and_data` directory contains all core resources to reproduce
 results:
 
+- `Demo/`：the main IBaySVG implementation, usage instructions for 
+  both IBaySVG and comparison methods, and a small example dataset 
+  for testing the full analysis workflow.
 - `Simulation Generate/`: Standalone code to generate synthetic spatial
   expression data across multiple canonical (linear, focal, periodic)
   and heterogeneous spatial patterns, with tunable signal strengths,
@@ -158,20 +168,40 @@ to the function documentation;
 Updated with exact file mappings for simulation studies:
 
 | Subdirectory | Exact File List | Content Description |
-|----|----|----|
+|---|----------|------|
 | `code/` | `simulation_spotregion_draw_FigureS20.R` | Generates plots for partitioned spot regions considered in the basic simulations.(Supplementary Figures S20) |
 |  | `simulation_draw_FigureS21-S29.R` | Generates plots for basic simulation results under three canonical spatial patterns(Supplementary Figures S21–S29) |
-|  | `additional_spatial_expression_pattern_draw_FigureS30.R` | Generates plots for examples of spatial expressions under additional spatial structures(Supplementary Figures s30) |
+|  | `additional_expression_pattern_FigureS30.R` | Generates plots for examples of spatial expressions under additional spatial structures(Supplementary Figures s30) |
 |  | `Simulation_additional_draw_FigureS31-S33.R` | Generates plots for simulation results under nine additional spatial structures (Supplementary Figures S31–S33) |
 |  | `simulation_nocov_draw_FigureS34-S36.R` | Generates plots for simulation results under three canonical spatial patterns without covariates (Supplementary Figures S34–S36) |
 |  | `sensitive_simulation_draw_FigureS40-S42.R` | Generates plots for sensitivity analysis of hyperparameters in the simulated dataset under three canonical spatial patterns(Supplementary Figures S40–S42) |
 |  | `comparison_between_ZINB_NB_Tables35-s36.R` | Illustrates the comparison between ZINB and NB Models under simulation scenarios for Table s35-s36 |
 |  | `comparison_between_two_statistics_Tables1-s3.R` | Illustrates the comparison of the performance between two statistics under simulation scenarios for Table s1-s3 |
+|  | `Computer_time_s4.R` | Illustrates the average execution time per gene under different spots numbers for Table s4 |
 | `result_data/` | `sensitivity analysis of hyperparameters/` (directory) | Contains results from sensitivity analyses of key hyperparameters evaluated on simulated datasets under three canonical spatial patterns (linear, focal, and periodic) |
 |  | `simulation result/` (directory) | Contains results from baseline simulation scenarios (linear, focal, and periodic patterns), evaluated both with and without covariate effects, as well as additional simulation settings under nine alternative spatial structures. |
 |  | `additional spatial pattern/` (directory) | Contains plots of spatial expression of additional spatial structures selected |
 |  | `noinflation/`(directory) | Contains the code and results of IBaySVG without zero inflation structure |
 |  | `compare statistics/` (directory) | Contains results of using different statistics in IBaySVG |
+||`compute time.csv`|Contains the results of computing time of IBaySVG|
+#### Demo 
+
+The `Demo/` folder provides a minimal working example for reproducing the main analysis pipeline and benchmarking procedures.
+
+It contains the following components:
+
+- **`Implement_of_IBaySVG.pdf`**：Provides detailed documentation of the IBaySVG algorithm and instructions for its implementation.
+- **`IBaySVG_main.R`**：The main function implementing the proposed IBaySVG method.
+- **`Comparison_methods_R.R`**: Implementation of competing methods in the R environment.
+- **`Comparison_methods_python.py`**: Implementation of competing methods in the Python environment.
+- **Example data files**: The remaining files provide example datasets in both R and CSV formats:
+  - `data_example.RData` — R-format example dataset.
+  - `matrix*_count_example.csv` — UMI count matrices (CSV format).
+  - `matrix*_position_example.csv` — Spatial coordinate matrices (CSV format).
+
+The R-formatted files are intended for use in the R environment, while the CSV files are provided to ensure compatibility with Python-based analysis.
+
+
 
 #### RealData
 
@@ -180,7 +210,7 @@ for real spatial transcriptomic datasets, with the exact file breakdown
 as follows:
 
 | Subdirectory | Exact File List | Content Description |
-|----|----|----|
+|---|----------|------|
 | `code/` | `spatial_expression_draw_Figures1.R` | Generates plots of Examples of linear, focal, periodic, and one more complex spatial patterns for Supplementary Figures1 |
 |  | `venn_plot_draw_Figures2-s4.R` | Generates venn plots of SV genes identified in real datasets for Supplementary Figures2-s4 |
 |  | `celltype_plot_draw_Figures5-s7.R` | Generates plots of distribution of cellular composition in real datasets for Supplementary Figures5-s7 |
@@ -189,12 +219,135 @@ as follows:
 |  | `gene_cluster_draw_Figures14-s19_Tables17-s19.R` | Generates expression and heatmap plots of dominant gene clusters of SV genes identified by IBaySVG in real datasets for Supplementary Figure s14-s19 and the enrichment result for supplementary Tables17-s19 |
 |  | `sensitive_realdata_draw_FigureS37-S39.R` | Generates plots for sensitivity analysis of hyperparameters in real datasets (Supplementary Figures S37–S39) |
 |  | `spatial_domain_draw_Figure3.R` | Generates spatial domains derived from SV genes identified by IBaySVG for main Figure3 |
-|  | `Computer_time_s4.R` | Illustrates the average execution time per gene under different spots numbers for Table s4 |
 |  | `Stability_analysis_Tables8-s13.R` | Illustrates the results of subsampling validation of SV gene detection in real dataset for Tables8-s13 |
 |  | `marker_gene_identify_Tables15-s16.R` | Illustrates the performance comparison of different methods in identifying layer-specific marker for Table s15 and s16 |
 |  | `comparison_spotcluster_index_Tables20-s34.R` | Illustrates the results of comparative evaluation of spot clustering performance in real dataset for Tables20-s34 |
-| `result_data/` | `realdata svgene/`(directory), `plot of figures1/`(directory), `genecluster/`(directory), `spotcluster/`(directory), `stability/`(directory), `realdata dataset/`(directory), `Model check/`(directory), `sensitive analysis/`(directory), `upset plot/`(directory), `benchmark/`(directory), compute time.csv | Precomputed results to support plotting scripts in the `code/` directory, including inferred SV gene set, inferred spot cluster, inferred gene cluster, model checking results, stability analysis results and sensitive results of all hyperparameters |
+|  | `comparative_analysis_Figure2_s12_s13.R`|Illustrates the process of comparative analysis of the identified SV genes and generates the plots of spatial expression for Figure2,s12 and s13|
+| `result_data/` | `plot of figures1/`(directory)| Contains prepared plots of figure s1|
+|                |`realdata svgene/`(directory)| Contains identified SV genes of each method |
+||`genecluster/`(directory)|Contains the results of inferred gene cluster|
+||`spotcluster/`(directory)|Contains the results of inferred spot cluster|
+||`stability/`(directory)|Contains the results of stability analysis of each method |
+||`realdata dataset/`(directory)|Contains the preprocessed dataset used in realdata analysis|
+||`model check/`(directory)|Contains the results of model checking|
+||`sensitive analysis/`(directory)|Contains the results of sensitive analysis of hyperparameters|
+||`upset plot/`(directory)|Contains the preprocessed upset plot|
+||`benchmark/`(directory)|Contains the benchmark results obtained from Zeng et al.(2012) and Maynard et al.(2021) |
+
+#### Downloading Large Reproducibility Files
+
+Some intermediate outputs and large data files (e.g.,  simulation and realdata analysis outputs, and processed count matrices) are excluded from this repository due to their size. To fully reproduce the results in the paper:
+
+1. Download the required files from: https://github.com/zhoumeng123456/IBaySVG-analysis
+
+2. Specifically, download and replace the following directories:
+  
+   - `data/`
+   - `RealData/result_data/benchmark/`
+   - `RealData/result_data/genecluster/`
+   - `RealData/result_data/realdata dataset/`
+   - `RealData/result_data/spotcluster/`
+   - `Simulations/result_data/additional spatial pattern/`
+   - `Simulations/result_data/noinflation/example_linear_inf5.RData`
+
+3. Place the downloaded folders in the same relative directory structure as provided in this repository.
+
+4. Do not modify folder names, as the scripts rely on relative paths.
+
+All analysis scripts will run without modification once the directory structure is preserved.
+
+
+### Reproducibility Workflow
+
+The recommended order for reproducing the results in this manuscript is:
+
+#### Step 1: Download Required Files from GitHub before running any scripts
+
+#### Step 2: Set the Working Directory
+
+All R scripts rely on the `here` package for path management. Set the working directory to the `code_and_data` root directory before running any scripts.
+
+#### Step 3: Run the Demo Example (Quick Start)
+
+Users are encouraged to begin with the example provided in the `Demo/` directory. This minimal working example demonstrates:
+
+- Implementation of the IBaySVG method by reading the `Implement_of_IBaySVG.pdf` and running `IBaySVG_main.R`
+- Implementation of the  Comparative  method by running: 
+  - `Comparison_methods_R.R`
+  - `Comparison_methods_python.py`
+- Expected input and output formats.
+
+#### Step 4: Reproduce Simulation Studies
+
+Simulation experiments can be reproduced using the `Simulation Generate/` and `Simulations/` directory. Users may either regenerate the simulation datasets or directly reproduce results using the provided data files.
+
+- Custom simulation data can be generated using `Simulation Generate/generate_simu.R`;
+- All simulation figures and tables can be regenerated using scripts in:
+  - `Simulations/code/`
+  - `Simulations/result_data/`
+
+
+#### Step 5: Reproduce Real Data Analyses
+
+All real-data analyses are contained in the `RealData/` directory. To fully reproduce the results, we recommend the following execution order:
+
+**(1) Model Diagnostics**
+
+Begin with model checking and diagnostic analyses to validate the distributional assumptions (e.g., ZINB vs. NB models) and spatial functional forms.
+
+Scripts are located in:
+
+- `RealData/code/Model_diagnostics_draw_Figures8_Tables5-s7.R`
+- `RealData/result_data/model check/`
+
+**(2) Identification of Spatially Variable (SV) Genes**
+
+Running the IBaySVG and competing methods produced in `Demo/` to identify SV genes based on the preprocessed datasets provided in:
+
+- `RealData/result_data/realdata dataset/`
+
+The resulting SV gene lists are stored in:
+
+- `RealData/result_data/realdata svgene/`
+
+**(3) Downstream Visualization and Biological Interpretation**
+
+After identifying SV genes, reproduce downstream analyses and visualization, including:
+
+- Venn and UpSet plots: 
+  - `RealData/code/venn_plot_draw_Figures2-s4.R`
+  - `RealData/code/upset_draw_Figures9-s11.R`
+- Cell-type composition analysis: 
+  - `RealData/code/celltype_plot_draw_Figures5-s7.R`
+- comparative analysis: 
+  - `RealData/code/comparative_analysis_Figure2_s12_s13.R`
+
+**(4) Sensitive Analysis, Stability Analysis and Comparative Benchmarking**
+
+Next, reproduce robustness validation and benchmarking analyses, including:
+
+- Sensitive Analysis of hyperparameters: 
+  - `RealData/code/sensitive_realdata_draw_FigureS37-S39.R`
+- Subsampling-based stability assessment: 
+  - `RealData/code/Stability_analysis_Tables8-s13.R`
+- Comparative performence in identifying marker genes: 
+  - `RealData/code/marker_gene_identify_Tables15-s16.R`
+
+**(5) Gene Clustering and Spot Clustering**
+
+Finally, reproduce clustering analyses based on identified SV genes:
+
+- Gene cluster inference and visualization: 
+  - `RealData/code/gene_cluster_draw_Figures14-s19_Tables17-s19.R`
+- Spot clustering and spatial domain identification: 
+  - `RealData/code/comparison_spotcluster_index_Tables20-s34.R`
+  - `RealData/code/spatial_domain_draw_Figure3.R`
 
 **Key Note**: All R scripts in `code/` use the `here` package to
 reference files in `result_data/`. Ensure the working directory is set
 to the `code_and_data` root before execution.
+
+
+
+
+
