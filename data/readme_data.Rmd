@@ -1,0 +1,219 @@
+---
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+
+## 1. Structure of Preprocessed Real Datasets
+
+The preprocessed real datasets are stored in the `Realdataset/` directory, which contains three subdirectories:
+
+- `dlpfc_acrossdonor/`
+- `dlpfc_samedonor/`
+- `scc/`
+
+Each subdirectory contains a collection of CSV files corresponding to individual tissue slices.
+
+### 1.1 File Naming Convention
+
+All files follow the naming pattern: matrix{sliceID}`_`{datatype}`_`{suffix}.csv
+
+where:
+
+- `{sliceID}` denotes the slice index  
+  - For DLPFC datasets: values range from 1 to 4  
+  - For SCC dataset: values range from 1 to 3  
+
+- `{datatype}` indicates the data type:
+  - `count` — Gene expression count matrix (gene × spot)
+  - `position` — Spatial coordinate matrix (spot × location)
+  - `celltype` — Covariate matrix (spot × covariate)
+
+- `{suffix}` identifies the dataset:
+  - `acrossdonor` — DLPFC across-donor integration
+  - `samedonor` — DLPFC same-donor integration
+  - `scc` — SCC dataset
+
+### 1.2 Data Structure
+
+For each slice, the following matrices are provided:
+
+- **Count matrix (`count`)**  
+  A gene × spot matrix containing UMI counts.
+
+- **Position matrix (`position`)**  
+  A spot × location matrix containing spatial coordinates.
+
+- **Cell-type matrix (`celltype`)**  
+  A spot × covariate matrix representing estimated cell-type proportions (used as covariates in the model).
+  
+  
+## 2. Structure of Preprocessed Simulation data
+
+The `Simulation data/` directory contains three main subdirectories:
+
+- `basic simulation/`
+- `basic simulation without covariates/`
+- `additional simulation/`
+
+Each folder stores pre-generated simulation datasets in `.RData` or `.csv` format.
+
+### (1) Basic Simulation (with Covariates)
+
+This folder contains three subdirectories corresponding to the three canonical spatial patterns:
+
+- `linear/`
+- `focal/`
+- `period/`
+
+Each subdirectory includes files named as:
+
+- data_{pattern}_seed{n}.RData
+- data_{pattern}_seed{n}_paste.RData
+
+where:
+
+- `{pattern}` ∈ {linear, focal, period}
+- `{n}` denotes the random seed index
+- `_paste` indicates datasets integrated using the PASTE method
+
+#### (a) Files without `_paste`
+
+For files such as: 
+
+- data_focal_seed1.RData
+
+After loading, the object `all_results_list` is obtained. It contains three elements:
+
+- `inf1` — low zero-inflation
+- `inf3` — medium zero-inflation
+- `inf5` — high zero-inflation
+
+Each zero-inflation list contains:
+
+- `data_list`: a list of 8 count matrices (spot × gene) corresponding to eight signal strengths  
+  (high, medium, medium, medium, low, low, very low, extremely low),  
+  covering the four integration Settings 1–4.
+
+  -These eight signal levels are used to construct four integration settings:
+    - **Setting 1**: element  {1, 2, 3, 4}  
+    - **Setting 2**: elements {1, 2, 5, 6}  
+    - **Setting 3**: elements {3, 4, 5, 6}  
+    - **Setting 4**: elements {2, 5, 7, 8}  
+
+- `calpha_list`: a list of 8 covariate matrices (spot × covariate) corresponding to each signal-strength scenario.
+
+#### (b) Files with `_paste`
+
+For files such as: 
+
+- data_focal_seed1_paste.RData
+
+After loading, the object `data_paste_list` is obtained. It contains three elements corresponding to:
+
+- `inf1` — low zero-inflation
+- `inf3` — medium zero-inflation
+- `inf5` — high zero-inflation
+
+Each element contains four integrated count matrices (spot × gene), corresponding to the four integration Settings 1–4 (in order).
+
+
+
+### (2) Basic Simulation Without Covariates
+
+This folder has the same structure as the basic simulation folder, with subdirectories:
+
+- `linear/`
+- `focal/`
+- `period/`
+
+File naming follows:
+
+- data_{pattern}_nocov_seed{n}.RData
+- data_{pattern}_nocov_seed{n}_paste.RData
+
+
+#### (a) Files without `_paste`
+
+For example: 
+
+- data_focal_nocov_seed1.RData
+
+After loading, `all_results_list` is obtained. It contains only one element:
+
+- `inf3` (medium zero-inflation)
+
+Inside `inf3`:
+
+- `data_list`: contains 8 count matrices (spot × gene) corresponding to eight signal strengths under the four integration Settings 1–4.
+- No covariate matrices are included.
+
+
+#### (b) PASTE-integrated files
+
+For example: 
+
+- data_focal_nocov_seed1_paste.RData
+
+After loading, `data_paste_list` is obtained. Only the second element (corresponding to `inf3`) contains values. It includes four integrated count matrices (spot × gene), corresponding to the four integration Settings.
+
+
+### (3) Additional Simulation
+
+This folder contains nine additional heterogeneous spatial patterns:
+
+- `Focal-Period`
+- `Linear-Focal`
+- `Linear-Period`
+- `Polynomial1`
+- `Polynomial2`
+- `Polynomial3`
+- `Polynomial4`
+- `Sigmoid`
+- `ZINNGP`
+
+#### (a) Files without `_paste`
+
+Files are named as:
+
+- dif_data_seed{n}{patternX}{patternY}.RData
+
+where:
+
+- `{n}` is the seed index
+- `{patternX}` is the spatial pattern modeled along the x-axis
+- `{patternY}` is the spatial pattern modeled along the y-axis
+
+For example: dif_data_seed1polynomial1polynomial1.RData
+
+After loading, the object `result_list` is obtained. It contains four lists, each corresponding to one slice. Each slice includes three matrices:
+
+1. Count matrix (spot × gene)
+2. Spatial coordinate matrix (spot × location)
+3. Covariate matrix (spot × covariate)
+
+#### (b) PASTE-integrated datasets
+
+Files such as: data_paste_polynomial1polynomial1_seed8.csv.
+
+- represent PASTE-integrated count matrices (spot × gene).
+
+
+### 3.Spatial Coordinate Generation
+
+We used a fixed 32 × 32 grid for all simulations:
+
+```{r}
+loc <- expand.grid(y = 0:31, x = 0:31)[, 2:1]
+rownames(loc) <- paste("spot", 1:1024)
+colnames(loc) <- c("x", "y")
+
+```
+
+data is saved in the `data/Simulation data/location.csv`.
+
+
+### Important Note on Covariates of PASTE-integrated datasets
+
+For all simulation datasets, the PASTE method integrates only count matrices and does not integrate covariate information.Therefore, for integrated datasets, the covariate matrix from the first slice is used as the covariate.
+
