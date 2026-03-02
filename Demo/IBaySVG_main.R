@@ -14,14 +14,25 @@
 #' @param min_iter : the minimum number of iteration. Default to 30.
 #' @param max_iter : the maximum number of iteration. Default to 100.
 #' @param speci_iter : Number of times the early convergence criterion is met.
-#'
+#' @param ak_domain :Hyperparameter of varience of beta to control the slab and spike prior for different degree. Default are 0.08,0.05,0.04 and 0.03 for degree 1-4, respectively. 
+#' @param dp :hyperparameter of alpha's beta prior
+#' @param cp :hyperparameter of alpha's beta prior
+#' @param cq :hyperparameter of u's beta prior
+#' @param dq :hyperparameter of u's beta prior
+#' @param use_covariate :the logistic variable of using covariate. Default is TRUE which use covariates.
+#' @param a_phi_single :Hyperparameter of the shape parameter $\phi$. Default is 0.001.
+#' @param b_phi_single :Hyperparameter of the shape parameter $\phi$. Default is 0.001.
+#' @param a_pi,b_pi Numeric. Hyperparameters for the Beta prior of the zero-inflation probability \eqn{\pi}. Defaults are 1 and 1.
+#' @param eta_sigma_single :Hyperparameter of variance of $\eta$, the baseline gene expression. Default is 1.
+#' @param psi_sigma_single :Hyperparameter of variance of $\psi$, controlling the contribution of covariates. Default is 1.
+#' 
 #' @return A list with:
 #'   \itemize{
 #'     \item{initial_result: Posterior probability u in 2D coordinates}
 #'     \item{post_mean_uk: Posterior probability u after maximization}
-#'     \item{threshold: SV/non-SV gene classification threshold}
 #'     \item{identify_number: Binary vector (1=SV gene, 0=non-SV gene)}
 #'     \item{svgenename: Names of identified SV genes}
+#'     \item{Posterior mean of remained parameters.}
 #'   }
 #' @export
 #' @importFrom splines bs
@@ -49,14 +60,19 @@
 #' c_alpha <- list(result1[[3]],  result2[[3]],result3[[3]],result4[[3]])# covariates
 #'# you can choose c_alpha <- NULL for the lack of cell-type covariates. 
 #' # Run analysis (parallel with 4 cores)
-#' result <- IBaySVG(spelist = spelist,c_alpha = c_alpha,num_cores = 1)
-#'
 #' # Print key outputs:
-#' # 1. Posterior mean probabilities
+#' # 1. Posterior mean probabilities after maximization
+#' print("Posterior mean probabilities:")
 #' print(result[[2]])
-#'
-#' # 2. Binary classification of SV genes
+#' 
+#' # 2. the identified SV genes
+#' print("the identified SV genes:")
 #' print(result[[4]])
+#' 
+#' # 3. the posterior mean of parameters
+#' names(result[[5]][[1]])
+#' print("the posterior mean of parameters theta:")
+#' result[[5]][[1]][["theta"]]
 #' }
 IBaySVG <- function(spelist,c_alpha=NULL,num_cores=1,acrate=0.01,alpha=0.05,gamma1=sqrt(0.001),gamma2=0.01,min_iter=30,max_iter=200,speci_iter=12,
                     cp=0.2,dp=1.8,cq=1,dq=1,ak_domain=c(0.08,0.05,0.04,0.03),a_phi_single=0.001,b_phi_single=0.001,
@@ -359,6 +375,11 @@ sim_create <- function(gene_size =100,svgene_size=0.1,sv_mark=c(1,1),no_sv_mark 
 #' @param max_iter : the maximum number of iteration.
 #' @param speci_iter : Number of times the early convergence criterion is met
 #' @param use_covariate :the logistic variable of using covariate. Default is TRUE which use covariates.
+#' @param a_phi_single :Hyperparameter of the shape parameter $\phi$. Default is 0.001.
+#' @param b_phi_single :Hyperparameter of the shape parameter $\phi$. Default is 0.001.
+#' @param a_pi,b_pi Numeric. Hyperparameters for the Beta prior of the zero-inflation probability \eqn{\pi}. Defaults are 1 and 1.
+#' @param eta_sigma_single :Hyperparameter of variance of $\eta$, the baseline gene expression. Default is 1.
+#' @param psi_sigma_single :Hyperparameter of variance of $\psi$, controlling the contribution of covariates. Default is 1.
 #'
 #' @return the posterior mean of all the parameters
 #' @export
@@ -852,9 +873,26 @@ CTIG<-function(spelist){
 #' @param max_iter : the maximum number of iteration.
 #' @param speci_iter : Number of times the early convergence criterion is met.
 #' @param use_covariate :the logistic variable of using covariate. Default is TRUE which use covariates.
-#'
+#' @param ak_domain :Hyperparameter of varience of beta to control the slab and spike prior for different degree. Default are 0.08,0.05,0.04 and 0.03 for degree 1-4, respectively. 
+#' @param dp :hyperparameter of alpha's beta prior
+#' @param cp :hyperparameter of alpha's beta prior
+#' @param cq :hyperparameter of u's beta prior
+#' @param dq :hyperparameter of u's beta prior
+#' @param use_covariate :the logistic variable of using covariate. Default is TRUE which use covariates.
+#' @param a_phi_single :Hyperparameter of the shape parameter $\phi$. Default is 0.001.
+#' @param b_phi_single :Hyperparameter of the shape parameter $\phi$. Default is 0.001.
+#' @param a_pi,b_pi Numeric. Hyperparameters for the Beta prior of the zero-inflation probability \eqn{\pi}. Defaults are 1 and 1.
+#' @param eta_sigma_single :Hyperparameter of variance of $\eta$, the baseline gene expression. Default is 1.
+#' @param psi_sigma_single :Hyperparameter of variance of $\psi$, controlling the contribution of covariates. Default is 1.
 #' @return the posterior mean of all parameters for gene g.
 #' @export
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
 citgtest <- function(g,result,c_alpha,spelist,acrate,gamma1,gamma2,min_iter,max_iter,speci_iter,use_covariate=TRUE,
                      a_pi,b_pi,cp,dp,cq,dq,ak_domain,a_phi_single,b_phi_single,eta_sigma_single,psi_sigma_single){
   Ysingle.list<-list()
@@ -1148,29 +1186,6 @@ BayFDR <- function(PPI, alpha){
 
 
 
-
-# 
-# seed <- 123
-# result1 <- sim_create(gene_size = 20, svgene_size = 0.5, sv_mark = c(0.8, 0.8), inf_size = 0.5, seed = seed)
-# result2 <- sim_create(gene_size = 20, svgene_size = 0.5, sv_mark = c(0.5, 0.5), inf_size = 0.5, seed = seed + 1)
-# result3 <- sim_create(gene_size = 20, svgene_size = 0.5, sv_mark = c(0.5, 0.5), inf_size = 0.5, seed = seed + 2)
-# result4 <- sim_create(gene_size = 20, svgene_size = 0.5, sv_mark = c(0.5, 0.5), inf_size = 0.5, seed = seed + 3)
-# 
-# # Format input for NBIMSVG()
-# spelist <- list(list(result1[[1]], result1[[2]]),
-#                 list(result2[[1]], result2[[2]]),
-#                 list(result3[[1]], result3[[2]]),
-#                 list(result4[[1]], result4[[2]])) #expression matrix and location
-# c_alpha <- list(result1[[3]],  result2[[3]],result3[[3]],result4[[3]])# covariates
-# 
-# result <- NBIMSVG(spelist = spelist,c_alpha = c_alpha,num_cores = 1)
-# 
-# # Print key outputs:
-# # 1. Posterior mean probabilities
-# print(result[[2]])
-# 
-# # 2. Binary classification of SV genes
-# print(result[[4]])
 
 
 

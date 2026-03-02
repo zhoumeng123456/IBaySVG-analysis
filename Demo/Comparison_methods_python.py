@@ -1,3 +1,17 @@
+####################################################################################################################################
+                                                  #comparison_methods in python
+
+####################################################################################################################################
+#you should define the root library before processing the code
+from pathlib import Path
+import scanpy as sc
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+data_dir = PROJECT_ROOT / "Demo" / "example"
+####################################################################################################################################
+                                                          #StarTrail
+
+####################################################################################################################################
 ##1.StarTrail: the implement of curve fitting. Other details can be seen in file "Comparison_methods_R".
 from sklearn.datasets import make_blobs
 from sklearn.preprocessing import StandardScaler
@@ -50,8 +64,11 @@ for datanum in range(1,5):
         
         
         
-        
-##2.GASTON
+####################################################################################################################################
+                                                     #GASTON
+
+####################################################################################################################################        
+##2.GASTON: Avaiable on https://github.com/raphael-group/GASTON.
 #(1)import the lib
 import os
 import numpy as np
@@ -78,31 +95,31 @@ add_safe_globals([ReLU])
 
 #(2)train the model
 for t in ["count", "position"]:
-  csv_file = f"/Demo/matrix1_{t}_example.csv"
-  npy_file = f"/Demo/matrix1_{t}_example.npy"
-  df = pd.read_csv(csv_file, index_col=0)
-  np.save(npy_file, df.values)
-  print(f"Saved {npy_file}")
+    csv_file = data_dir / f"matrix1_{t}_example.csv"
+    npy_file = data_dir / f"matrix1_{t}_example.npy"
+    df = pd.read_csv(csv_file, index_col=0)
+    np.save(npy_file, df.values)
+    print(f"Saved {npy_file}")
 
-csv_file = f"/Demo/matrix1_count_example.csv"
-npy_file = f"/Demo/genename_example.npy"
+csv_file = data_dir / "matrix1_count_example.csv"
+npy_file = data_dir / "genename_example.npy"
 matrix_df = pd.read_csv(csv_file, index_col=0)
 colnames = matrix_df.index
-np.save(npy_file,colnames)
-gene_labels=np.load('/Demo/genename_example.npy', allow_pickle=True) # array of names of G genes
+np.save(npy_file, colnames)
+gene_labels = np.load(npy_file, allow_pickle=True)  # array of names of G genes
 
+path_to_glmpca = data_dir / "matrix1_glmpca_example.npy"
+path_to_coords = data_dir / "matrix1_position_example.npy"
+path_to_count = data_dir / "matrix1_count_example.npy"
 
-path_to_glmpca=f"/Demo/matrix1_glmpca_example.npy"
-path_to_coords= f"/Demo/matrix1_position_example.npy"
-path_to_count= f"/Demo/matrix1_count_example.npy"
+coords_mat = np.load(path_to_coords)  # N x 2 spatial coordinate matrix
+counts_mat = np.load(path_to_count)   # N x G UMI count array
+gene_labels = np.load(npy_file, allow_pickle=True)
 
-coords_mat=np.load(path_to_coords) # N x 2 spatial coordinate matrix 
-counts_mat=np.load(path_to_coords) # N x G UMI count array
-gene_labels=np.load('/Demo/genename_example.npy', allow_pickle=True) 
-num_dims=8 # 2 * number of clusters
-penalty=10 # may need to increase if this is too small
-glmpca_res=glmpca.glmpca(counts_mat.T, num_dims, fam="poi", penalty=penalty, verbose=True)
-A = glmpca_res['factors'] # should be of size N x num_dims, where each column is a PC
+num_dims = 8  # 2 * number of clusters
+penalty = 10  # may need to increase if too small
+glmpca_res = glmpca.glmpca(counts_mat.T, num_dims, fam="poi", penalty=penalty, verbose=True)
+A = glmpca_res['factors']  # N x num_dims
 np.save(path_to_glmpca, A)
 A=np.load(path_to_glmpca) 
 S=np.load(path_to_coords)
@@ -111,7 +128,7 @@ isodepth_arch=[20,20] # architecture for isodepth neural network d(x,y) : R^2 ->
 expression_fn_arch=[20,20] # architecture for 1-D expression function h(w) : R -> R^G
 num_epochs = 2500 # number of epochs to train NN (NOTE: it is sometimes beneficial to train longer)
 checkpoint = 500 # save model after number of epochs = multiple of checkpoint
-out_dir=f'/Demo/example_output' # folder to save model runs
+out_dir= data_dir /"example_output" # folder to save model runs
 optimizer = "adam"
 num_restarts=5
 device='cpu' # change to 'cpu' if you don't have a GPU
@@ -128,20 +145,19 @@ for seed in seed_list:
 
 #(3)process the result
 gaston_model, A, S = process_NN_output.process_files(
-  f'/Demo/example_output'
+  data_dir /"example_output""
 )
   
-coords_mat=np.load(f"/Demo/matrix1_position_example.npy") # N x 2 spatial coordinate matrix 
-counts_mat=np.load(f"/Demo/matrix1_count_example.npy").T # N x G UMI count array
-gene_labels=np.load('/Demo/genename_example.npy', allow_pickle=True) # array of names of G genes
-#model_selection.plot_ll_curve(gaston_model, A, S, max_domain_num=10, start_from=4)
+coords_mat = np.load(data_dir / "matrix1_position_example.npy")  # N x 2 spatial coordinate matrix 
+counts_mat = np.load(data_dir / "matrix1_count_example.npy").T   # N x G UMI count array
+gene_labels = np.load(data_dir / "genename_example.npy", allow_pickle=True)  # array of names of G genes
 
 num_layers=4
 gaston_isodepth, gaston_labels=dp_related.get_isodepth_labels(gaston_model,A,S,num_layers)
 gaston_isodepth=isodepth_scaling.adjust_isodepth(gaston_isodepth, gaston_labels, coords_mat, 
                                                  q_vals=[0.05, 0.05, 0.05, 0.05], scale_factor=0.05)
 
-np.savetxt(f"/Demo/gaston_labels.txt", gaston_labels)
+np.savetxt(data_dir / "gaston_labels.txt", gaston_labels)
 
 umi_threshold = 0
 pw_fit_dict=segmented_fit.pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth,
@@ -158,16 +174,67 @@ discont_svg = list(discont_genes_layer.keys())
 all_svg = list(set(cont_svg + discont_svg))
 
 all_svg_sorted = sorted(all_svg)#the identified sv genes.
-with open(f"/Demo/GASTON_SVG_list.txt", "w", encoding="utf-8") as f:
+with open(data_dir / "GASTON_SVG_list.txt", "w", encoding="utf-8") as f:
   for gene in all_svg_sorted:
     f.write(gene + "\n")
 
 
+####################################################################################################################################
+                                                           #PASTE
+
+####################################################################################################################################
+##3. PASTE：integrating multi-sample datasets for single-sample method. Avaiable on https://github.com/raphael-group/paste.
+import pandas as pd
+import numpy as np
+import scanpy as sc
+import paste as pst
+import rpy2.robjects as ro
+from rpy2.robjects import r
+from rpy2.robjects import pandas2ri
 
 
 
 
+slice_1 = sc.read_csv(data_dir / "matrix1_count_example.csv").T
+slice_2 = sc.read_csv(data_dir / "matrix2_count_example.csv").T
+slice_3 = sc.read_csv(data_dir / "matrix3_count_example.csv").T
+slice_4 = sc.read_csv(data_dir / "matrix4_count_example.csv").T
 
+slice_1_coor = pd.read_csv(data_dir / "matrix1_position_example.csv")
+slice_2_coor = pd.read_csv(data_dir / "matrix2_position_example.csv")
+slice_3_coor = pd.read_csv(data_dir / "matrix3_position_example.csv")
+slice_4_coor = pd.read_csv(data_dir / "matrix4_position_example.csv")
+
+slice_1_coor=slice_1_coor[['x', 'y']].to_numpy()
+slice_2_coor=slice_2_coor[['x', 'y']].to_numpy()
+slice_3_coor=slice_3_coor[['x', 'y']].to_numpy()
+slice_4_coor=slice_4_coor[['x', 'y']].to_numpy()
+
+slice_1.obsm['spatial'] = slice_1_coor
+slice_2.obsm['spatial'] = slice_2_coor
+slice_3.obsm['spatial'] = slice_3_coor
+slice_4.obsm['spatial'] = slice_4_coor
+
+sc.pp.filter_genes(slice_1, min_counts=1)
+sc.pp.filter_cells(slice_1, min_counts=1)
+sc.pp.filter_genes(slice_2, min_counts=1)
+sc.pp.filter_cells(slice_2, min_counts=1)
+sc.pp.filter_genes(slice_3, min_counts=1)
+sc.pp.filter_cells(slice_3, min_counts=1)
+sc.pp.filter_genes(slice_4, min_counts=1)
+sc.pp.filter_cells(slice_4, min_counts=1)
+
+initial_slice = slice_1.copy()
+slices = [slice_1, slice_2, slice_3, slice_4]
+
+lmbda = len(slices)*[1/len(slices)]
+center_slice, pis = pst.center_align(initial_slice, slices, lmbda)#choose the first slice as objective slice
+W = center_slice.uns['paste_W']
+H = center_slice.uns['paste_H']
+exp_matrix = np.dot(W,H)
+df = pd.DataFrame(np.around(exp_matrix, decimals=1))
+output_path = data_dir /"example_paste.csv"
+df.to_csv(output_path, index=False)
 
 
 

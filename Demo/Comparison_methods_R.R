@@ -11,9 +11,9 @@
 #
 # Each slice is itself a list containing four elements:
 #
-# 1) Gene expression matrix (1024 × 100)
+# 1) Gene expression matrix (1024 × 20)
 #    - 1024 spatial spots
-#    - 100 genes
+#    - 20 genes where the first 10 genes are set to SV genes and the remained non-Sv genes
 #
 # 2) Spatial coordinate matrix (1024 × 2)
 #    - x and y coordinates of each spot
@@ -27,8 +27,7 @@
 # 5) Tissue cluster label (1024×1)
 #    - layer label information required as input for the DESpace method
 #
-load(here::here("Demo","data_example.RData"))
-
+load(here::here("Demo/example","data_example.RData"))
 
 
 ##load data for single-sample method
@@ -267,10 +266,10 @@ for(datanum in c(1:4)){
     colnames(gradient_mesh)[1:2] = c('s1','s2')
     
     gradient_list[[cell_name]]=gradient_mesh
-    fwrite(gradient_mesh,here("Demo",paste0("example_",datanum,"_gradient_gene",cell_name,".txt")),col.names=TRUE,sep="\t")
+    fwrite(gradient_mesh,here::here("Demo/example",paste0("example_",datanum,"_gradient_gene",cell_name,".txt")),col.names=TRUE,sep="\t")
   }
-  save(gradient_list,file=here("Demo",paste0("example_",datanum,"_gradient.RData")))
-  save(model_list,file=here("Demo",paste0("example_",datanum,"_model.RData")))
+  save(gradient_list,file=here::here("Demo/example",paste0("example_",datanum,"_gradient.RData")))
+  save(model_list,file=here::here("Demo/example",paste0("example_",datanum,"_model.RData")))
 }
 
 #(2)fit the boundary curve in Python environment
@@ -311,7 +310,7 @@ for(datanum in c(1:4)){
     wombling_result_all = list()
     wombling_result = c()
     for(bound_num in c(1:7)){
-      boundary = fread(here("Demo",paste0(datanum,"_cell",bound_num,".txt")))#the results of implement in python environment 
+      boundary = fread(here::here("Demo/example",paste0(datanum,"_cell",bound_num,".txt")))#the results of implement in python environment 
       boundary = boundary %>% as.data.frame(check.names=F)
       colnames(boundary) = c('start_x','end_x','start_y','end_y')
       boundary$start_y = -boundary$start_y # we did these because we multiply -1 to the y coord when fit boundary
@@ -328,18 +327,18 @@ for(datanum in c(1:4)){
     }
     wombling_result_matrix[gene_name,]=wombling_result
   }
-  save(wombling_result_matrix,file=here("Demo",paste0("startrail_wombling_example_",datanum,".RData")))
-  save(threshold_result_matrix,file=here("Demo",paste0("startrail_threshold_example_",datanum,".RData")))
-  save(model_list,file=here("Demo",paste0("example_gene_",datanum,"_model.RData")))
+  save(wombling_result_matrix,file=here::here("Demo/example",paste0("startrail_wombling_example_",datanum,".RData")))
+  save(threshold_result_matrix,file=here::here("Demo/example",paste0("startrail_threshold_example_",datanum,".RData")))
+  save(model_list,file=here::here("Demo/example",paste0("example_gene_",datanum,"_model.RData")))
 }
 
 #read the result
 matrix1=data_example[[1]][[1]]
 genename=colnames(matrix1)
 for(datanum in c(1:4)){
-  load(here("Demo",paste0("startrail_threshold_example_",datanum,".RData")))
+  load(here::here("Demo/example",paste0("startrail_threshold_example_",datanum,".RData")))
   threshold=unname(0.25*quantile(threshold_result_matrix[,1],0.9)/threshold_result_matrix[1,2])   
-  load(here("Demo",paste0("startrail_wombling_example_",datanum,".RData")))
+  load(here::here("Demo/example",paste0("startrail_wombling_example_",datanum,".RData")))
   wombling_result=apply(abs(wombling_result_matrix),1,max)
   index=which(wombling_result>threshold)
   startrail_svgenename=genename[index]#the identified sv genes
