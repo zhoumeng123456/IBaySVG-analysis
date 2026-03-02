@@ -110,7 +110,7 @@ ggsave(paste0("select_pattern.png"), plot = p1, width = 4, height = 4, dpi = 300
 name1=c("linearfocal","focalperiod","linearperiod","ZINNGP","sigmoid","polynomial1","polynomial2","polynomial3","polynomial4")
 img_paths <-"Simulations/result_data/additional spatial pattern"
 images <- lapply(1:9, function(genenum) {
-  img <- image_read(here(img_paths,paste0(name1[genenum],".png")))
+  img <- image_read(here::here(img_paths,paste0(name1[genenum],".png")))
 })
 
 name2=c("Linear-Focal","Focal-Period","Linear-Period","ZINNGP","Sigmoid","Polynomial1","Polynomial2","Polynomial3","Polynomial4")

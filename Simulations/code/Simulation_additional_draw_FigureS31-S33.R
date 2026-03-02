@@ -159,7 +159,7 @@ combined_plot <- ((plot_total1)/(plot_total2)/(plot_total3)) +
 
 #print(combined_plot)
 
-ggsave(paste0("/Users/zhoum/Desktop/simu_",result_type,"_supple.png"), plot = combined_plot, width = 12, height = 12, dpi = 300)
+ggsave(paste0("simu_",result_type,"_supple.png"), plot = combined_plot, width = 12, height = 12, dpi = 300)
 
 
 
