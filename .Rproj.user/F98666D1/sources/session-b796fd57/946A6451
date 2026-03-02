@@ -3,7 +3,7 @@
     "path": "C:/Users/zhoum/OneDrive/nbimsvg代码/genedata.R",
     "project_path": null,
     "type": "r_source",
-    "hash": "0",
+    "hash": "2395521514",
     "contents": "",
     "dirty": false,
     "created": 1772003187086.0,
@@ -15,12 +15,12 @@
         "cursorPosition": "291,6",
         "scrollLine": "0"
     },
-    "folds": "58|113|194|0|\n199|92|263|0|\n442|51|462|0|\n816|80|1133|0|\n",
+    "folds": "199|92|263|0|\n442|51|462|0|\n816|80|1133|0|\n",
     "lastKnownWriteTime": 1772204895,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1772438503439,
+    "last_content_update": 1772459024488,
     "read_only": false,
     "read_only_alternatives": []
 }
