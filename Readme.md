@@ -308,7 +308,7 @@ Scripts are located in:
 
 Running the IBaySVG and competing methods produced in `Demo/` to identify SV genes based on the preprocessed datasets provided in:
 
-- Option A (Quick Start): Users can directly utilize the preprocessed benchmarks provided in `RealData/result_data/realdata dataset/` for an immediate run.
+- Option A (Quick Start): Users can directly utilize the preprocessed benchmarks provided in `data/Realdataset/` for an immediate run.
 - Option B (Full Reproduction): Alternatively, reproduction users can completely regenerate these preprocessed datasets from the raw matrices by running the provided data cleaning pipeline `RealData/code/data_preprocess.R`.
 
 The resulting SV gene lists are stored in:
