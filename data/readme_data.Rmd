@@ -4,7 +4,43 @@ output:
     latex_engine: xelatex
 ---
 
-## 1. Structure of Preprocessed Real Datasets
+## 1. Structure of  Real Datasets
+
+The `Realdataset/` directory contains both the raw input data components along with their preprocessing pipelines, and the finalized preprocessed benchmark slices.
+
+### 1.1 Raw Data & Preprocessing Pipeline
+
+To ensure complete transparency, we provide the full data cleaning workflow starting directly from the unmanipulated raw matrices.
+
+- **Pipeline Script**: `RealData/code/data_preprocess.R`
+- **Functionality**: This script illustrates the comprehensive data cleaning, quality control (QC), spot filtering, and cell-type deconvolution matching implemented for all real-world slices.
+
+The layout of the raw files inside `code_and_data/data/raw_data/` is structured as follows:
+
+#### 1.1.1 DLPFC Raw Dataset (`raw_data/dlpfc_dataset/`)
+
+- `151507_filtered_feature_bc_matrix.h5` to `151676_filtered_feature_bc_matrix.h5`: 12 standardized HDF5 files containing raw spatial transcriptomic expression matrices. 
+  - Slices 1–4 (151507–151510): 4 consecutive tissue slices from **Donor 1**.
+  - Slices 5–8 (151669–151672): 4 consecutive tissue slices from **Donor 2**.
+  - Slices 9–12 (151673–151676): 4 consecutive tissue slices from **Donor 3**.
+- `assays.h5`: Raw expression count matrix for the single-nucleus RNA-seq (snRNA-seq) reference.
+- `se.rds`: Complete metadata and cellular annotation object for the snRNA-seq reference.
+- `result_matrix.RData`: A pre-extracted and optimized copy of the snRNA-seq matrix for expedited execution.
+- `position1.txt` to `position12.txt`: Individual spot spatial coordinates matching the 12 ST HDF5 matrices respectively (corresponding to the official `tissue_positions_list.txt` from the spatialLIBD repository).
+
+*Note:* Due to GitHub's file size limitations, ultra-large raw baseline references (`assays.h5`) exceed the upload threshold and cannot be directly archived in this repository. Users **must** manually download the complete reference package via [Dropbox Link](https://www.dropbox.com/s/5919zt00vm1ht8e/sce_DLPFC_annotated.zip?dl=1), unzip it, and place the extracted files directly into the `data/Realdataset/raw_data/dlpfc_dataset/` directory before executing the preprocessing pipeline.
+
+#### 1.1.2 SCC Raw Dataset (`raw_data/scc_dataset/`)
+- `scc_P9_rep1.tsv` to `scc_P9_rep3.tsv`: Spatial transcriptomics count matrices (in TSV format) corresponding to 3 technical replicates sampled from **Patient 9**.
+- `spot_P9_rep1.tsv` to `spot_P9_rep3.tsv`: Spatial coordinate metadata matrices (in TSV format) mapping spots to physical locations for Patient 9's replicates.
+- `merge10pts_counts.txt`: Raw count matrix of the single-cell RNA-seq (scRNA-seq) benchmark reference encompassing ten integrated patients.
+- `GSE144236_patient_metadata_new.txt`: Clinical and cell-type annotation dictionary for the scRNA-seq reference dataset.
+- `scc_sc_count.RData`: Pre-processed and serialized scRNA-seq reference matrix ready for rapid memory allocation.
+
+*Workflow Option:* Reproduction users can fully regenerate the benchmarking input profiles from scratch by executing `data_preprocess.R` over these raw directories, or directly leverage the pre-computed matrices detailed in Section 1.2.
+
+
+### 1.2 Structure of Preprocessed Real Datasets
 
 The preprocessed real datasets are stored in the `Realdataset/` directory, which contains three subdirectories:
 
@@ -14,7 +50,7 @@ The preprocessed real datasets are stored in the `Realdataset/` directory, which
 
 Each subdirectory contains a collection of CSV files corresponding to individual tissue slices.
 
-### 1.1 File Naming Convention
+#### 1.2.1 File Naming Convention
 
 All files follow the naming pattern: matrix{sliceID}`_`{datatype}`_`{suffix}.csv
 
@@ -34,7 +70,7 @@ where:
   - `samedonor` — DLPFC same-donor integration
   - `scc` — SCC dataset
 
-### 1.2 Data Structure
+#### 1.2.2 Data Structure
 
 For each slice, the following matrices are provided:
 
