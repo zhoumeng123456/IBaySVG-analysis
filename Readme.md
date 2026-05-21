@@ -128,6 +128,9 @@ configurations.
 The `code_and_data` directory contains all core resources to reproduce
 results:
 
+- `data/`: contains all datasets used in this study, including real datasets (both 
+  processed datasets and raw input files for DLPFC and SCC studies) and simulated 
+  datasets generated under different spatial structure scenarios for benchmarking and evaluation.
 - `Demo/`: the main IBaySVG implementation, usage instructions for 
   both IBaySVG and comparison methods, and a small example dataset 
   for testing the full analysis workflow.
@@ -148,6 +151,38 @@ fully reproducible. The `code_and_data` directory is structured
 hierarchically to facilitate step-by-step reproduction, with strict path
 management via the `here` package (**critical: set the working directory
 root to `code_and_data` before running any scripts**).
+
+#### data
+
+This directory contains real and simulated datasets for reproducibility and evaluation. See `data/readme_data.pdf` for details.
+
+| Subdirectory |   Content Description |
+|------|------|
+| `Realdataset/dlpfc samedonor/` |Contains processed DLPFC datasets from the same donor, including ST count matrices, spatial coordinates, and cell proportion matrices.|
+| `Realdataset/dlpfc acrossdonor/` |Contains processed DLPFC datasets across different donors, including ST count matrices, spatial coordinates, and cell proportion matrices.|
+| `Realdataset/scc/` |Contains processed SCC datasets, including ST count matrices, spatial coordinates, and cell proportion matrices.|
+| `Realdataset/raw_data/` | Contains the raw input files for the DLPFC and SCC datasets (**the folder is left empty** in the supplementary archive and corresponding files should be downloaded via GitHub). |
+| `Simulation data/basic simulation` | Contains simulated datasets corresponding to the three main spatial structure settings (**the folder is left empty** in the supplementary archive and corresponding files should be downloaded via GitHub). |
+| `Simulation data/additional simulation` | Contains simulated datasets corresponding to the nine additional spatial structure settings (**the folder is left empty** in the supplementary archive and corresponding files should be downloaded via GitHub). |
+| `Simulation data/basic simulation without covariates` | Contains simulated datasets under the three main spatial structure settings without covariates (**the folder is left empty** in the supplementary archive and corresponding files should be downloaded via GitHub). |
+
+
+#### Demo 
+
+The `Demo/` folder provides a minimal working example for reproducing the main analysis pipeline and benchmarking procedures.
+
+It contains the following components:
+
+- **`Implement_of_IBaySVG.pdf`**：Provides detailed documentation of the IBaySVG algorithm and instructions for its implementation.
+- **`IBaySVG_main.R`**：The main function implementing the proposed IBaySVG method.
+- **`Comparison_methods_R.R`**: Implementation of competing methods in the R environment.
+- **`Comparison_methods_python.py`**: Implementation of competing methods in the Python environment.
+- **Example data files**: The remaining files provide example datasets in both R and CSV formats:
+  - `data_example.RData` — R-format example dataset.
+  - `matrix*_count_example.csv` — UMI count matrices (CSV format).
+  - `matrix*_position_example.csv` — Spatial coordinate matrices (CSV format).
+
+The R-formatted files are intended for use in the R environment, while the CSV files are provided to ensure compatibility with Python-based analysis.
 
 #### Simulation Generate
 
@@ -182,27 +217,10 @@ Updated with exact file mappings for simulation studies:
 |  | `Computer_time_S4.R` | Illustrates the average execution time per gene under different spots numbers for Table S4 |
 | `result_data/` | `sensitivity analysis of hyperparameters/` (directory) | Contains results from sensitivity analyses of key hyperparameters evaluated on simulated datasets under three canonical spatial patterns (linear, focal, and periodic) |
 |  | `simulation result/` (directory) | Contains results from baseline simulation scenarios (linear, focal, and periodic patterns), evaluated both with and without covariate effects, as well as additional simulation settings under nine alternative spatial structures. |
-|  | `additional spatial pattern/` (directory) | Contains plots of spatial expression of additional spatial structures selected |
-|  | `noinflation/`(directory) | Contains the code and results of IBaySVG without zero inflation structure |
+|  | `additional spatial pattern/` (directory) | Contains plots of spatial expression of additional spatial structures selected (**the folder is left empty** in the supplementary archive and corresponding files should be downloaded via GitHub) |
+|  | `noinflation/`(directory) | Contains the code and results of IBaySVG without zero inflation structure (**the example file is left empty** in the supplementary archive and corresponding files should be downloaded via GitHub) |
 |  | `compare statistics/` (directory) | Contains results of using different statistics in IBaySVG |
 ||`compute time.csv`|Contains the results of computing time of IBaySVG|
-#### Demo 
-
-The `Demo/` folder provides a minimal working example for reproducing the main analysis pipeline and benchmarking procedures.
-
-It contains the following components:
-
-- **`Implement_of_IBaySVG.pdf`**：Provides detailed documentation of the IBaySVG algorithm and instructions for its implementation.
-- **`IBaySVG_main.R`**：The main function implementing the proposed IBaySVG method.
-- **`Comparison_methods_R.R`**: Implementation of competing methods in the R environment.
-- **`Comparison_methods_python.py`**: Implementation of competing methods in the Python environment.
-- **Example data files**: The remaining files provide example datasets in both R and CSV formats:
-  - `data_example.RData` — R-format example dataset.
-  - `matrix*_count_example.csv` — UMI count matrices (CSV format).
-  - `matrix*_position_example.csv` — Spatial coordinate matrices (CSV format).
-
-The R-formatted files are intended for use in the R environment, while the CSV files are provided to ensure compatibility with Python-based analysis.
-
 
 
 #### RealData
@@ -226,16 +244,16 @@ as follows:
 |  | `comparison_spotcluster_index_Table_S20-S34.R` | Illustrates the results of comparative evaluation of spot clustering performance in real dataset for Table S20-S34 |
 |  | `comparative_analysis_Figure2_S12_S13.R`|Illustrates the process of comparative analysis of the identified SV genes and generates the plots of spatial expression for Figure2,S12 and S13|
 |  | `data_preprocess.R`|Illustrates the comprehensive data cleaning, quality control, and preprocessing pipeline starting from the raw datasets. |
-| `result_data/` | `plot of figure_S1/`(directory)| Contains prepared plots of figure S1|
+| `result_data/` | `plot of figure_S1/`(directory)| Contains prepared plots of figure S1 (**the folder is left empty** in the supplementary archive and corresponding files should be downloaded via GitHub)|
 |                |`realdata svgene/`(directory)| Contains identified SV genes of each method |
-||`genecluster/`(directory)|Contains the results of inferred gene cluster|
-||`spotcluster/`(directory)|Contains the results of inferred spot cluster|
+||`genecluster/`(directory)|Contains the results of inferred gene cluster (**the folder is left empty** in the supplementary archive and corresponding files should be downloaded via GitHub)|
+||`spotcluster/`(directory)|Contains the results of inferred spot cluster (**the folder is left empty** in the supplementary archive and corresponding files should be downloaded via GitHub)|
 ||`stability/`(directory)|Contains the results of stability analysis of each method |
 ||`realdata dataset/`(directory)|Contains the preprocessed dataset used in realdata analysis|
 ||`model check/`(directory)|Contains the results of model checking|
 ||`sensitive analysis/`(directory)|Contains the results of sensitive analysis of hyperparameters|
 ||`upset plot/`(directory)|Contains the preprocessed upset plot|
-||`benchmark/`(directory)|Contains the benchmark results obtained from Zeng et al.(2012) and Maynard et al.(2021) |
+||`benchmark/`(directory)|Contains the benchmark results obtained from Zeng et al.(2012) and Maynard et al.(2021).(**the folder is left empty** in the supplementary archive and corresponding files should be downloaded via GitHub) |
 
 #### Downloading Large Reproducibility Files
 
@@ -252,12 +270,17 @@ Some intermediate outputs and large data files (e.g.,  simulation and realdata a
    - `RealData/result_data/plot of figure_S1/`
    - `Simulations/result_data/additional spatial pattern/`
    - `Simulations/result_data/noinflation/example_linear_inf5.RData`
+   
+Note: The GitHub repository version corresponding to the supplementary materials and ACC submission is:
+commit ID: `4353b68b3a00052d79ccbc88cbb7ef6d75f0b691`. This commit represents the exact version used for the revised reproducibility package and supplementary materials.
 
 3. Place the downloaded folders in the same relative directory structure as provided in this repository.
 
 4. Do not modify folder names, as the scripts rely on relative paths.
 
 All analysis scripts will run without modification once the directory structure is preserved.
+
+
 
 
 ### Reproducibility Workflow

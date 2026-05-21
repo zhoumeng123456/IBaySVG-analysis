@@ -28,7 +28,7 @@ The layout of the raw files inside `code_and_data/data/raw_data/` is structured 
 - `result_matrix.RData`: A pre-extracted and optimized copy of the snRNA-seq matrix for expedited execution.
 - `position1.txt` to `position12.txt`: Individual spot spatial coordinates matching the 12 ST HDF5 matrices respectively (corresponding to the official `tissue_positions_list.txt` from the spatialLIBD repository).
 
-*Note:* Due to GitHub's file size limitations, ultra-large raw baseline references (`assays.h5`) exceed the upload threshold and cannot be directly archived in this repository. Users **must** manually download the complete reference package via [Dropbox Link](https://www.dropbox.com/s/5919zt00vm1ht8e/sce_DLPFC_annotated.zip?dl=1), unzip it, and place the extracted files directly into the `data/Realdataset/raw_data/dlpfc_dataset/` directory before executing the preprocessing pipeline.
+*Note:* Due to GitHub's file size limitations, ultra-large raw baseline references (`assays.h5`) exceed the upload threshold and cannot be directly archived in this repository. Users **must** manually download the complete reference package via Dropbox Link (https://www.dropbox.com/s/5919zt00vm1ht8e/sce_DLPFC_annotated.zip?dl=1), unzip it, and place the extracted files directly into the `data/Realdataset/raw_data/dlpfc_dataset/` directory before executing the preprocessing pipeline.
 
 #### 1.1.2 SCC Raw Dataset (`raw_data/scc_dataset/`)
 - `scc_P9_rep1.tsv` to `scc_P9_rep3.tsv`: Spatial transcriptomics count matrices (in TSV format) corresponding to 3 technical replicates sampled from **Patient 9**.
@@ -252,4 +252,15 @@ data is saved in the `data/Simulation data/location.csv`.
 ### Important Note on Covariates of PASTE-integrated datasets
 
 For all simulation datasets, the PASTE method integrates only count matrices and does not integrate covariate information.Therefore, for integrated datasets, the covariate matrix from the first slice is used as the covariate.
+
+
+## Repository version information
+
+The reproducibility package corresponds to GitHub commit:4353b68b3a00052d79ccbc88cbb7ef6d75f0b691. This commit represents the exact version used for the revised reproducibility package and supplementary materials.
+
+Repository:
+https://github.com/zhoumeng123456/IBaySVG-analysis
+
+
+
 
