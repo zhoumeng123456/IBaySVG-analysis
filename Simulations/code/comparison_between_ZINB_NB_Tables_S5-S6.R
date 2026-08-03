@@ -1,5 +1,5 @@
 ################################################################################################################################################
-                                                        #comparison between ZINB and NB model for Tables35-s36
+                                    #comparison between ZINB and NB model for Table S5-S6
 
 
 ################################################################################################################################################
@@ -23,7 +23,7 @@ fp
 make_table <- function(df, inf_name) {
   df %>%
     filter(inf == inf_name,
-           set %in% c("F1", "FPR", "TPR")  # 只保留三种) %>%
+           set %in% c("F1", "FPR", "TPR")  #  %>%
     ) %>%
     group_by(pattern, inte_situ, method, set) %>%
     summarise(

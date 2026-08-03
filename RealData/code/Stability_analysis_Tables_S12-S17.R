@@ -1,5 +1,5 @@
 ###################################################################################################################################################
-                                              #1.subsampling analysis for using 90% randomly subsampled spots for Table S8,S10,S12
+       #1.subsampling analysis for using 90% randomly subsampled spots for Table S12,S14,S16
 
 
 ###################################################################################################################################################
@@ -152,7 +152,7 @@ subsample_read(data_scc_svgene_list,result,secnum=3)
 
 
 ###################################################################################################################################################
-                                              #2.subsampling analysis for pairwise comparisons for Table S9,S11,S13
+                   #2.subsampling analysis for pairwise comparisons for Table S13,S15,S17
 ###################################################################################################################################################
 ##1.example for pairwise comparisons in dlpfc dataset.
 dataset="acrossdonor"

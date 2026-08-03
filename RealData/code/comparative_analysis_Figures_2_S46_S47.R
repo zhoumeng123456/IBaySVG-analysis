@@ -1,5 +1,5 @@
 #######################################################################################################################################
-                                                    #comparative analysis in real dataset
+                                       #comparative analysis in real dataset for Figures : 2,S46-S47
 
 #######################################################################################################################################
 #Here we first take the results of dlpfc dataset with samedonor for an example.
@@ -229,7 +229,7 @@ ggsave(paste0("combined_dlpfc_samedonor_verti.png"), plot = combined_plot, width
 
 
 #######################################################################################################################################
-                                     #comparative analysis for dlpfc dataset across donors: Figures12
+                                     #comparative analysis for dlpfc dataset across donors: Figure s46
 
 #######################################################################################################################################
 
@@ -296,7 +296,7 @@ ggsave(paste0("combined_dlpfc_acrossdonor.png"), plot = combined_plot, width = 1
 
 
 #######################################################################################################################################
-                                            #comparative analysis for scc dataset: Figures13
+                                            #comparative analysis for scc dataset: Figure s47
 
 #######################################################################################################################################
 

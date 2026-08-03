@@ -1,14 +1,15 @@
 ##################################################################################################################################################
-                                                        #1.generate the spot cluster results
-
-
+                                     #1.generate the spot cluster results
 ##################################################################################################################################################
 ##example to produce the spot cluster results based on the identified SV genes
 library(BASS)#a efficient algorithm to spatial clustering. Code and detailed implement can be avaiable at https://github.com/xzhoulab/BASS
 library(fpc)
 library(mclust)
 library(aricode)
-
+library(parallelDist)
+library(cluster)
+library(clusterCrit)
+library(patchwork)
 
 #load the data
 dataset="samedonor"
@@ -125,7 +126,7 @@ for(i in c(1:9)){
 
 
 ##################################################################################################################################################
-                                                      #2.ARI,NMI results for Table s20,S21,s26,S27
+                                #2.ARI,NMI results for Table s27,S28,s33,S34
 
 
 ##################################################################################################################################################
@@ -183,7 +184,7 @@ for(j in c(1:4)){
 
 
 ##################################################################################################################################################
-                                                     #3.normal index results for Table s22-S25 and s28-s34
+                                    #3.normal index results for Table s29-S32 and s35-s41
 
 ##################################################################################################################################################
 library(parallelDist)
@@ -370,7 +371,278 @@ for(datanum in c(1:3)){
   print(index_result)
 }
 
+##################################################################################################################################################
+                              #4. index results when deleting unique genes for Table S21-S23 and S42-S44
 
+##################################################################################################################################################
+######################################################Table S21-S23 ####################################
+######################################################Table S21-S23 ####################################
+######################################################Table S21-S23 ####################################
+#1.obtain the unique gene sets
+#DLPFC-same donor
+dataset="dlpfc_samedonor"
+load(here::here("RealData/result_data/realdata svgene",paste0("data_",dataset,"_svgene_list.RData")))
+all_union_union_list_nogaston=Reduce(union,list(data_dlpfc_samedonor_svgene_list[[1]][[5]],data_dlpfc_samedonor_svgene_list[[3]][[5]],
+                                                data_dlpfc_samedonor_svgene_list[[2]][[5]],data_dlpfc_samedonor_svgene_list[[4]][[5]],
+                                                data_dlpfc_samedonor_svgene_list[[5]][[5]],data_dlpfc_samedonor_svgene_list[[8]][[5]]))
+weakproblem1=setdiff(data_dlpfc_samedonor_svgene_list[[6]],all_union_union_list_nogaston)#76
+
+
+#DLPFC-across donors
+dataset="dlpfc_acrossdonor"
+load(here::here("RealData/result_data/realdata svgene",paste0("data_",dataset,"_svgene_list.RData")))
+all_union_union_list_nogaston=Reduce(union,list(data_dlpfc_acrossdonor_svgene_list[[1]][[5]],
+                                                data_dlpfc_acrossdonor_svgene_list[[2]][[5]],data_dlpfc_acrossdonor_svgene_list[[4]][[5]],
+                                                data_dlpfc_acrossdonor_svgene_list[[5]][[5]],data_dlpfc_acrossdonor_svgene_list[[8]][[5]]))
+weakproblem2=setdiff(data_dlpfc_acrossdonor_svgene_list[[6]],all_union_union_list_nogaston)#261
+
+#SCC
+dataset="scc"
+load(here::here("RealData/result_data/realdata svgene",paste0("data_",dataset,"_svgene_list.RData")))
+all_union_union_list_nogaston=Reduce(union,list(data_scc_svgene_list[[1]][[4]],data_scc_svgene_list[[2]][[4]],
+                                                data_scc_svgene_list[[4]][[4]],data_scc_svgene_list[[5]][[4]],
+                                                data_scc_svgene_list[[8]][[4]],data_scc_svgene_list[[9]][[4]]))
+weakproblem3=setdiff(data_scc_svgene_list[[6]],all_union_union_list_nogaston)
+
+#2.compute the spot cluster results removing the "weakproblem gene"
+#This procedure is same to the process in Section 1
+
+######################################################Tables :S42-S44 ############################################
+######################################################Tables :S42-S44 ############################################
+######################################################Tables :S42-S44 ############################################
+#3.compute the index based on the result
+#function
+calculate_dbi <- function(distance_matrix, cluster_labels) {
+  clusters <- unique(cluster_labels)
+  n_clusters <- length(clusters)
+  
+  scatter <- sapply(clusters, function(cluster) {
+    points_in_cluster <- which(cluster_labels == cluster)
+    cluster_points <- distance_matrix[points_in_cluster, points_in_cluster, drop = FALSE]
+    mean(apply(cluster_points, 1, function(row) mean(row, na.rm = TRUE)), na.rm = TRUE)
+  })
+  
+  dbi <- 0
+  for (i in 1:n_clusters) {
+    max_ratio <- -Inf
+    for (j in 1:n_clusters) {
+      if (i != j) {
+        distance_ij <- mean(distance_matrix[which(cluster_labels == clusters[i]), 
+                                            which(cluster_labels == clusters[j])])
+        ratio <- (scatter[i] + scatter[j]) / distance_ij
+        max_ratio <- max(max_ratio, ratio, na.rm = TRUE)
+      }
+    }
+    dbi <- dbi + max_ratio
+  }
+  
+  dbi / n_clusters  
+}
+symbolgenerate<-function(distance_matrix,cluster_result,sectnum=2,count1,idomain=c(1:8),sectnumber=4){
+  ##compute silhouette score
+  result_lunkuo_matrix=matrix(NA,nrow = 9,ncol = 9)
+  rownames(result_lunkuo_matrix)=c("nnSVG","SPARKX","SPARK","spVC","HEARTSVG","Proposed","DEspace","startrail","gaston")
+  for(i in idomain){
+    if(i<=5){
+      for(j in c(1:(sectnumber+5))){
+        silhouette_score <- silhouette(as.numeric(cluster_result[[i]][[j]]), distance_matrix)  
+        avg_silhouette_score <- mean(silhouette_score[, 3])  
+        result_lunkuo_matrix[i,j]=round(avg_silhouette_score,3)
+      }
+    }else if(i==6|i==7){
+      silhouette_score <- silhouette(as.numeric(cluster_result[[i]][[1]]), distance_matrix)  
+      avg_silhouette_score <- mean(silhouette_score[, 3])  
+      result_lunkuo_matrix[i,1]=round(avg_silhouette_score,3)
+    }else{
+      for(j in c(1:(sectnumber+3))){
+        silhouette_score <- silhouette(as.numeric(cluster_result[[i]][[j]]), distance_matrix)  
+        avg_silhouette_score <- mean(silhouette_score[, 3]) 
+        result_lunkuo_matrix[i,j]=round(avg_silhouette_score,3)
+      }
+    }
+  }
+  print(result_lunkuo_matrix)
+  
+  ##compute dbi
+  result_dbi_matrix=matrix(NA,nrow = 9,ncol = 9)
+  rownames(result_dbi_matrix)=c("nnSVG","SPARKX","SPARK","spVC","HEARTSVG","Proposed","DEspace","startrail","gaston")
+  for(i in idomain){
+    if(i <=5){
+      for(j in c(1:(sectnumber+5))){
+        dbi_value <- calculate_dbi(as.matrix(distance_matrix), as.numeric(cluster_result[[i]][[j]]))
+        result_dbi_matrix[i,j]=round(dbi_value,3) 
+      }
+    }else if(i==6|i==7){
+      dbi_value <- calculate_dbi(as.matrix(distance_matrix), as.numeric(cluster_result[[i]][[1]]))
+      result_dbi_matrix[i,1]=round(dbi_value,3) 
+    }else{
+      for(j in c(1:(sectnumber+3))){
+        dbi_value <- calculate_dbi(as.matrix(distance_matrix), as.numeric(cluster_result[[i]][[j]]))
+        result_dbi_matrix[i,j]=round(dbi_value,3) 
+      }
+    }
+  }
+  print(result_dbi_matrix)
+  
+  ##compute ch
+  result_ch_matrix=matrix(NA,nrow = 9,ncol = 9)
+  rownames(result_ch_matrix)=c("nnSVG","SPARKX","SPARK","spVC","HEARTSVG","Proposed","DEspace","startrail","gaston")
+  for(i in idomain){
+    if(i <=5){
+      for(j in c(1:(sectnumber+5))){
+        ch_index <- cluster.stats(as.matrix(distance_matrix), as.numeric(cluster_result[[i]][[j]]))$ch
+        result_ch_matrix[i,j]=round(ch_index,3)
+      }
+    }else if(i==6|i==7){
+      ch_index <- cluster.stats(as.matrix(distance_matrix), as.numeric(cluster_result[[i]][[1]]))$ch
+      result_ch_matrix[i,1]=round(ch_index,3)
+    }else{
+      for(j in c(1:(sectnumber+3))){
+        ch_index <- cluster.stats(as.matrix(distance_matrix), as.numeric(cluster_result[[i]][[j]]))$ch
+        result_ch_matrix[i,j]=round(ch_index,3)
+      }
+    }
+  }
+  print(result_ch_matrix)
+  
+  #compute avona result 
+  mean_count1=apply(count1,1,mean)
+  result_avo_matrix=matrix(NA,nrow = 9,ncol = 9)
+  rownames(result_avo_matrix)=c("nnSVG","SPARKX","SPARK","spVC","HEARTSVG","Proposed","DEspace","startrail","gaston")
+  for(i in idomain){
+    if(i <=5){
+      for(j in c(1:(sectnumber+5))){
+        unique_clusters <- unique(as.numeric(cluster_result[[i]][[j]]))
+        regions <- list()
+        for (cluster in unique_clusters) {
+          region_data <- mean_count1[as.numeric(cluster_result[[i]][[j]]) == cluster]
+          regions[[paste0("Region", cluster)]] <- region_data
+        }
+        
+        combined_data <- data.frame(
+          expression = unlist(regions), 
+          region = factor(rep(names(regions), times = sapply(regions, length)))  
+        )
+        
+        anova_result <- aov(expression ~ region, data = combined_data)
+        result_avo_matrix[i,j]=round(summary(anova_result)[[1]]$`F value`[1],3)
+      }
+    }else if(i==6|i==7){
+      unique_clusters <- unique(as.numeric(cluster_result[[i]][[1]]))
+      regions <- list()
+      for (cluster in unique_clusters) {
+        region_data <- mean_count1[as.numeric(cluster_result[[i]][[1]]) == cluster]
+        regions[[paste0("Region", cluster)]] <- region_data
+      }
+      
+      combined_data <- data.frame(
+        expression = unlist(regions),  
+        region = factor(rep(names(regions), times = sapply(regions, length)))  
+      )
+      
+      anova_result <- aov(expression ~ region, data = combined_data)
+      result_avo_matrix[i,1]=round(summary(anova_result)[[1]]$`F value`[1],3)
+    }else{
+      for(j in c(1:(sectnumber+3))){
+        unique_clusters <- unique(as.numeric(cluster_result[[i]][[j]]))
+        regions <- list()
+        for (cluster in unique_clusters) {
+          region_data <- mean_count1[as.numeric(cluster_result[[i]][[j]]) == cluster]
+          regions[[paste0("Region", cluster)]] <- region_data
+        }
+        
+        combined_data <- data.frame(
+          expression = unlist(regions),  
+          region = factor(rep(names(regions), times = sapply(regions, length)))  
+        )
+        
+        anova_result <- aov(expression ~ region, data = combined_data)
+        result_avo_matrix[i,j]=round(summary(anova_result)[[1]]$`F value`[1],3)
+      }
+    }
+  }
+  print(result_avo_matrix)
+  
+}
+
+#######for dlpfc dataset#########
+dataset="dlpfc_acrossdonor" # or you can replace it by dlpfc_samedonor
+load(here::here("RealData/result_data/spotcluster",paste0("spot_real_",dataset,".RData")))
+load(here::here("RealData/result_data/spotcluster","delete_weakgene_dlpfcacrossdonor_spotcluster.RData"))
+#load(here::here("RealData/result_data/spotcluster","delete_weakgene_dlpfcsamedonor_spotcluster.RData"))
+for(j in c(1:4)){
+  print(adjustedRandIndex(result_total[[j]],layer_barcode[[j]]))
+}
+for(j in c(1:4)){
+  print(NMI(layer_barcode[[j]],result_total[[j]]))
+}
+dataset="acrossdonor"#Alternative: "samedonor"
+for(datanum in c(1:4)){
+  count1=as.matrix(read.csv(here::here(paste0("data/Realdataset/dlpfc ",dataset),paste0("matrix",datanum,"_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
+  count1=t(count1)
+  distance_matrix <- parallelDist::parDist(as.matrix(count1), method = "euclidean", threads = 8)
+  
+  #dbi
+  dbi_value <- calculate_dbi(as.matrix(distance_matrix), as.numeric(result_total[[datanum]]))
+  print(round(dbi_value,3))
+  #ch
+  ch_index <- cluster.stats(as.matrix(distance_matrix), as.numeric(result_total[[datanum]]))$ch
+  print(round(ch_index,3))
+  #silhoutte
+  silhouette_score <- silhouette(as.numeric(result_total[[datanum]]), distance_matrix)  
+  avg_silhouette_score <- mean(silhouette_score[, 3])  
+  print(round(avg_silhouette_score,3))
+  #anova
+  mean_count1=apply(count1,1,mean)
+  unique_clusters <- unique(as.numeric(result_total[[datanum]]))
+  regions <- list()
+  for (cluster in unique_clusters) {
+    region_data <- mean_count1[as.numeric(result_total[[datanum]]) == cluster]
+    regions[[paste0("Region", cluster)]] <- region_data
+  }
+  
+  combined_data <- data.frame(
+    expression = unlist(regions),  
+    region = factor(rep(names(regions), times = sapply(regions, length)))  
+  )
+  
+  anova_result <- aov(expression ~ region, data = combined_data)
+  print(round(summary(anova_result)[[1]]$`F value`[1],3))
+}
+
+######for scc dataset##########
+load(here::here("RealData/result_data/spotcluster","delete_weakgene_scc_spotcluster.RData"))
+dataset="scc"
+for(datanum in c(1:3)){
+  count1=as.matrix(read.csv(here::here(paste0("data/Realdataset/scc"),paste0("matrix",datanum,"_count_",dataset,".csv")),row.names = 1,check.names = FALSE))
+  count1=t(count1)
+  distance_matrix <- parallelDist::parDist(as.matrix(count1), method = "euclidean", threads = 8)
+  #dbi
+  dbi_value <- calculate_dbi(as.matrix(distance_matrix), as.numeric(result_total[[datanum]]))
+  print(round(dbi_value,3))
+  #ch
+  ch_index <- cluster.stats(as.matrix(distance_matrix), as.numeric(result_total[[datanum]]))$ch
+  print(round(ch_index,3))
+  #silhouette
+  silhouette_score <- silhouette(as.numeric(result_total[[datanum]]), distance_matrix)  
+  avg_silhouette_score <- mean(silhouette_score[, 3])  
+  print(round(avg_silhouette_score,3))
+  #anova
+  mean_count1=apply(count1,1,mean)
+  unique_clusters <- unique(as.numeric(result_total[[datanum]]))
+  regions <- list()
+  for (cluster in unique_clusters) {
+    region_data <- mean_count1[as.numeric(result_total[[datanum]]) == cluster]
+    regions[[paste0("Region", cluster)]] <- region_data
+  }
+  
+  combined_data <- data.frame(
+    expression = unlist(regions),  
+    region = factor(rep(names(regions), times = sapply(regions, length)))  
+  )
+  anova_result <- aov(expression ~ region, data = combined_data)
+  print(round(summary(anova_result)[[1]]$`F value`[1],3))
+}
 
 
 

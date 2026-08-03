@@ -1,3 +1,7 @@
+################################################################################################################
+                          #Sensitive analysis of real data for Figures: S40-S42
+###########################################################################################################
+
 library(ggplot2)
 
 ##function for handle the plot
@@ -55,7 +59,7 @@ sensitive_plot=function(sensitive_list){
         ) +
         geom_text(aes(label = round(Value, 3)), color = "black", size = 3) + 
         theme_minimal() +
-        labs(x =  xname, y =  yname, fill = "Jaccard")+
+        labs(x =  xname, y =  yname, fill = "Index")+
         theme(axis.text.x = element_text(size = xsize),legend.position = "none")
         p_list[[paras]]=p1
     }else{
@@ -82,7 +86,7 @@ sensitive_plot=function(sensitive_list){
         scale_fill_gradient(    low = "white", 
                                 high = "#e3716e",
                                 limits = c(0, 1),          
-                                name = "Jaccard",guide = guide_colorbar(
+                                name = "Index",guide = guide_colorbar(
                                   barwidth  = 12,   
                                   barheight = 0.8,    title.position = "left",  
                                   title.vjust = 1            

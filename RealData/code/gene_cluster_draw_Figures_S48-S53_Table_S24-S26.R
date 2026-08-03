@@ -1,3 +1,7 @@
+#################################################################################################################
+                                # gene cluster results for Figures :S48-S53 and Tables : S24-S26
+#################################################################################################################
+
 library(dynamicTreeCut)
 library(mclust)
 library(pheatmap)
@@ -117,7 +121,7 @@ result_gene_cluster_list <- run_svg_clustering(svgenename = svgene_list[[6]],
 #the preprocessed results have been stored in RealData/result_data/genecluster
 
 ###########################################################################################################################################
-                                            #3.plot for gene cluster expression :(S14,S16,S18)
+                                            #3.plot for gene cluster expression :(S48,S50,S52)
 
 ############################################################################################################################################
 #function for plot
@@ -348,7 +352,7 @@ ggsave(paste0("genecluster_scc.png"), plot = combined_plot, width = 9, height = 
 
 
 ###########################################################################################################################################
-                                                  #4.heatmap plot for gene cluster:s15,s17,s19
+                                                  #4.heatmap plot for gene cluster:s49,s51,s53
 
 ############################################################################################################################################
 #function for heatmap
@@ -448,7 +452,7 @@ ggsave(paste0("/Users/zhoum/Desktop/scc_cluster_heatmap.png"), plot = combined_h
 
 
 ###########################################################################################################################################
-                                              #5.enrichment for gene cluster:Table S17-S19
+                                              #5.enrichment for gene cluster:Table S24-S26
 
 ############################################################################################################################################
 #function for gene cluster
